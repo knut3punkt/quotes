@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder Android TV launcher banner. Android TV requires this exact 320x180dp
+     size (see https://developer.android.com/training/tv/start/start#banner); lint's
+     generic 200x200 vector-icon-size guideline does not apply to this resource type. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180"
+    tools:ignore="VectorRaster">
+    <path
+        android:fillColor="#0F1115"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#F2B84B"
+        android:pathData="M120,72 h24 v40 h-24 z" />
+    <path
+        android:fillColor="#F2B84B"
+        android:pathData="M168,72 h24 v40 h-24 z" />
+</vector>

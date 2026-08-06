@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose owns the UI theming (see ui/theme/Theme.kt); this Android window
+         theme only sets the pre-Compose background so there is no flash of the
+         wrong color while the activity starts. -->
+    <style name="Theme.TvQuotes" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/tv_background</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>
