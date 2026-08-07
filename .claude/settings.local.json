@@ -3,6 +3,10 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:ktor.io)"
+    ],
+     "deny": [
+      "Read(**/.env)",
+      "Edit(**/.env)"
     ]
   }
 }
