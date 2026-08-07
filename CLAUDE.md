@@ -66,6 +66,10 @@ without an explicit request.
 .\gradlew.bat :server:test
 .\gradlew.bat :tv-app:testDebugUnitTest
 .\gradlew.bat :tv-app:connectedDebugAndroidTest  # Compose UI test; needs a device/emulator
+
+# single test class or method
+.\gradlew.bat :server:test --tests "no.esotericgames.quotes.server.ApplicationTest"
+.\gradlew.bat :tv-app:testDebugUnitTest --tests "no.esotericgames.quotes.QuoteFormattingTest"
 ```
 
 ## Code-style expectations
