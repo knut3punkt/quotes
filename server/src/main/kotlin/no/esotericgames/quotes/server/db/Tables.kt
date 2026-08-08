@@ -1,6 +1,11 @@
 package no.esotericgames.quotes.server.db
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.json.jsonb
 
 object Authors : Table("authors") {
     val id = integer("id").autoIncrement()
@@ -44,4 +49,23 @@ object QuoteTags : Table("quote_tags") {
     val tagId = integer("tag_id").references(Tags.id)
 
     override val primaryKey = PrimaryKey(quoteId, tagId)
+}
+
+object ImportedQuotes : Table("imported_quotes") {
+    val id = integer("id").autoIncrement()
+    val provider = text("provider")
+    val providerQuoteId = text("provider_quote_id")
+    val rawText = text("raw_text")
+    val rawAuthor = text("raw_author").nullable()
+    val rawPayload = jsonb<JsonElement>("raw_payload", Json.Default)
+    val importedAt = timestampWithTimeZone("imported_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val processingStatus = text("processing_status").default("pending")
+    val quoteId = integer("quote_id").references(Quotes.id).nullable()
+    val sourceConfidence = text("source_confidence").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        uniqueIndex(provider, providerQuoteId)
+    }
 }

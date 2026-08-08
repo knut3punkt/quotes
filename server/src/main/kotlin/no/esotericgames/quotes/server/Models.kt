@@ -17,3 +17,22 @@ val sampleQuotes = listOf(
         "Harold Abelson",
     ),
 )
+
+@Serializable
+data class WikiquoteImportRequest(
+    val authorNames: List<String>,
+    val sourceConfidence: Set<String> = setOf("sourced", "attributed", "unsourced"),
+)
+
+@Serializable
+data class WikiquoteAuthorImportResult(
+    val requestedName: String,
+    val resolvedTitle: String?,
+    val found: Boolean,
+    val quotesInserted: Int,
+    val quotesSkippedAsDuplicate: Int,
+    val quotesBySection: Map<String, Int>,
+)
+
+@Serializable
+data class WikiquoteImportResponse(val results: List<WikiquoteAuthorImportResult>)

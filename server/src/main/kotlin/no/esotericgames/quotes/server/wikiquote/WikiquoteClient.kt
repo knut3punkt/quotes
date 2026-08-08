@@ -1,0 +1,115 @@
+package no.esotericgames.quotes.server.wikiquote
+
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+private const val WIKIQUOTE_API_BASE_URL = "https://en.wikiquote.org/w/api.php"
+private const val USER_AGENT = "TVQuotes-Importer/1.0 (contact: knut3punkt@gmail.com)"
+private const val REQUEST_INTERVAL_MILLIS = 250L
+private const val DEFAULT_RETRY_AFTER_SECONDS = 2L
+
+/**
+ * Thin wrapper around the MediaWiki API on en.wikiquote.org. Every call is serial (never fired
+ * concurrently by this class) and paced with a small delay per the Wikimedia API etiquette policy.
+ */
+class WikiquoteClient(
+    private val httpClient: HttpClient = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+        install(UserAgent) {
+            agent = USER_AGENT
+        }
+    },
+) {
+    suspend fun resolveTitle(name: String): String? {
+        val response = apiGet {
+            parameter("action", "query")
+            parameter("titles", name)
+            parameter("redirects", "1")
+            parameter("format", "json")
+            parameter("formatversion", "2")
+        }
+        val page = response.body<WikiquoteQueryResponse>().query.pages.firstOrNull() ?: return null
+        return if (page.missing == true) null else page.title
+    }
+
+    suspend fun listTopLevelSections(title: String): List<WikiquoteSection> {
+        val response = apiGet {
+            parameter("action", "parse")
+            parameter("page", title)
+            parameter("prop", "tocdata")
+            parameter("redirects", "1")
+            parameter("format", "json")
+            parameter("formatversion", "2")
+        }
+        return response.body<WikiquoteParseTocResponse>().parse.tocdata.sections.filter { it.tocLevel == 1 }
+    }
+
+    suspend fun fetchSectionHtml(title: String, sectionIndex: String): WikiquoteSectionContent {
+        val response = apiGet {
+            parameter("action", "parse")
+            parameter("page", title)
+            parameter("section", sectionIndex)
+            parameter("prop", "text|revid")
+            parameter("redirects", "1")
+            parameter("format", "json")
+            parameter("formatversion", "2")
+        }
+        val parse = response.body<WikiquoteParseTextResponse>().parse
+        return WikiquoteSectionContent(revisionId = parse.revid, html = parse.text)
+    }
+
+    private suspend fun apiGet(block: HttpRequestBuilder.() -> Unit): HttpResponse {
+        delay(REQUEST_INTERVAL_MILLIS)
+        val response = httpClient.get(WIKIQUOTE_API_BASE_URL, block)
+        if (response.status != HttpStatusCode.TooManyRequests) {
+            return response
+        }
+        val retryAfterSeconds = response.headers[HttpHeaders.RetryAfter]?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_SECONDS
+        delay(retryAfterSeconds * 1000)
+        return httpClient.get(WIKIQUOTE_API_BASE_URL, block)
+    }
+}
+
+data class WikiquoteSectionContent(val revisionId: Long, val html: String)
+
+@Serializable
+data class WikiquoteSection(val tocLevel: Int, val line: String, val index: String)
+
+@Serializable
+private data class WikiquoteQueryResponse(val query: WikiquoteQuery)
+
+@Serializable
+private data class WikiquoteQuery(val pages: List<WikiquotePage> = emptyList())
+
+@Serializable
+private data class WikiquotePage(val title: String, val missing: Boolean? = null)
+
+@Serializable
+private data class WikiquoteParseTocResponse(val parse: WikiquoteParseToc)
+
+@Serializable
+private data class WikiquoteParseToc(val tocdata: WikiquoteTocData)
+
+@Serializable
+private data class WikiquoteTocData(val sections: List<WikiquoteSection>)
+
+@Serializable
+private data class WikiquoteParseTextResponse(val parse: WikiquoteParseText)
+
+@Serializable
+private data class WikiquoteParseText(val revid: Long, val text: String)

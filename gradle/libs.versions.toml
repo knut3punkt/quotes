@@ -31,6 +31,8 @@ flyway = "13.2.0"
 hikaricp = "7.1.0"
 # PostgreSQL JDBC driver — see https://jdbc.postgresql.org/
 postgresql = "42.7.13"
+# jsoup HTML parser — see https://jsoup.org/download
+jsoup = "1.23.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCoreKtx" }
@@ -61,15 +63,21 @@ ktor-server-content-negotiation = { group = "io.ktor", name = "ktor-server-conte
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json" }
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation" }
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core" }
+ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock" }
 
 logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 
 exposed-core = { group = "org.jetbrains.exposed", name = "exposed-core", version.ref = "exposed" }
 exposed-jdbc = { group = "org.jetbrains.exposed", name = "exposed-jdbc", version.ref = "exposed" }
+exposed-json = { group = "org.jetbrains.exposed", name = "exposed-json", version.ref = "exposed" }
+exposed-java-time = { group = "org.jetbrains.exposed", name = "exposed-java-time", version.ref = "exposed" }
 flyway-core = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" }
 flyway-database-postgresql = { group = "org.flywaydb", name = "flyway-database-postgresql", version.ref = "flyway" }
 hikaricp = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikaricp" }
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
