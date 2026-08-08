@@ -6,6 +6,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -26,10 +27,21 @@ class WikiquoteParserTest {
         assertTrue(firstQuote.text.contains("Everything should be made simple"))
         assertEquals(emptyList(), firstQuote.headingPath)
         assertEquals(listOf("Repeated throughout his life, see: Quote Investigator"), firstQuote.citations)
+        assertNull(firstQuote.translationCandidate, "decorative ❝❞ quote marks shouldn't look non-English")
 
         val frenchQuote = quotes.first { it.text.startsWith("Un homme heureux") }
         assertEquals(listOf("1890s"), frenchQuote.headingPath)
         assertEquals(2, frenchQuote.citations.size)
+        assertEquals(
+            "A happy man is too satisfied with the present to dwell too much on the future.",
+            frenchQuote.translationCandidate,
+        )
+
+        val germanQuote = quotes.first { it.text.startsWith("Autoritätsdusel") }
+        assertEquals(
+            "Blind obedience to authority is the greatest enemy of truth.",
+            germanQuote.translationCandidate,
+        )
     }
 
     @Test
@@ -40,6 +52,29 @@ class WikiquoteParserTest {
         assertTrue(quotes.all { it.headingPath.isEmpty() })
         assertTrue(quotes.all { it.citations.size == 1 })
         assertTrue(quotes.any { it.text.startsWith("I have the simplest tastes.") })
+        assertTrue(quotes.all { it.translationCandidate == null }, "all-English quotes shouldn't get a translation candidate")
+    }
+
+    @Test
+    fun `translation candidate detection ignores markup from a deeper nested citation`() {
+        // Real triple-nested structure from Goethe's page: quote -> translation -> the
+        // translation's own sub-citation (linked, italic, with a year). A naive check of the
+        // translation li's full descendant text/links would wrongly see the sub-citation's <a>,
+        // <i> and "(1782)" and misclassify the translation itself as citation-like.
+        val html = """
+            <div class="mw-parser-output">
+            <ul><li><i>Wer reitet so spät durch Nacht und Wind?</i>
+            <ul><li><b>Who rides, so late, through night and wind?</b>
+            <ul><li><i><a href="https://en.wikipedia.org/wiki/Der_Erlk%C3%B6nig">Der Erlkönig</a></i> (1782)</li></ul>
+            </li></ul>
+            </li></ul>
+            </div>
+        """.trimIndent()
+
+        val quotes = parseQuoteSectionHtml(html)
+
+        assertEquals(1, quotes.size)
+        assertEquals("Who rides, so late, through night and wind?", quotes.first().translationCandidate)
     }
 
     private fun parseFixture(fileName: String): List<ParsedQuote> {

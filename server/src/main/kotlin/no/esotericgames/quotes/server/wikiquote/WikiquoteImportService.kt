@@ -124,6 +124,7 @@ private fun buildRawPayload(
     put("requestedName", requestedName)
     putJsonArray("sectionPath") { parsedQuote.headingPath.forEach { add(it) } }
     putJsonArray("citations") { parsedQuote.citations.forEach { add(it) } }
+    put("translationCandidate", parsedQuote.translationCandidate)
     put("fetchedAt", Instant.now().toString())
 }
 
