@@ -5,16 +5,19 @@ Guidance for Claude Code sessions working in this repository.
 ## Product overview
 
 TV Quotes: an Android TV app that will eventually display quotes fetched from a companion Kotlin
-server. Today it is boilerplate only — a placeholder screen and two static server endpoints, not
-yet connected to each other.
+server. Today the TV app is boilerplate only — a placeholder screen not yet wired to the server.
+The server has grown a Wikiquote importer and an admin website for reviewing imports, but the
+Android TV app and server are still not connected to each other.
 
 ## Current scope
 
-This is a fresh foundation. There is **no** persistence, authentication, dependency injection,
-navigation framework, networking layer, background work, or admin UI, and none of that should be
+The TV app is still a fresh foundation. There is **no** authentication, dependency injection,
+navigation framework, networking layer, or background work in `tv-app`, and none of that should be
 added speculatively. See the "possible future features" list in the original project brief for
 context on where this is headed — none of it is implemented, and none of it should be started
-without an explicit request.
+without an explicit request. The `admin` website (see below) is the first concrete step into that
+list and exists because it was explicitly requested — don't take it as license to build out the
+rest of the list unprompted.
 
 ## Module responsibilities
 
@@ -24,7 +27,16 @@ without an explicit request.
   phone `androidx.compose.material3` artifact.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
   entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
-  response types and the hard-coded sample quotes.
+  response types and the hard-coded sample quotes. `db/` holds the Exposed table definitions and
+  Flyway-migrated PostgreSQL schema (`authors`, `sources`, `quotes`, `tags`, `imported_quotes`).
+  `wikiquote/` is the Wikiquote importer, which stages results in `imported_quotes`. `admin/`
+  (package, not to be confused with the top-level `admin` frontend project) holds the admin API —
+  DTOs and the service backing the `/admin/imported-quotes` routes used to review and approve
+  staged imports into real `quotes` rows.
+- **`admin`** — React + TypeScript + Vite admin website (not a Gradle module — a separate npm
+  project). Talks to the `server`'s `/admin/*` routes over plain `fetch`, no auth yet. Lets a human
+  filter `imported_quotes` by processing status/confidence/provider and approve, reject, mark
+  duplicate, or reset rows; approving creates the corresponding `authors`/`quotes` rows.
 
 ## Key architectural decisions
 
@@ -58,6 +70,15 @@ without an explicit request.
 ```
 
 (Unix/macOS: same commands with `./gradlew`.)
+
+`admin` is a plain npm project, not part of the Gradle build:
+
+```powershell
+cd admin
+npm install
+npm run dev      # Vite dev server on http://localhost:5173, expects the server on :8080
+npm run build     # type-check (tsc -b) then production build to admin/dist
+```
 
 ## Test commands
 
@@ -93,8 +114,9 @@ without an explicit request.
 ## Warnings for future sessions
 
 - **Do not implement any of the "possible future" features** (rotation, categories, favorites,
-  remote admin, themes, etc.) unless the user explicitly asks for that specific feature in that
-  session.
+  auth, themes, etc.) unless the user explicitly asks for that specific feature in that session.
+  A first-iteration admin website now exists (see `admin` above), but further admin features
+  (auth, bulk actions, editing existing `quotes` rows, etc.) still need an explicit request.
 - **Before upgrading any dependency or plugin version, verify the new version against current
   official documentation** (developer.android.com, kotlinlang.org, ktor.io, gradle.org) rather
   than assuming — this toolchain moves fast and training-data knowledge of exact version numbers

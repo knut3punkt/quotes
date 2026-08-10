@@ -27,3 +27,7 @@ Thumbs.db
 
 .env
 .env.claude
+
+# Node / frontend
+node_modules/
+dist/
