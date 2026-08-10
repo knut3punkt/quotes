@@ -71,14 +71,16 @@ export function ImportedQuotesTable({
       <thead>
         <tr>
           <th scope="col" className="cell-select">
-            <input
-              ref={selectAllRef}
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={onToggleSelectAllVisible}
-              disabled={bulkBusy}
-              aria-label="Select all visible rows"
-            />
+            <label className="checkbox-hit">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={onToggleSelectAllVisible}
+                disabled={bulkBusy}
+                aria-label="Select all visible rows"
+              />
+            </label>
           </th>
           <th scope="col">Quote</th>
           <th scope="col">Author</th>
@@ -100,13 +102,15 @@ export function ImportedQuotesTable({
             <Fragment key={quote.id}>
               <tr className={selectedIds.has(quote.id) ? 'row-selected' : undefined}>
                 <td className="cell-select">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(quote.id)}
-                    onChange={() => onToggleSelect(quote.id)}
-                    disabled={bulkBusy}
-                    aria-label={`Select quote ${quote.id}`}
-                  />
+                  <label className="checkbox-hit">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(quote.id)}
+                      onChange={() => onToggleSelect(quote.id)}
+                      disabled={bulkBusy}
+                      aria-label={`Select quote ${quote.id}`}
+                    />
+                  </label>
                 </td>
                 <td className="cell-text">
                   <button type="button" className="text-toggle" onClick={() => toggleExpanded(quote.id)}>
