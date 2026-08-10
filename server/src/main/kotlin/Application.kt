@@ -17,6 +17,7 @@ import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun main(args: Array<String>) {
+    loadDotEnvIntoSystemProperties()
     EngineMain.main(args)
 }
 
