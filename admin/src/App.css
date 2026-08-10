@@ -112,6 +112,57 @@
   min-width: 220px;
 }
 
+/* Selection bar */
+
+.selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selection-summary button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.selection-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-actions button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.selection-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* Table */
 
 .quotes-table {
@@ -134,6 +185,15 @@
   padding: 10px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
+}
+
+.cell-select {
+  width: 32px;
+  text-align: center;
+}
+
+.row-selected {
+  background: var(--accent-bg);
 }
 
 .cell-text {

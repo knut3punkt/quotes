@@ -1,9 +1,15 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { canApprove, canMarkDuplicate, canReject, canResetToPending } from '../statusRules'
 import type { ImportedQuote } from '../types'
 
 interface ImportedQuotesTableProps {
   quotes: ImportedQuote[]
   busyId: number | null
+  bulkBusy: boolean
+  selectedIds: Set<number>
+  allVisibleSelected: boolean
+  onToggleSelect: (id: number) => void
+  onToggleSelectAllVisible: () => void
   onApprove: (quote: ImportedQuote) => void
   onReject: (quote: ImportedQuote) => void
   onMarkDuplicate: (quote: ImportedQuote) => void
@@ -27,12 +33,25 @@ function payloadStringArray(payload: Record<string, unknown>, key: string): stri
 export function ImportedQuotesTable({
   quotes,
   busyId,
+  bulkBusy,
+  selectedIds,
+  allVisibleSelected,
+  onToggleSelect,
+  onToggleSelectAllVisible,
   onApprove,
   onReject,
   onMarkDuplicate,
   onResetToPending,
 }: ImportedQuotesTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+  const selectAllRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      const someSelected = quotes.some((quote) => selectedIds.has(quote.id))
+      selectAllRef.current.indeterminate = someSelected && !allVisibleSelected
+    }
+  }, [quotes, selectedIds, allVisibleSelected])
 
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
@@ -51,6 +70,16 @@ export function ImportedQuotesTable({
     <table className="quotes-table">
       <thead>
         <tr>
+          <th scope="col" className="cell-select">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={onToggleSelectAllVisible}
+              disabled={bulkBusy}
+              aria-label="Select all visible rows"
+            />
+          </th>
           <th scope="col">Quote</th>
           <th scope="col">Author</th>
           <th scope="col">Provider</th>
@@ -63,19 +92,22 @@ export function ImportedQuotesTable({
       <tbody>
         {quotes.map((quote) => {
           const expanded = expandedIds.has(quote.id)
-          const busy = busyId === quote.id
-          const canApprove = quote.processingStatus !== 'approved'
-          const canReject = quote.processingStatus !== 'approved' && quote.processingStatus !== 'rejected'
-          const canMarkDuplicate =
-            quote.processingStatus !== 'approved' && quote.processingStatus !== 'duplicate'
-          const canResetToPending =
-            quote.processingStatus !== 'approved' && quote.processingStatus !== 'pending'
+          const busy = busyId === quote.id || bulkBusy
           const pageUrl = payloadString(quote.rawPayload, 'pageUrl')
           const citations = payloadStringArray(quote.rawPayload, 'citations')
 
           return (
             <Fragment key={quote.id}>
-              <tr>
+              <tr className={selectedIds.has(quote.id) ? 'row-selected' : undefined}>
+                <td className="cell-select">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(quote.id)}
+                    onChange={() => onToggleSelect(quote.id)}
+                    disabled={bulkBusy}
+                    aria-label={`Select quote ${quote.id}`}
+                  />
+                </td>
                 <td className="cell-text">
                   <button type="button" className="text-toggle" onClick={() => toggleExpanded(quote.id)}>
                     {expanded ? truncate(quote.rawText, 500) : truncate(quote.rawText, 90)}
@@ -103,22 +135,22 @@ export function ImportedQuotesTable({
                     <span className="approved-note">Quote #{quote.quoteId}</span>
                   ) : (
                     <>
-                      {canApprove && (
+                      {canApprove(quote.processingStatus) && (
                         <button type="button" disabled={busy} onClick={() => onApprove(quote)}>
                           Approve
                         </button>
                       )}
-                      {canReject && (
+                      {canReject(quote.processingStatus) && (
                         <button type="button" disabled={busy} onClick={() => onReject(quote)}>
                           Reject
                         </button>
                       )}
-                      {canMarkDuplicate && (
+                      {canMarkDuplicate(quote.processingStatus) && (
                         <button type="button" disabled={busy} onClick={() => onMarkDuplicate(quote)}>
                           Mark duplicate
                         </button>
                       )}
-                      {canResetToPending && (
+                      {canResetToPending(quote.processingStatus) && (
                         <button type="button" disabled={busy} onClick={() => onResetToPending(quote)}>
                           Reset
                         </button>
@@ -129,7 +161,7 @@ export function ImportedQuotesTable({
               </tr>
               {expanded && (
                 <tr className="detail-row">
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="detail-panel">
                       <p>
                         <strong>Full text:</strong> {quote.rawText}

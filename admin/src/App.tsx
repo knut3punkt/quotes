@@ -4,6 +4,8 @@ import { approveImportedQuote, fetchAuthors, fetchImportedQuotes, fetchSources, 
 import { ApproveDialog } from './components/ApproveDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
+import { SelectionBar } from './components/SelectionBar'
+import { canApprove, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type { ApproveImportedQuoteRequest, Author, ImportedQuote, ProcessingStatus, Source, SourceConfidence } from './types'
 
 function errorMessage(err: unknown): string {
@@ -28,6 +30,9 @@ function App() {
 
   const [busyId, setBusyId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -86,6 +91,110 @@ function App() {
     })
   }
 
+  const selectedQuotes = useMemo(
+    () => importedQuotes.filter((quote) => selectedIds.has(quote.id)),
+    [importedQuotes, selectedIds],
+  )
+
+  const allVisibleSelected = filteredQuotes.length > 0 && filteredQuotes.every((quote) => selectedIds.has(quote.id))
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const quote of filteredQuotes) next.delete(quote.id)
+      } else {
+        for (const quote of filteredQuotes) next.add(quote.id)
+      }
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const bulkApproveTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && quote.rawAuthor?.trim()),
+    [selectedQuotes],
+  )
+  const bulkApproveSkipped = useMemo(
+    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && !quote.rawAuthor?.trim()).length,
+    [selectedQuotes],
+  )
+  const bulkRejectTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canReject(quote.processingStatus)),
+    [selectedQuotes],
+  )
+  const bulkDuplicateTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canMarkDuplicate(quote.processingStatus)),
+    [selectedQuotes],
+  )
+  const bulkResetTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canResetToPending(quote.processingStatus)),
+    [selectedQuotes],
+  )
+
+  const runBulkStatusAction = async (status: ProcessingStatus, targets: ImportedQuote[]) => {
+    if (targets.length === 0) return
+    setBulkBusy(true)
+    setActionError(null)
+    const results = await Promise.allSettled(targets.map((quote) => updateImportedQuoteStatus(quote.id, status)))
+    const updates = new Map<number, ImportedQuote>()
+    let failures = 0
+    for (const result of results) {
+      if (result.status === 'fulfilled') updates.set(result.value.id, result.value)
+      else failures += 1
+    }
+    setImportedQuotes((prev) => prev.map((existing) => updates.get(existing.id) ?? existing))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      for (const id of updates.keys()) next.delete(id)
+      return next
+    })
+    if (failures > 0) setActionError(`${failures} of ${targets.length} updates failed`)
+    setBulkBusy(false)
+  }
+
+  const handleBulkApprove = async () => {
+    if (bulkApproveTargets.length === 0) return
+    setBulkBusy(true)
+    setActionError(null)
+    const authorIdByName = new Map(authors.map((author) => [author.name.toLowerCase(), author.id]))
+    const approvedIds: number[] = []
+    let failures = 0
+    for (const quote of bulkApproveTargets) {
+      const key = quote.rawAuthor!.trim().toLowerCase()
+      const existingAuthorId = authorIdByName.get(key)
+      try {
+        const result = await approveImportedQuote(quote.id, {
+          text: quote.rawText,
+          authorId: existingAuthorId,
+          newAuthorName: existingAuthorId ? undefined : quote.rawAuthor!.trim(),
+        })
+        authorIdByName.set(key, result.authorId)
+        approvedIds.push(quote.id)
+      } catch {
+        failures += 1
+      }
+    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      for (const id of approvedIds) next.delete(id)
+      return next
+    })
+    if (failures > 0) setActionError(`${failures} of ${bulkApproveTargets.length} approvals failed`)
+    await loadAll()
+    setBulkBusy(false)
+  }
+
   const runStatusAction = async (quote: ImportedQuote, status: ProcessingStatus) => {
     setBusyId(quote.id)
     setActionError(null)
@@ -137,12 +246,37 @@ function App() {
         onSearchChange={setSearch}
       />
 
+      {!loading && (
+        <SelectionBar
+          selectedCount={selectedIds.size}
+          visibleCount={filteredQuotes.length}
+          allVisibleSelected={allVisibleSelected}
+          bulkBusy={bulkBusy}
+          onToggleSelectAllVisible={toggleSelectAllVisible}
+          onClearSelection={clearSelection}
+          approveCount={bulkApproveTargets.length}
+          approveSkippedCount={bulkApproveSkipped}
+          rejectCount={bulkRejectTargets.length}
+          duplicateCount={bulkDuplicateTargets.length}
+          resetCount={bulkResetTargets.length}
+          onBulkApprove={handleBulkApprove}
+          onBulkReject={() => runBulkStatusAction('rejected', bulkRejectTargets)}
+          onBulkMarkDuplicate={() => runBulkStatusAction('duplicate', bulkDuplicateTargets)}
+          onBulkResetToPending={() => runBulkStatusAction('pending', bulkResetTargets)}
+        />
+      )}
+
       {loading ? (
         <p className="status-message">Loading…</p>
       ) : (
         <ImportedQuotesTable
           quotes={filteredQuotes}
           busyId={busyId}
+          bulkBusy={bulkBusy}
+          selectedIds={selectedIds}
+          allVisibleSelected={allVisibleSelected}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAllVisible={toggleSelectAllVisible}
           onApprove={setApproveTarget}
           onReject={(quote) => runStatusAction(quote, 'rejected')}
           onMarkDuplicate={(quote) => runStatusAction(quote, 'duplicate')}
