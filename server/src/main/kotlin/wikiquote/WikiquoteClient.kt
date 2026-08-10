@@ -73,6 +73,19 @@ class WikiquoteClient(
         return WikiquoteSectionContent(revisionId = parse.revid, html = parse.text)
     }
 
+    suspend fun searchTitles(query: String, limit: Int = 8): List<String> {
+        val response = apiGet {
+            parameter("action", "query")
+            parameter("list", "prefixsearch")
+            parameter("pssearch", query)
+            parameter("psnamespace", "0")
+            parameter("pslimit", limit.toString())
+            parameter("format", "json")
+            parameter("formatversion", "2")
+        }
+        return response.body<WikiquotePrefixSearchResponse>().query.prefixsearch.map { it.title }
+    }
+
     private suspend fun apiGet(block: HttpRequestBuilder.() -> Unit): HttpResponse {
         delay(REQUEST_INTERVAL_MILLIS)
         val response = httpClient.get(WIKIQUOTE_API_BASE_URL, block)
@@ -113,3 +126,12 @@ private data class WikiquoteParseTextResponse(val parse: WikiquoteParseText)
 
 @Serializable
 private data class WikiquoteParseText(val revid: Long, val text: String)
+
+@Serializable
+private data class WikiquotePrefixSearchResponse(val query: WikiquotePrefixSearchQuery)
+
+@Serializable
+private data class WikiquotePrefixSearchQuery(val prefixsearch: List<WikiquotePrefixSearchResult> = emptyList())
+
+@Serializable
+private data class WikiquotePrefixSearchResult(val title: String)

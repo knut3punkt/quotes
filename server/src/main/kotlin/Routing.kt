@@ -29,6 +29,10 @@ fun Application.configureRouting(
             val request = call.receive<WikiquoteImportRequest>()
             call.respond(wikiquoteImportService.import(request))
         }
+        get("/admin/import/wikiquote/authors") {
+            val query = call.request.queryParameters["q"].orEmpty()
+            call.respond(WikiquoteAuthorSearchResponse(wikiquoteImportService.searchAuthors(query)))
+        }
         get("/admin/imported-quotes") {
             call.respond(importedQuoteAdminService.listImportedQuotes())
         }

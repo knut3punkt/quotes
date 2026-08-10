@@ -42,3 +42,25 @@ export interface ApproveImportedQuoteRequest {
   text?: string
   verified?: boolean
 }
+
+export interface WikiquoteImportRequest {
+  authorNames: string[]
+  sourceConfidence?: SourceConfidence[]
+}
+
+export interface WikiquoteAuthorImportResult {
+  requestedName: string
+  resolvedTitle: string | null
+  found: boolean
+  quotesInserted: number
+  quotesSkippedAsDuplicate: number
+  quotesBySection: Record<string, number>
+}
+
+export interface WikiquoteImportResponse {
+  results: WikiquoteAuthorImportResult[]
+}
+
+export interface WikiquoteAuthorSearchResponse {
+  results: string[]
+}

@@ -36,3 +36,6 @@ data class WikiquoteAuthorImportResult(
 
 @Serializable
 data class WikiquoteImportResponse(val results: List<WikiquoteAuthorImportResult>)
+
+@Serializable
+data class WikiquoteAuthorSearchResponse(val results: List<String>)

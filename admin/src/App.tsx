@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { approveImportedQuote, fetchAuthors, fetchImportedQuotes, fetchSources, updateImportedQuoteStatus } from './api'
 import { ApproveDialog } from './components/ApproveDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { SelectionBar } from './components/SelectionBar'
+import { WikiquoteImportPage } from './components/WikiquoteImportPage'
 import { canApprove, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type { ApproveImportedQuoteRequest, Author, ImportedQuote, ProcessingStatus, Source, SourceConfidence } from './types'
 
@@ -13,6 +15,8 @@ function errorMessage(err: unknown): string {
 }
 
 function App() {
+  const [page, setPage] = useState<'review' | 'import'>('review')
+
   const [importedQuotes, setImportedQuotes] = useState<ImportedQuote[]>([])
   const [authors, setAuthors] = useState<Author[]>([])
   const [sources, setSources] = useState<Source[]>([])
@@ -225,87 +229,107 @@ function App() {
 
   return (
     <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
-      <header className="mb-6">
-        <h1 className="mb-1 text-[28px]">Imported quotes</h1>
-        <p className="text-muted-foreground">Review staged imports and promote them into the quote library.</p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import from Wikiquote'}</h1>
+          <p className="text-muted-foreground">
+            {page === 'review'
+              ? 'Review staged imports and promote them into the quote library.'
+              : 'Fetch quotes for one or more authors from Wikiquote into the staging table.'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant={page === 'review' ? 'default' : 'outline'} onClick={() => setPage('review')}>
+            Review imports
+          </Button>
+          <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
+            Import from Wikiquote
+          </Button>
+        </div>
       </header>
 
-      {loadError && (
-        <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      )}
-      {actionError && (
-        <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
+      {page === 'review' && (
+        <>
+          {loadError && (
+            <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          )}
+          {actionError && (
+            <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
+              <AlertDescription>{actionError}</AlertDescription>
+            </Alert>
+          )}
+
+          <FilterBar
+            statusCounts={statusCounts}
+            selectedStatuses={selectedStatuses}
+            onToggleStatus={toggleStatus}
+            confidence={confidence}
+            onConfidenceChange={setConfidence}
+            providers={providers}
+            provider={provider}
+            onProviderChange={setProvider}
+            search={search}
+            onSearchChange={setSearch}
+          />
+
+          {!loading && (
+            <SelectionBar
+              selectedCount={selectedIds.size}
+              visibleCount={filteredQuotes.length}
+              allVisibleSelected={allVisibleSelected}
+              bulkBusy={bulkBusy}
+              onToggleSelectAllVisible={toggleSelectAllVisible}
+              onClearSelection={clearSelection}
+              approveCount={bulkApproveTargets.length}
+              approveSkippedCount={bulkApproveSkipped}
+              rejectCount={bulkRejectTargets.length}
+              duplicateCount={bulkDuplicateTargets.length}
+              resetCount={bulkResetTargets.length}
+              onBulkApprove={handleBulkApprove}
+              onBulkReject={() => runBulkStatusAction('rejected', bulkRejectTargets)}
+              onBulkMarkDuplicate={() => runBulkStatusAction('duplicate', bulkDuplicateTargets)}
+              onBulkResetToPending={() => runBulkStatusAction('pending', bulkResetTargets)}
+            />
+          )}
+
+          {loading ? (
+            <p className="py-8 text-center text-muted-foreground">Loading…</p>
+          ) : (
+            <ImportedQuotesTable
+              quotes={filteredQuotes}
+              busyId={busyId}
+              bulkBusy={bulkBusy}
+              selectedIds={selectedIds}
+              allVisibleSelected={allVisibleSelected}
+              onToggleSelect={toggleSelect}
+              onToggleSelectAllVisible={toggleSelectAllVisible}
+              onApprove={setApproveTarget}
+              onReject={(quote) => runStatusAction(quote, 'rejected')}
+              onMarkDuplicate={(quote) => runStatusAction(quote, 'duplicate')}
+              onResetToPending={(quote) => runStatusAction(quote, 'pending')}
+            />
+          )}
+
+          {approveTarget && (
+            <ApproveDialog
+              quote={approveTarget}
+              authors={authors}
+              sources={sources}
+              submitting={approveSubmitting}
+              error={approveError}
+              onCancel={() => {
+                setApproveTarget(null)
+                setApproveError(null)
+              }}
+              onSubmit={handleApproveSubmit}
+            />
+          )}
+        </>
       )}
 
-      <FilterBar
-        statusCounts={statusCounts}
-        selectedStatuses={selectedStatuses}
-        onToggleStatus={toggleStatus}
-        confidence={confidence}
-        onConfidenceChange={setConfidence}
-        providers={providers}
-        provider={provider}
-        onProviderChange={setProvider}
-        search={search}
-        onSearchChange={setSearch}
-      />
-
-      {!loading && (
-        <SelectionBar
-          selectedCount={selectedIds.size}
-          visibleCount={filteredQuotes.length}
-          allVisibleSelected={allVisibleSelected}
-          bulkBusy={bulkBusy}
-          onToggleSelectAllVisible={toggleSelectAllVisible}
-          onClearSelection={clearSelection}
-          approveCount={bulkApproveTargets.length}
-          approveSkippedCount={bulkApproveSkipped}
-          rejectCount={bulkRejectTargets.length}
-          duplicateCount={bulkDuplicateTargets.length}
-          resetCount={bulkResetTargets.length}
-          onBulkApprove={handleBulkApprove}
-          onBulkReject={() => runBulkStatusAction('rejected', bulkRejectTargets)}
-          onBulkMarkDuplicate={() => runBulkStatusAction('duplicate', bulkDuplicateTargets)}
-          onBulkResetToPending={() => runBulkStatusAction('pending', bulkResetTargets)}
-        />
-      )}
-
-      {loading ? (
-        <p className="py-8 text-center text-muted-foreground">Loading…</p>
-      ) : (
-        <ImportedQuotesTable
-          quotes={filteredQuotes}
-          busyId={busyId}
-          bulkBusy={bulkBusy}
-          selectedIds={selectedIds}
-          allVisibleSelected={allVisibleSelected}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAllVisible={toggleSelectAllVisible}
-          onApprove={setApproveTarget}
-          onReject={(quote) => runStatusAction(quote, 'rejected')}
-          onMarkDuplicate={(quote) => runStatusAction(quote, 'duplicate')}
-          onResetToPending={(quote) => runStatusAction(quote, 'pending')}
-        />
-      )}
-
-      {approveTarget && (
-        <ApproveDialog
-          quote={approveTarget}
-          authors={authors}
-          sources={sources}
-          submitting={approveSubmitting}
-          error={approveError}
-          onCancel={() => {
-            setApproveTarget(null)
-            setApproveError(null)
-          }}
-          onSubmit={handleApproveSubmit}
-        />
-      )}
+      {page === 'import' && <WikiquoteImportPage />}
     </div>
   )
 }

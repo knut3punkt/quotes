@@ -32,6 +32,9 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
         return WikiquoteImportResponse(results)
     }
 
+    suspend fun searchAuthors(query: String): List<String> =
+        if (query.isBlank()) emptyList() else client.searchTitles(query)
+
     private suspend fun importAuthor(
         requestedName: String,
         confidenceFilter: Set<String>,

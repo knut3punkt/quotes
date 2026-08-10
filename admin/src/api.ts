@@ -5,6 +5,9 @@ import type {
   ProcessingStatus,
   Quote,
   Source,
+  WikiquoteAuthorSearchResponse,
+  WikiquoteImportRequest,
+  WikiquoteImportResponse,
 } from './types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
@@ -45,4 +48,15 @@ export function approveImportedQuote(id: number, body: ApproveImportedQuoteReque
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+export function importWikiquoteAuthors(body: WikiquoteImportRequest): Promise<WikiquoteImportResponse> {
+  return request('/admin/import/wikiquote', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function searchWikiquoteAuthors(query: string): Promise<WikiquoteAuthorSearchResponse> {
+  return request(`/admin/import/wikiquote/authors?q=${encodeURIComponent(query)}`)
 }
