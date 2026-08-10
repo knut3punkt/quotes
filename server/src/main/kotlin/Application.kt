@@ -1,10 +1,17 @@
 package no.esotericgames.quotes.server
 
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.netty.EngineMain
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.response.respond
+import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
@@ -17,6 +24,21 @@ fun Application.module() {
     install(ContentNegotiation) {
         json()
     }
+    install(CORS) {
+        allowHost("localhost:5173")
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Patch)
+        allowHeader(HttpHeaders.ContentType)
+    }
+    install(StatusPages) {
+        exception<NoSuchElementException> { call, cause ->
+            call.respond(HttpStatusCode.NotFound, mapOf("error" to cause.message))
+        }
+        exception<IllegalArgumentException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to cause.message))
+        }
+    }
     configureDatabase()
-    configureRouting(WikiquoteImportService(WikiquoteClient()))
+    configureRouting(WikiquoteImportService(WikiquoteClient()), ImportedQuoteAdminService())
 }

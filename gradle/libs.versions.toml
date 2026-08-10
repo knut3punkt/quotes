@@ -60,6 +60,8 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 ktor-server-core = { group = "io.ktor", name = "ktor-server-core" }
 ktor-server-netty = { group = "io.ktor", name = "ktor-server-netty" }
 ktor-server-content-negotiation = { group = "io.ktor", name = "ktor-server-content-negotiation" }
+ktor-server-cors = { group = "io.ktor", name = "ktor-server-cors" }
+ktor-server-status-pages = { group = "io.ktor", name = "ktor-server-status-pages" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json" }
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation" }
