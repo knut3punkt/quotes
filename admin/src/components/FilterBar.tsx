@@ -1,3 +1,6 @@
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { ProcessingStatus, SourceConfidence } from '../types'
 
 const STATUS_ORDER: ProcessingStatus[] = ['pending', 'approved', 'rejected', 'duplicate']
@@ -29,59 +32,85 @@ export function FilterBar({
   onSearchChange,
 }: FilterBarProps) {
   return (
-    <div className="filter-bar">
-      <div className="status-chips">
-        {STATUS_ORDER.map((status) => (
-          <button
-            key={status}
-            type="button"
-            className={`chip chip-${status}${selectedStatuses.has(status) ? ' chip-active' : ''}`}
-            aria-pressed={selectedStatuses.has(status)}
-            onClick={() => onToggleStatus(status)}
-          >
-            {status}
-            <span className="chip-count">{statusCounts[status]}</span>
-          </button>
-        ))}
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+      <div className="flex flex-wrap gap-2">
+        {STATUS_ORDER.map((status) => {
+          const active = selectedStatuses.has(status)
+          return (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggleStatus(status)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] capitalize transition-colors ${
+                active ? 'border-primary bg-brand-tint text-primary' : 'border-border bg-card text-muted-foreground'
+              }`}
+            >
+              {status}
+              <span
+                className={`rounded-full px-1.5 text-xs tabular-nums ${
+                  active ? 'bg-primary text-primary-foreground' : 'bg-border text-foreground'
+                }`}
+              >
+                {statusCounts[status]}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
-      <div className="filter-controls">
-        <label className="filter-field">
-          <span>Confidence</span>
-          <select
-            value={confidence}
-            onChange={(event) => onConfidenceChange(event.target.value as SourceConfidence | 'all')}
-          >
-            <option value="all">All</option>
-            {CONFIDENCE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="confidence-filter" className="text-xs font-normal text-muted-foreground">
+            Confidence
+          </Label>
+          <Select value={confidence} onValueChange={(value) => onConfidenceChange(value as SourceConfidence | 'all')}>
+            <SelectTrigger id="confidence-filter" size="sm" className="min-w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {CONFIDENCE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option} className="capitalize">
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <label className="filter-field">
-          <span>Provider</span>
-          <select value={provider} onChange={(event) => onProviderChange(event.target.value)}>
-            <option value="all">All</option>
-            {providers.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="provider-filter" className="text-xs font-normal text-muted-foreground">
+            Provider
+          </Label>
+          <Select value={provider} onValueChange={onProviderChange}>
+            <SelectTrigger id="provider-filter" size="sm" className="min-w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {providers.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <label className="filter-field filter-search">
-          <span>Search</span>
-          <input
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="search-filter" className="text-xs font-normal text-muted-foreground">
+            Search
+          </Label>
+          <Input
+            id="search-filter"
             type="search"
             value={search}
             placeholder="Quote text or author…"
             onChange={(event) => onSearchChange(event.target.value)}
+            className="min-w-[220px]"
           />
-        </label>
+        </div>
       </div>
     </div>
   )

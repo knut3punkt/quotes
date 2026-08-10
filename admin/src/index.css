@@ -1,23 +1,69 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Custom variants used by the shadcn/Radix components in components/ui */
+@custom-variant data-open {
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+/*
+ * No @custom-variant override for `dark` — this app has no manual theme
+ * toggle, so we keep Tailwind v4's built-in `dark:` variant, which maps to
+ * `@media (prefers-color-scheme: dark)`. The dark values below are picked
+ * up automatically; components/ui's own `dark:` utility classes work as-is.
+ */
+
 :root {
-  --text: #3f3d46;
-  --text-h: #08060d;
-  --text-muted: #6b6375;
-  --bg: #fdfcfe;
-  --surface: #fff;
+  --background: #fdfcfe;
+  --foreground: #3f3d46;
+  --card: #ffffff;
+  --card-foreground: #3f3d46;
+  --popover: #ffffff;
+  --popover-foreground: #3f3d46;
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f4f7;
+  --secondary-foreground: #3f3d46;
+  --muted: #f5f4f7;
+  --muted-foreground: #6b6375;
+  --accent: #f5f4f7;
+  --accent-foreground: #3f3d46;
+  --destructive: #d1293d;
   --border: #e5e4e7;
-  --accent: #7c3aed;
-  --accent-bg: rgba(124, 58, 237, 0.1);
-  --danger: #d1293d;
-  --danger-bg: rgba(209, 41, 61, 0.1);
+  --input: #e5e4e7;
+  --ring: #7c3aed;
+  --radius: 0.625rem;
+
+  /* App-specific tokens beyond shadcn's default set */
+  --brand-tint: rgba(124, 58, 237, 0.1);
   --success: #1a7f37;
-  --success-bg: rgba(26, 127, 55, 0.1);
+  --heading: #08060d;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-
-  font: 15px/145% var(--sans);
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -26,48 +72,80 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #d1cfd6;
-    --text-h: #f3f4f6;
-    --text-muted: #9ca3af;
-    --bg: #16171d;
-    --surface: #1e1f27;
+    --background: #16171d;
+    --foreground: #d1cfd6;
+    --card: #1e1f27;
+    --card-foreground: #d1cfd6;
+    --popover: #1e1f27;
+    --popover-foreground: #d1cfd6;
+    --primary: #c084fc;
+    --primary-foreground: #1e1024;
+    --secondary: #2a2b33;
+    --secondary-foreground: #d1cfd6;
+    --muted: #2a2b33;
+    --muted-foreground: #9ca3af;
+    --accent: #2a2b33;
+    --accent-foreground: #d1cfd6;
+    --destructive: #f87171;
     --border: #2e303a;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --danger: #f87171;
-    --danger-bg: rgba(248, 113, 113, 0.15);
+    --input: #2e303a;
+    --ring: #c084fc;
+
+    --brand-tint: rgba(192, 132, 252, 0.15);
     --success: #4ade80;
-    --success-bg: rgba(74, 222, 128, 0.15);
+    --heading: #f3f4f6;
   }
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-tint: var(--brand-tint);
+  --color-success: var(--success);
+  --color-heading: var(--heading);
+
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: var(--font-sans);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-weight: 600;
-  color: var(--text-h);
-}
-
-button {
-  font: inherit;
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 15px;
+    line-height: 145%;
+  }
+  h1,
+  h2 {
+    @apply font-semibold text-heading;
+  }
 }

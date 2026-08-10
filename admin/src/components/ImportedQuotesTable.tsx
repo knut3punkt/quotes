@@ -1,5 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { canApprove, canMarkDuplicate, canReject, canResetToPending } from '../statusRules'
+import { confidenceBadgeClassName, statusBadgeClassName } from '../statusBadgeClasses'
 import type { ImportedQuote } from '../types'
 
 interface ImportedQuotesTableProps {
@@ -44,14 +49,8 @@ export function ImportedQuotesTable({
   onResetToPending,
 }: ImportedQuotesTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
-  const selectAllRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (selectAllRef.current) {
-      const someSelected = quotes.some((quote) => selectedIds.has(quote.id))
-      selectAllRef.current.indeterminate = someSelected && !allVisibleSelected
-    }
-  }, [quotes, selectedIds, allVisibleSelected])
+  const someVisibleSelected = quotes.some((quote) => selectedIds.has(quote.id))
+  const selectAllChecked = allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false
 
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
@@ -63,35 +62,33 @@ export function ImportedQuotesTable({
   }
 
   if (quotes.length === 0) {
-    return <p className="status-message">No imported quotes match the current filters.</p>
+    return <p className="py-8 text-center text-muted-foreground">No imported quotes match the current filters.</p>
   }
 
   return (
-    <table className="quotes-table">
-      <thead>
-        <tr>
-          <th scope="col" className="cell-select">
-            <label className="checkbox-hit">
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={allVisibleSelected}
-                onChange={onToggleSelectAllVisible}
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-8 p-0 text-center">
+            <label className="flex h-full min-h-11 w-full cursor-pointer items-center justify-center p-2.5">
+              <Checkbox
+                checked={selectAllChecked}
+                onCheckedChange={onToggleSelectAllVisible}
                 disabled={bulkBusy}
                 aria-label="Select all visible rows"
               />
             </label>
-          </th>
-          <th scope="col">Quote</th>
-          <th scope="col">Author</th>
-          <th scope="col">Provider</th>
-          <th scope="col">Confidence</th>
-          <th scope="col">Status</th>
-          <th scope="col">Imported</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
+          </TableHead>
+          <TableHead>Quote</TableHead>
+          <TableHead>Author</TableHead>
+          <TableHead>Provider</TableHead>
+          <TableHead>Confidence</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Imported</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {quotes.map((quote) => {
           const expanded = expandedIds.has(quote.id)
           const busy = busyId === quote.id || bulkBusy
@@ -100,88 +97,105 @@ export function ImportedQuotesTable({
 
           return (
             <Fragment key={quote.id}>
-              <tr className={selectedIds.has(quote.id) ? 'row-selected' : undefined}>
-                <td className="cell-select">
-                  <label className="checkbox-hit">
-                    <input
-                      type="checkbox"
+              <TableRow className={selectedIds.has(quote.id) ? 'bg-brand-tint hover:bg-brand-tint' : undefined}>
+                <TableCell className="w-8 p-0 text-center">
+                  <label className="flex h-full min-h-11 w-full cursor-pointer items-center justify-center p-2.5">
+                    <Checkbox
                       checked={selectedIds.has(quote.id)}
-                      onChange={() => onToggleSelect(quote.id)}
+                      onCheckedChange={() => onToggleSelect(quote.id)}
                       disabled={bulkBusy}
                       aria-label={`Select quote ${quote.id}`}
                     />
                   </label>
-                </td>
-                <td className="cell-text">
-                  <button type="button" className="text-toggle" onClick={() => toggleExpanded(quote.id)}>
+                </TableCell>
+                <TableCell className="max-w-[420px] whitespace-normal align-top">
+                  <button
+                    type="button"
+                    className="text-left text-foreground hover:text-primary"
+                    onClick={() => toggleExpanded(quote.id)}
+                  >
                     {expanded ? truncate(quote.rawText, 500) : truncate(quote.rawText, 90)}
                   </button>
-                </td>
-                <td>{quote.rawAuthor ?? '—'}</td>
-                <td>{quote.provider}</td>
-                <td>
+                </TableCell>
+                <TableCell className="align-top">{quote.rawAuthor ?? '—'}</TableCell>
+                <TableCell className="align-top">{quote.provider}</TableCell>
+                <TableCell className="align-top">
                   {quote.sourceConfidence ? (
-                    <span className={`badge badge-confidence-${quote.sourceConfidence}`}>
+                    <Badge variant="outline" className={confidenceBadgeClassName(quote.sourceConfidence)}>
                       {quote.sourceConfidence}
-                    </span>
+                    </Badge>
                   ) : (
                     '—'
                   )}
-                </td>
-                <td>
-                  <span className={`badge badge-status-${quote.processingStatus}`}>
+                </TableCell>
+                <TableCell className="align-top">
+                  <Badge variant="outline" className={statusBadgeClassName(quote.processingStatus)}>
                     {quote.processingStatus}
-                  </span>
-                </td>
-                <td className="cell-date">{new Date(quote.importedAt).toLocaleString()}</td>
-                <td className="cell-actions">
+                  </Badge>
+                </TableCell>
+                <TableCell className="whitespace-nowrap align-top text-muted-foreground">
+                  {new Date(quote.importedAt).toLocaleString()}
+                </TableCell>
+                <TableCell className="align-top">
                   {quote.processingStatus === 'approved' ? (
-                    <span className="approved-note">Quote #{quote.quoteId}</span>
+                    <span className="text-sm text-success">Quote #{quote.quoteId}</span>
                   ) : (
-                    <>
+                    <div className="flex flex-wrap gap-1.5">
                       {canApprove(quote.processingStatus) && (
-                        <button type="button" disabled={busy} onClick={() => onApprove(quote)}>
+                        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => onApprove(quote)}>
                           Approve
-                        </button>
+                        </Button>
                       )}
                       {canReject(quote.processingStatus) && (
-                        <button type="button" disabled={busy} onClick={() => onReject(quote)}>
+                        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => onReject(quote)}>
                           Reject
-                        </button>
+                        </Button>
                       )}
                       {canMarkDuplicate(quote.processingStatus) && (
-                        <button type="button" disabled={busy} onClick={() => onMarkDuplicate(quote)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => onMarkDuplicate(quote)}
+                        >
                           Mark duplicate
-                        </button>
+                        </Button>
                       )}
                       {canResetToPending(quote.processingStatus) && (
-                        <button type="button" disabled={busy} onClick={() => onResetToPending(quote)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => onResetToPending(quote)}
+                        >
                           Reset
-                        </button>
+                        </Button>
                       )}
-                    </>
+                    </div>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
               {expanded && (
-                <tr className="detail-row">
-                  <td colSpan={8}>
-                    <div className="detail-panel">
+                <TableRow>
+                  <TableCell colSpan={8} className="whitespace-normal bg-card">
+                    <div className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
                       <p>
-                        <strong>Full text:</strong> {quote.rawText}
+                        <strong className="text-foreground">Full text:</strong> {quote.rawText}
                       </p>
                       {pageUrl && (
                         <p>
-                          <strong>Source page:</strong>{' '}
-                          <a href={pageUrl} target="_blank" rel="noreferrer">
+                          <strong className="text-foreground">Source page:</strong>{' '}
+                          <a href={pageUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
                             {pageUrl}
                           </a>
                         </p>
                       )}
                       {citations.length > 0 && (
                         <div>
-                          <strong>Citations:</strong>
-                          <ul>
+                          <strong className="text-foreground">Citations:</strong>
+                          <ul className="mt-1 list-disc pl-[18px]">
                             {citations.map((citation) => (
                               <li key={citation}>{citation}</li>
                             ))}
@@ -189,13 +203,13 @@ export function ImportedQuotesTable({
                         </div>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
             </Fragment>
           )
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   )
 }

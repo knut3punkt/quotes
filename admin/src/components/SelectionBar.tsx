@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+
 interface SelectionBarProps {
   selectedCount: number
   visibleCount: number
@@ -15,6 +17,9 @@ interface SelectionBarProps {
   onBulkMarkDuplicate: () => void
   onBulkResetToPending: () => void
 }
+
+const bulkActionClassName =
+  'border-primary bg-brand-tint text-primary hover:bg-brand-tint hover:text-primary'
 
 export function SelectionBar({
   selectedCount,
@@ -34,45 +39,79 @@ export function SelectionBar({
   onBulkResetToPending,
 }: SelectionBarProps) {
   return (
-    <div className="selection-bar">
-      <div className="selection-summary">
-        <button type="button" onClick={onToggleSelectAllVisible} disabled={bulkBusy || visibleCount === 0}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onToggleSelectAllVisible}
+          disabled={bulkBusy || visibleCount === 0}
+        >
           {allVisibleSelected ? `Deselect ${visibleCount} visible` : `Select all ${visibleCount} visible`}
-        </button>
+        </Button>
         {selectedCount > 0 && (
           <>
-            <span className="selection-count">{selectedCount} selected</span>
-            <button type="button" onClick={onClearSelection} disabled={bulkBusy}>
+            <span className="text-sm text-muted-foreground">{selectedCount} selected</span>
+            <Button type="button" variant="outline" size="sm" onClick={onClearSelection} disabled={bulkBusy}>
               Clear selection
-            </button>
+            </Button>
           </>
         )}
       </div>
 
       {selectedCount > 0 && (
-        <div className="bulk-actions">
+        <div className="flex flex-wrap items-center gap-2">
           {approveCount > 0 && (
-            <button type="button" onClick={onBulkApprove} disabled={bulkBusy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={bulkActionClassName}
+              onClick={onBulkApprove}
+              disabled={bulkBusy}
+            >
               Approve {approveCount}
-            </button>
+            </Button>
           )}
           {rejectCount > 0 && (
-            <button type="button" onClick={onBulkReject} disabled={bulkBusy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={bulkActionClassName}
+              onClick={onBulkReject}
+              disabled={bulkBusy}
+            >
               Reject {rejectCount}
-            </button>
+            </Button>
           )}
           {duplicateCount > 0 && (
-            <button type="button" onClick={onBulkMarkDuplicate} disabled={bulkBusy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={bulkActionClassName}
+              onClick={onBulkMarkDuplicate}
+              disabled={bulkBusy}
+            >
               Mark duplicate {duplicateCount}
-            </button>
+            </Button>
           )}
           {resetCount > 0 && (
-            <button type="button" onClick={onBulkResetToPending} disabled={bulkBusy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={bulkActionClassName}
+              onClick={onBulkResetToPending}
+              disabled={bulkBusy}
+            >
               Reset {resetCount}
-            </button>
+            </Button>
           )}
           {approveSkippedCount > 0 && (
-            <span className="selection-note">
+            <span className="text-xs text-muted-foreground">
               {approveSkippedCount} without an author will be skipped by bulk approve — use the row's Approve
               button instead.
             </span>

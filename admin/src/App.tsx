@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import './App.css'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { approveImportedQuote, fetchAuthors, fetchImportedQuotes, fetchSources, updateImportedQuoteStatus } from './api'
 import { ApproveDialog } from './components/ApproveDialog'
 import { FilterBar } from './components/FilterBar'
@@ -224,14 +224,22 @@ function App() {
   }
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>Imported quotes</h1>
-        <p>Review staged imports and promote them into the quote library.</p>
+    <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
+      <header className="mb-6">
+        <h1 className="mb-1 text-[28px]">Imported quotes</h1>
+        <p className="text-muted-foreground">Review staged imports and promote them into the quote library.</p>
       </header>
 
-      {loadError && <div className="banner banner-error">{loadError}</div>}
-      {actionError && <div className="banner banner-error">{actionError}</div>}
+      {loadError && (
+        <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
+          <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
+      )}
+      {actionError && (
+        <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
 
       <FilterBar
         statusCounts={statusCounts}
@@ -267,7 +275,7 @@ function App() {
       )}
 
       {loading ? (
-        <p className="status-message">Loading…</p>
+        <p className="py-8 text-center text-muted-foreground">Loading…</p>
       ) : (
         <ImportedQuotesTable
           quotes={filteredQuotes}

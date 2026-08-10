@@ -1,5 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import type { ApproveImportedQuoteRequest, Author, ImportedQuote, Source } from '../types'
 
 interface ApproveDialogProps {
@@ -13,6 +22,8 @@ interface ApproveDialogProps {
 }
 
 type AuthorMode = 'existing' | 'new'
+
+const UNSET = '__unset__'
 
 export function ApproveDialog({
   quote,
@@ -48,103 +59,129 @@ export function ApproveDialog({
   }
 
   return (
-    <div className="dialog-backdrop" onClick={onCancel}>
-      <div
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="approve-dialog-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="approve-dialog-title">Approve imported quote</h2>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Approve imported quote</DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <label className="dialog-field">
-            <span>Quote text</span>
-            <textarea value={text} onChange={(event) => setText(event.target.value)} rows={4} required />
-          </label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="quote-text">Quote text</Label>
+            <Textarea
+              id="quote-text"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              rows={4}
+              required
+            />
+          </div>
 
-          <fieldset className="dialog-field">
-            <legend>Author</legend>
-            <div className="author-mode-toggle">
-              <label>
-                <input
-                  type="radio"
-                  name="author-mode"
-                  checked={authorMode === 'existing'}
-                  onChange={() => setAuthorMode('existing')}
-                />
-                Existing author
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="author-mode"
-                  checked={authorMode === 'new'}
-                  onChange={() => setAuthorMode('new')}
-                />
-                New author
-              </label>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Author</Label>
+            <RadioGroup
+              value={authorMode}
+              onValueChange={(value) => setAuthorMode(value as AuthorMode)}
+              className="flex flex-row gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="existing" id="author-mode-existing" />
+                <Label htmlFor="author-mode-existing" className="font-normal">
+                  Existing author
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="new" id="author-mode-new" />
+                <Label htmlFor="author-mode-new" className="font-normal">
+                  New author
+                </Label>
+              </div>
+            </RadioGroup>
 
             {authorMode === 'existing' ? (
-              <select value={authorId} onChange={(event) => setAuthorId(event.target.value)}>
-                <option value="">Select an author…</option>
-                {authors.map((author) => (
-                  <option key={author.id} value={author.id}>
-                    {author.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={authorId || UNSET} onValueChange={(value) => setAuthorId(value === UNSET ? '' : value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNSET}>Select an author…</SelectItem>
+                  {authors.map((author) => (
+                    <SelectItem key={author.id} value={String(author.id)}>
+                      {author.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
-              <input
+              <Input
                 type="text"
                 value={newAuthorName}
                 onChange={(event) => setNewAuthorName(event.target.value)}
                 placeholder="Author name"
               />
             )}
-          </fieldset>
+          </div>
 
-          <label className="dialog-field">
-            <span>Source (optional)</span>
-            <select value={sourceId} onChange={(event) => setSourceId(event.target.value)}>
-              <option value="">None</option>
-              {sources.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-col gap-1.5">
+            <Label>Source (optional)</Label>
+            <Select value={sourceId || UNSET} onValueChange={(value) => setSourceId(value === UNSET ? '' : value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNSET}>None</SelectItem>
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={String(source.id)}>
+                    {source.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <label className="dialog-field">
-            <span>Source detail (optional)</span>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="source-detail">Source detail (optional)</Label>
+            <Input
+              id="source-detail"
               type="text"
               value={sourceDetail}
               onChange={(event) => setSourceDetail(event.target.value)}
               placeholder="e.g. chapter, page, citation"
             />
-          </label>
-
-          <label className="dialog-field dialog-field-inline">
-            <input type="checkbox" checked={verified} onChange={(event) => setVerified(event.target.checked)} />
-            <span>Mark as verified</span>
-          </label>
-
-          {error && <p className="banner banner-error">{error}</p>}
-
-          <div className="dialog-actions">
-            <button type="button" onClick={onCancel} disabled={submitting}>
-              Cancel
-            </button>
-            <button type="submit" disabled={!canSubmit}>
-              {submitting ? 'Approving…' : 'Approve'}
-            </button>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="verified-checkbox"
+              checked={verified}
+              onCheckedChange={(checked) => setVerified(checked === true)}
+            />
+            <Label htmlFor="verified-checkbox" className="font-normal">
+              Mark as verified
+            </Label>
+          </div>
+
+          {error && (
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!canSubmit}>
+              {submitting ? 'Approving…' : 'Approve'}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
