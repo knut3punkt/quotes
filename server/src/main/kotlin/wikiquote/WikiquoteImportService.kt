@@ -104,7 +104,7 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
                 ImportedQuotes.insertIgnore {
                     it[provider] = PROVIDER
                     it[ImportedQuotes.providerQuoteId] = providerQuoteId
-                    it[rawText] = parsedQuote.text
+                    it[rawText] = resolveImportText(parsedQuote)
                     it[rawAuthor] = resolvedTitle
                     it[rawPayload] = payload
                     it[sourceConfidence] = confidence
@@ -115,7 +115,10 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
     }
 }
 
-private fun buildRawPayload(
+internal fun resolveImportText(parsedQuote: ParsedQuote): String =
+    parsedQuote.translationCandidate ?: parsedQuote.text
+
+internal fun buildRawPayload(
     resolvedTitle: String,
     requestedName: String,
     revisionId: Long,
@@ -128,6 +131,7 @@ private fun buildRawPayload(
     putJsonArray("sectionPath") { parsedQuote.headingPath.forEach { add(it) } }
     putJsonArray("citations") { parsedQuote.citations.forEach { add(it) } }
     put("translationCandidate", parsedQuote.translationCandidate)
+    put("originalText", parsedQuote.text)
     put("fetchedAt", Instant.now().toString())
 }
 
