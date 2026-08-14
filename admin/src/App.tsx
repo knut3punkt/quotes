@@ -16,7 +16,15 @@ import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { SelectionBar } from './components/SelectionBar'
 import { WikiquoteImportPage } from './components/WikiquoteImportPage'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
-import type { ApproveImportedQuoteRequest, Author, ImportedQuote, ProcessingStatus, Source, SourceConfidence } from './types'
+import type {
+  ApproveImportedQuoteRequest,
+  Author,
+  ImportedQuote,
+  LengthFilterOp,
+  ProcessingStatus,
+  Source,
+  SourceConfidence,
+} from './types'
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
@@ -39,6 +47,8 @@ function App() {
   const [confidence, setConfidence] = useState<SourceConfidence | 'all'>('all')
   const [provider, setProvider] = useState('all')
   const [search, setSearch] = useState('')
+  const [lengthOp, setLengthOp] = useState<LengthFilterOp>('above')
+  const [lengthValue, setLengthValue] = useState('')
 
   const [approveTarget, setApproveTarget] = useState<ImportedQuote | null>(null)
   const [approveSubmitting, setApproveSubmitting] = useState(false)
@@ -90,17 +100,24 @@ function App() {
 
   const filteredQuotes = useMemo(() => {
     const term = search.trim().toLowerCase()
+    const lengthThreshold = lengthValue.trim() === '' ? null : Number(lengthValue)
+    const hasLengthFilter = lengthThreshold !== null && Number.isFinite(lengthThreshold) && lengthThreshold >= 0
     return importedQuotes.filter((quote) => {
       if (!selectedStatuses.has(quote.processingStatus)) return false
       if (confidence !== 'all' && quote.sourceConfidence !== confidence) return false
       if (provider !== 'all' && quote.provider !== provider) return false
+      if (hasLengthFilter) {
+        const length = quote.rawText.length
+        if (lengthOp === 'above' && length <= lengthThreshold) return false
+        if (lengthOp === 'below' && length >= lengthThreshold) return false
+      }
       if (term) {
         const haystack = `${quote.rawText} ${quote.rawAuthor ?? ''}`.toLowerCase()
         if (!haystack.includes(term)) return false
       }
       return true
     })
-  }, [importedQuotes, selectedStatuses, confidence, provider, search])
+  }, [importedQuotes, selectedStatuses, confidence, provider, lengthOp, lengthValue, search])
 
   const toggleStatus = (status: ProcessingStatus) => {
     setSelectedStatuses((prev) => {
@@ -335,6 +352,10 @@ function App() {
             onProviderChange={setProvider}
             search={search}
             onSearchChange={setSearch}
+            lengthOp={lengthOp}
+            onLengthOpChange={setLengthOp}
+            lengthValue={lengthValue}
+            onLengthValueChange={setLengthValue}
           />
 
           {!loading && (

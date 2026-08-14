@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { ProcessingStatus, SourceConfidence } from '../types'
+import type { LengthFilterOp, ProcessingStatus, SourceConfidence } from '../types'
 
 const STATUS_ORDER: ProcessingStatus[] = ['pending', 'approved', 'rejected', 'duplicate']
 const CONFIDENCE_OPTIONS: SourceConfidence[] = ['sourced', 'attributed', 'unsourced']
@@ -17,6 +17,10 @@ interface FilterBarProps {
   onProviderChange: (value: string) => void
   search: string
   onSearchChange: (value: string) => void
+  lengthOp: LengthFilterOp
+  onLengthOpChange: (value: LengthFilterOp) => void
+  lengthValue: string
+  onLengthValueChange: (value: string) => void
 }
 
 export function FilterBar({
@@ -30,6 +34,10 @@ export function FilterBar({
   onProviderChange,
   search,
   onSearchChange,
+  lengthOp,
+  onLengthOpChange,
+  lengthValue,
+  onLengthValueChange,
 }: FilterBarProps) {
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
@@ -110,6 +118,33 @@ export function FilterBar({
             onChange={(event) => onSearchChange(event.target.value)}
             className="min-w-[220px]"
           />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="length-filter-value" className="text-xs font-normal text-muted-foreground">
+            Length
+          </Label>
+          <div className="flex gap-1">
+            <Select value={lengthOp} onValueChange={(value) => onLengthOpChange(value as LengthFilterOp)}>
+              <SelectTrigger id="length-filter-op" size="sm" className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="above">Above</SelectItem>
+                <SelectItem value="below">Below</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              id="length-filter-value"
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={lengthValue}
+              placeholder="chars"
+              onChange={(event) => onLengthValueChange(event.target.value)}
+              className="w-20"
+            />
+          </div>
         </div>
       </div>
     </div>

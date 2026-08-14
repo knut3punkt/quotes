@@ -2,6 +2,8 @@ export type ProcessingStatus = 'pending' | 'approved' | 'rejected' | 'duplicate'
 
 export type SourceConfidence = 'sourced' | 'attributed' | 'unsourced'
 
+export type LengthFilterOp = 'above' | 'below'
+
 export interface ImportedQuote {
   id: number
   provider: string
