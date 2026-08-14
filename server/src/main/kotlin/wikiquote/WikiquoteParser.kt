@@ -22,6 +22,7 @@ private val HEADING_LEVELS = mapOf("h3" to 3, "h4" to 4, "h5" to 5, "h6" to 6)
 // a guarantee. A nested entry is treated as citation-like (and so *not* a translation candidate) if
 // it links/italicizes a source, or its text carries a year or a common citation phrase.
 private val CITATION_YEAR_REGEX = Regex("""\b(1[5-9]\d{2}|20\d{2})\b""")
+private val CITATION_PAGE_REGEX = Regex("""^pp?\.?\s*\d+""", RegexOption.IGNORE_CASE)
 private val CITATION_KEYWORDS = listOf(
     "quoted in", "quoted by", "reported in", "letter to", "letter from", "interview",
     "variant:", "as quoted", "as translated", "translated by", "translation of", "source:",
@@ -100,8 +101,11 @@ private fun ownTextExcludingNestedLists(element: Element): String {
     return clone.text().trim()
 }
 
+// U+FB00-FB06 (ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ) are typographic ligatures from how the book text was digitized, not a
+// language signal — an all-English quote containing "ﬁt" for "fit" must not count as non-English.
 /** True for accented Latin or non-Latin letters; ignores decorative punctuation like Wikiquote's ❝❞. */
-private fun looksNonEnglish(text: String): Boolean = text.any { it.isLetter() && it.code > 127 }
+private fun looksNonEnglish(text: String): Boolean =
+    text.any { it.isLetter() && it.code > 127 && it.code !in 0xFB00..0xFB06 }
 
 // Nested `<ul>` is stripped first (same as ownTextExcludingNestedLists) so a deeper sub-citation's
 // link/year/italic markup doesn't bleed up and wrongly mark an outer, plain-prose translation entry
@@ -112,5 +116,6 @@ private fun looksLikeCitation(element: Element): Boolean {
     if (clone.selectFirst("a") != null || clone.selectFirst("i") != null) return true
     val text = clone.text().lowercase()
     if (CITATION_YEAR_REGEX.containsMatchIn(text)) return true
+    if (CITATION_PAGE_REGEX.containsMatchIn(text)) return true
     return CITATION_KEYWORDS.any { text.contains(it) }
 }

@@ -77,6 +77,64 @@ class WikiquoteParserTest {
         assertEquals("Who rides, so late, through night and wind?", quotes.first().translationCandidate)
     }
 
+    @Test
+    fun `an all-English quote with a ligature isn't mistaken for non-English`() {
+        // Real bug: Carl Jung's Wikiquote page renders "fit" as "ﬁt" (U+FB01 ligature) from how the
+        // book text was digitized. That alone must not trigger the translation-candidate heuristic,
+        // or its only nested citation (a bare page number) gets mistaken for a translation.
+        val html = """
+            <div class="mw-parser-output">
+            <ul><li>I understand Europe only when I see where I as a European do not ﬁt into the world.
+            <ul><li>p. 246</li></ul>
+            </li></ul>
+            </div>
+        """.trimIndent()
+
+        val quotes = parseQuoteSectionHtml(html)
+
+        assertEquals(1, quotes.size)
+        assertNull(quotes.first().translationCandidate)
+    }
+
+    @Test
+    fun `an English quote with one embedded accented loanword isn't mistaken for non-English`() {
+        // Real bug: an otherwise-English quote containing the French phrase "quantité negligeable"
+        // has exactly one accented letter, which alone tripped looksNonEnglish. Its only nested
+        // citation was a bare page number, which then got mistaken for the translation.
+        val html = """
+            <div class="mw-parser-output">
+            <ul><li>Man must make himself such a quantité negligeable.
+            <ul><li>p 45</li></ul>
+            </li></ul>
+            </div>
+        """.trimIndent()
+
+        val quotes = parseQuoteSectionHtml(html)
+
+        assertEquals(1, quotes.size)
+        assertNull(quotes.first().translationCandidate)
+    }
+
+    @Test
+    fun `a bare page-number citation is never picked as the translation candidate`() {
+        val html = """
+            <div class="mw-parser-output">
+            <ul><li>Un homme heureux est trop content du présent pour trop penser à l'avenir.
+            <ul><li>p. 42</li></ul>
+            <ul><li>A happy man is too satisfied with the present to dwell too much on the future.</li></ul>
+            </li></ul>
+            </div>
+        """.trimIndent()
+
+        val quotes = parseQuoteSectionHtml(html)
+
+        assertEquals(1, quotes.size)
+        assertEquals(
+            "A happy man is too satisfied with the present to dwell too much on the future.",
+            quotes.first().translationCandidate,
+        )
+    }
+
     private fun parseFixture(fileName: String): List<ParsedQuote> {
         val json = File("src/test/resources/wikiquote/$fileName").readText()
         val html = Json.parseToJsonElement(json).jsonObject["parse"]!!.jsonObject["text"]!!.jsonPrimitive.content
