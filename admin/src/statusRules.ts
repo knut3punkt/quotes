@@ -15,3 +15,7 @@ export function canMarkDuplicate(status: ProcessingStatus): boolean {
 export function canResetToPending(status: ProcessingStatus): boolean {
   return status !== 'approved' && status !== 'pending'
 }
+
+export function canDelete(status: ProcessingStatus): boolean {
+  return status !== 'approved'
+}

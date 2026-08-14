@@ -1,17 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { approveImportedQuote, fetchAuthors, fetchImportedQuotes, fetchSources, updateImportedQuoteStatus } from './api'
+import {
+  approveImportedQuote,
+  deleteImportedQuote,
+  fetchAuthors,
+  fetchImportedQuotes,
+  fetchSources,
+  updateImportedQuoteStatus,
+} from './api'
 import { ApproveDialog } from './components/ApproveDialog'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { SelectionBar } from './components/SelectionBar'
 import { WikiquoteImportPage } from './components/WikiquoteImportPage'
-import { canApprove, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
+import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type { ApproveImportedQuoteRequest, Author, ImportedQuote, ProcessingStatus, Source, SourceConfidence } from './types'
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
+}
+
+function truncateForDialog(text: string): string {
+  return text.length > 120 ? `${text.slice(0, 120).trimEnd()}…` : text
 }
 
 function App() {
@@ -37,6 +49,10 @@ function App() {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+
+  const [deleteRequest, setDeleteRequest] = useState<ImportedQuote[] | null>(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -145,6 +161,10 @@ function App() {
     () => selectedQuotes.filter((quote) => canResetToPending(quote.processingStatus)),
     [selectedQuotes],
   )
+  const bulkDeleteTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canDelete(quote.processingStatus)),
+    [selectedQuotes],
+  )
 
   const runBulkStatusAction = async (status: ProcessingStatus, targets: ImportedQuote[]) => {
     if (targets.length === 0) return
@@ -227,6 +247,49 @@ function App() {
     }
   }
 
+  const requestDelete = (quote: ImportedQuote) => {
+    setDeleteError(null)
+    setDeleteRequest([quote])
+  }
+
+  const requestBulkDelete = () => {
+    if (bulkDeleteTargets.length === 0) return
+    setDeleteError(null)
+    setDeleteRequest(bulkDeleteTargets)
+  }
+
+  const cancelDelete = () => {
+    if (deleteSubmitting) return
+    setDeleteRequest(null)
+    setDeleteError(null)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteRequest) return
+    setDeleteSubmitting(true)
+    setDeleteError(null)
+    const results = await Promise.allSettled(deleteRequest.map((quote) => deleteImportedQuote(quote.id)))
+    const deletedIds = new Set<number>()
+    let failures = 0
+    deleteRequest.forEach((quote, index) => {
+      if (results[index].status === 'fulfilled') deletedIds.add(quote.id)
+      else failures += 1
+    })
+    setImportedQuotes((prev) => prev.filter((quote) => !deletedIds.has(quote.id)))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      for (const id of deletedIds) next.delete(id)
+      return next
+    })
+    setDeleteSubmitting(false)
+    if (failures > 0) {
+      setDeleteError(`${failures} of ${deleteRequest.length} deletions failed`)
+      setDeleteRequest((prev) => prev?.filter((quote) => !deletedIds.has(quote.id)) ?? null)
+    } else {
+      setDeleteRequest(null)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -287,10 +350,12 @@ function App() {
               rejectCount={bulkRejectTargets.length}
               duplicateCount={bulkDuplicateTargets.length}
               resetCount={bulkResetTargets.length}
+              deleteCount={bulkDeleteTargets.length}
               onBulkApprove={handleBulkApprove}
               onBulkReject={() => runBulkStatusAction('rejected', bulkRejectTargets)}
               onBulkMarkDuplicate={() => runBulkStatusAction('duplicate', bulkDuplicateTargets)}
               onBulkResetToPending={() => runBulkStatusAction('pending', bulkResetTargets)}
+              onBulkDelete={requestBulkDelete}
             />
           )}
 
@@ -309,6 +374,7 @@ function App() {
               onReject={(quote) => runStatusAction(quote, 'rejected')}
               onMarkDuplicate={(quote) => runStatusAction(quote, 'duplicate')}
               onResetToPending={(quote) => runStatusAction(quote, 'pending')}
+              onDelete={requestDelete}
             />
           )}
 
@@ -324,6 +390,23 @@ function App() {
                 setApproveError(null)
               }}
               onSubmit={handleApproveSubmit}
+            />
+          )}
+
+          {deleteRequest && (
+            <ConfirmDialog
+              title={deleteRequest.length === 1 ? 'Delete imported quote' : `Delete ${deleteRequest.length} imported quotes`}
+              description={
+                deleteRequest.length === 1
+                  ? `"${truncateForDialog(deleteRequest[0].rawText)}" will be permanently deleted. This cannot be undone.`
+                  : `${deleteRequest.length} imported quotes will be permanently deleted. This cannot be undone.`
+              }
+              confirmLabel="Delete"
+              submittingLabel="Deleting…"
+              submitting={deleteSubmitting}
+              error={deleteError}
+              onCancel={cancelDelete}
+              onConfirm={confirmDelete}
             />
           )}
         </>

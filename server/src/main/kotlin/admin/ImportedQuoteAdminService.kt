@@ -9,6 +9,7 @@ import no.esotericgames.quotes.server.db.Sources
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -70,6 +71,13 @@ class ImportedQuoteAdminService {
                 sourceDetail = request.sourceDetail,
                 verified = request.verified,
             )
+        }
+    }
+
+    suspend fun delete(id: Int): Unit = withContext(Dispatchers.IO) {
+        suspendTransaction {
+            val deletedRows = ImportedQuotes.deleteWhere { ImportedQuotes.id eq id }
+            if (deletedRows == 0) throw NoSuchElementException("imported quote $id not found")
         }
     }
 

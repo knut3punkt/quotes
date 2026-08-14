@@ -30,6 +30,7 @@ fun Application.module() {
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Patch)
+        allowMethod(HttpMethod.Delete)
         allowHeader(HttpHeaders.ContentType)
     }
     install(StatusPages) {

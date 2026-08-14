@@ -1,9 +1,11 @@
 package no.esotericgames.quotes.server
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
@@ -45,6 +47,11 @@ fun Application.configureRouting(
             val id = call.parameters.getOrFail("id").toInt()
             val request = call.receive<ApproveImportedQuoteRequest>()
             call.respond(importedQuoteAdminService.approve(id, request))
+        }
+        delete("/admin/imported-quotes/{id}") {
+            val id = call.parameters.getOrFail("id").toInt()
+            importedQuoteAdminService.delete(id)
+            call.respond(HttpStatusCode.NoContent)
         }
         get("/admin/authors") {
             call.respond(importedQuoteAdminService.listAuthors())

@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { canApprove, canMarkDuplicate, canReject, canResetToPending } from '../statusRules'
+import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from '../statusRules'
 import { confidenceBadgeClassName, statusBadgeClassName } from '../statusBadgeClasses'
 import type { ImportedQuote } from '../types'
 
@@ -19,6 +19,7 @@ interface ImportedQuotesTableProps {
   onReject: (quote: ImportedQuote) => void
   onMarkDuplicate: (quote: ImportedQuote) => void
   onResetToPending: (quote: ImportedQuote) => void
+  onDelete: (quote: ImportedQuote) => void
 }
 
 function truncate(text: string, maxLength: number): string {
@@ -47,6 +48,7 @@ export function ImportedQuotesTable({
   onReject,
   onMarkDuplicate,
   onResetToPending,
+  onDelete,
 }: ImportedQuotesTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const someVisibleSelected = quotes.some((quote) => selectedIds.has(quote.id))
@@ -171,6 +173,11 @@ export function ImportedQuotesTable({
                           onClick={() => onResetToPending(quote)}
                         >
                           Reset
+                        </Button>
+                      )}
+                      {canDelete(quote.processingStatus) && (
+                        <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => onDelete(quote)}>
+                          Delete
                         </Button>
                       )}
                     </div>

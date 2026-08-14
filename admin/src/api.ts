@@ -21,6 +21,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await response.text()
     throw new Error(`${response.status} ${response.statusText}${body ? `: ${body}` : ''}`)
   }
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 
@@ -48,6 +49,10 @@ export function approveImportedQuote(id: number, body: ApproveImportedQuoteReque
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+export function deleteImportedQuote(id: number): Promise<void> {
+  return request(`/admin/imported-quotes/${id}`, { method: 'DELETE' })
 }
 
 export function importWikiquoteAuthors(body: WikiquoteImportRequest): Promise<WikiquoteImportResponse> {
