@@ -19,7 +19,9 @@ import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.bible.BibleImportService
 import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.quran.QuranImportService
 import no.esotericgames.quotes.server.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
@@ -31,6 +33,8 @@ fun Application.configureRouting(
     bhagavadGitaImportService: BhagavadGitaImportService,
     dhammapadaImportService: DhammapadaImportService,
     authorEnrichmentService: AuthorEnrichmentService,
+    bibleImportService: BibleImportService,
+    quranImportService: QuranImportService,
 ) {
     routing {
         get("/health") {
@@ -55,6 +59,12 @@ fun Application.configureRouting(
         }
         post("/admin/import/dhammapada") {
             call.respond(dhammapadaImportService.import())
+        }
+        post("/admin/import/bible") {
+            call.respond(bibleImportService.import())
+        }
+        post("/admin/import/quran") {
+            call.respond(quranImportService.import())
         }
         get("/admin/imported-quotes") {
             val params = call.request.queryParameters

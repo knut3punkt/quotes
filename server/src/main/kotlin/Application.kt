@@ -14,9 +14,13 @@ import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.bible.BibleClient
+import no.esotericgames.quotes.server.bible.BibleImportService
 import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.dhammapada.DhammapadaClient
 import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.quran.QuranClient
+import no.esotericgames.quotes.server.quran.QuranImportService
 import no.esotericgames.quotes.server.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikidata.WikidataClient
@@ -59,5 +63,7 @@ fun Application.module() {
         bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
         dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),
         authorEnrichmentService = AuthorEnrichmentService(WikidataClient()),
+        bibleImportService = BibleImportService(BibleClient()),
+        quranImportService = QuranImportService(QuranClient()),
     )
 }
