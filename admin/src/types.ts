@@ -1,6 +1,6 @@
 export type ProcessingStatus = 'pending' | 'approved' | 'rejected' | 'duplicate'
 
-export type SourceConfidence = 'sourced' | 'attributed' | 'unsourced'
+export type SourceConfidence = 'sourced' | 'attributed' | 'unsourced' | 'disputed'
 
 export type LengthFilterOp = 'above' | 'below'
 

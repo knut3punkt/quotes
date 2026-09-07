@@ -8,7 +8,7 @@ import { importWikiquoteAuthors } from '../api'
 import type { SourceConfidence, WikiquoteAuthorImportResult } from '../types'
 import { WikiquoteAuthorPicker } from './WikiquoteAuthorPicker'
 
-const CONFIDENCE_OPTIONS: SourceConfidence[] = ['sourced', 'attributed', 'unsourced']
+const CONFIDENCE_OPTIONS: SourceConfidence[] = ['sourced', 'attributed', 'unsourced', 'disputed']
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'

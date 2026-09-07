@@ -16,10 +16,19 @@ import java.time.Instant
 private const val WIKIQUOTE_PAGE_BASE_URL = "https://en.wikiquote.org/wiki/"
 private const val PROVIDER = "wikiquote"
 
+// Verified against real Wikiquote pages (Jung, Einstein, Nietzsche, Kierkegaard, Marcus Aurelius,
+// William James, ...): top-level sections are drawn from a small, predictable vocabulary. Per-work
+// sections (e.g. "Memories, Dreams, Reflections") are h3+ subheadings *within* "Quotes", already
+// captured via headingPath — they were never actually being dropped. "Disputed" is the one real gap:
+// a recurring top-level section for quotes of doubtful authenticity, distinct from "Unsourced". The
+// other common top-level sections ("Misattributed", "Quotes about X") are deliberately never mapped
+// here — they are quotes confirmed *not* to be this person's, or quotes about them said by someone
+// else, and importing either would inject wrong attributions into the database.
 private val SECTION_CONFIDENCE = mapOf(
     "Quotes" to "sourced",
     "Attributed" to "attributed",
     "Unsourced" to "unsourced",
+    "Disputed" to "disputed",
 )
 
 class WikiquoteImportService(private val client: WikiquoteClient) {

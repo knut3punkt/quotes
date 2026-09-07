@@ -61,6 +61,7 @@
   /* App-specific tokens beyond shadcn's default set */
   --brand-tint: rgba(124, 58, 237, 0.1);
   --success: #1a7f37;
+  --warning: #9a6700;
   --heading: #08060d;
 
   color-scheme: light dark;
@@ -93,6 +94,7 @@
 
     --brand-tint: rgba(192, 132, 252, 0.15);
     --success: #4ade80;
+    --warning: #fbbf24;
     --heading: #f3f4f6;
   }
 }
@@ -118,6 +120,7 @@
   --color-ring: var(--ring);
   --color-brand-tint: var(--brand-tint);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-heading: var(--heading);
 
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;

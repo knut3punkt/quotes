@@ -20,5 +20,7 @@ export function confidenceBadgeClassName(confidence: SourceConfidence): string {
       return 'border-transparent bg-brand-tint text-primary'
     case 'unsourced':
       return 'border-transparent bg-destructive/10 text-destructive'
+    case 'disputed':
+      return 'border-transparent bg-warning/10 text-warning'
   }
 }

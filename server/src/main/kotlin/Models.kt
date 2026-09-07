@@ -21,7 +21,7 @@ val sampleQuotes = listOf(
 @Serializable
 data class WikiquoteImportRequest(
     val authorNames: List<String>,
-    val sourceConfidence: Set<String> = setOf("sourced", "attributed", "unsourced"),
+    val sourceConfidence: Set<String> = setOf("sourced", "attributed", "unsourced", "disputed"),
 )
 
 @Serializable
