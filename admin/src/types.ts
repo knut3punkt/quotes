@@ -15,6 +15,19 @@ export interface ImportedQuote {
   processingStatus: ProcessingStatus
   quoteId: number | null
   sourceConfidence: SourceConfidence | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  duplicateOfId: number | null
+  language: string
+  possibleDuplicateOfId: number | null
+}
+
+export interface PagedImportedQuotes {
+  items: ImportedQuote[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface Quote {
@@ -24,25 +37,68 @@ export interface Quote {
   sourceId: number | null
   sourceDetail: string | null
   verified: boolean
+  language: string
 }
 
 export interface Author {
   id: number
   name: string
+  birthYear: number | null
+  deathYear: number | null
+  wikidataQid: string | null
 }
 
 export interface Source {
   id: number
   title: string
+  typeCode: string
+  year: number | null
+  url: string | null
+  citationUnit: string | null
+  license: string | null
+  attributionText: string | null
+}
+
+export interface SourceType {
+  code: string
+  description: string
+}
+
+export interface NewSourceRequest {
+  title: string
+  typeCode: string
+  year?: number
+  url?: string
+  citationUnit?: string
+  license?: string
+  attributionText?: string
 }
 
 export interface ApproveImportedQuoteRequest {
   authorId?: number
   newAuthorName?: string
   sourceId?: number
+  newSource?: NewSourceRequest
   sourceDetail?: string
   text?: string
   verified?: boolean
+  reviewedBy?: string
+}
+
+export interface BulkUpdateImportedQuoteStatusRequest {
+  ids: number[]
+  status: ProcessingStatus
+  reviewedBy?: string
+  reviewNote?: string
+}
+
+export interface BulkDeleteImportedQuotesRequest {
+  ids: number[]
+}
+
+export interface BulkActionResponse {
+  succeededIds: number[]
+  failedIds: number[]
 }
 
 export interface WikiquoteImportRequest {

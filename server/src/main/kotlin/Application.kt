@@ -40,6 +40,9 @@ fun Application.module() {
         exception<IllegalArgumentException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to cause.message))
         }
+        exception<IllegalStateException> { call, cause ->
+            call.respond(HttpStatusCode.Conflict, mapOf("error" to cause.message))
+        }
     }
     configureDatabase()
     configureRouting(WikiquoteImportService(WikiquoteClient()), ImportedQuoteAdminService())

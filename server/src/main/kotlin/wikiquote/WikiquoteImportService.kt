@@ -1,7 +1,5 @@
 package no.esotericgames.quotes.server.wikiquote
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -10,10 +8,9 @@ import kotlinx.serialization.json.putJsonArray
 import no.esotericgames.quotes.server.WikiquoteAuthorImportResult
 import no.esotericgames.quotes.server.WikiquoteImportRequest
 import no.esotericgames.quotes.server.WikiquoteImportResponse
-import no.esotericgames.quotes.server.db.ImportedQuotes
-import org.jetbrains.exposed.v1.jdbc.insertIgnore
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import java.security.MessageDigest
+import no.esotericgames.quotes.server.importing.StagedQuoteCandidate
+import no.esotericgames.quotes.server.importing.sha256Hex
+import no.esotericgames.quotes.server.importing.stageQuote
 import java.time.Instant
 
 private const val WIKIQUOTE_PAGE_BASE_URL = "https://en.wikiquote.org/wiki/"
@@ -99,19 +96,17 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
             parsedQuote = parsedQuote,
         )
 
-        val insertedCount = withContext(Dispatchers.IO) {
-            suspendTransaction {
-                ImportedQuotes.insertIgnore {
-                    it[provider] = PROVIDER
-                    it[ImportedQuotes.providerQuoteId] = providerQuoteId
-                    it[rawText] = resolveImportText(parsedQuote)
-                    it[rawAuthor] = resolvedTitle
-                    it[rawPayload] = payload
-                    it[sourceConfidence] = confidence
-                }.insertedCount
-            }
-        }
-        return insertedCount > 0
+        val result = stageQuote(
+            StagedQuoteCandidate(
+                provider = PROVIDER,
+                providerQuoteId = providerQuoteId,
+                rawText = resolveImportText(parsedQuote),
+                rawAuthor = resolvedTitle,
+                sourceConfidence = confidence,
+                rawPayload = payload,
+            ),
+        )
+        return result.inserted
     }
 }
 
@@ -133,9 +128,4 @@ internal fun buildRawPayload(
     put("translationCandidate", parsedQuote.translationCandidate)
     put("originalText", parsedQuote.text)
     put("fetchedAt", Instant.now().toString())
-}
-
-private fun sha256Hex(input: String): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
-    return digest.joinToString("") { "%02x".format(it) }
 }

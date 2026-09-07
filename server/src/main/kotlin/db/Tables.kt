@@ -12,16 +12,28 @@ object Authors : Table("authors") {
     val name = text("name")
     val birthYear = integer("birth_year").nullable()
     val deathYear = integer("death_year").nullable()
+    val normalizedName = text("normalized_name").uniqueIndex()
+    val wikidataQid = text("wikidata_qid").nullable().uniqueIndex()
 
     override val primaryKey = PrimaryKey(id)
+}
+
+object SourceTypes : Table("source_types") {
+    val code = text("code")
+    val description = text("description")
+
+    override val primaryKey = PrimaryKey(code)
 }
 
 object Sources : Table("sources") {
     val id = integer("id").autoIncrement()
     val title = text("title")
-    val type = text("type")
+    val typeCode = text("type_code").references(SourceTypes.code)
     val year = integer("year").nullable()
     val url = text("url").nullable()
+    val citationUnit = text("citation_unit").nullable()
+    val license = text("license").nullable()
+    val attributionText = text("attribution_text").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -33,6 +45,8 @@ object Quotes : Table("quotes") {
     val sourceId = integer("source_id").references(Sources.id).nullable()
     val sourceDetail = text("source_detail").nullable()
     val verified = bool("verified").default(false)
+    val language = text("language").default("en")
+    val normalizedText = text("normalized_text")
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -62,6 +76,13 @@ object ImportedQuotes : Table("imported_quotes") {
     val processingStatus = text("processing_status").default("pending")
     val quoteId = integer("quote_id").references(Quotes.id).nullable()
     val sourceConfidence = text("source_confidence").nullable()
+    val reviewedBy = text("reviewed_by").nullable()
+    val reviewedAt = timestampWithTimeZone("reviewed_at").nullable()
+    val reviewNote = text("review_note").nullable()
+    val duplicateOfId = integer("duplicate_of_id").references(id).nullable()
+    val language = text("language").default("en")
+    val normalizedText = text("normalized_text")
+    val possibleDuplicateOfId = integer("possible_duplicate_of_id").references(id).nullable()
 
     override val primaryKey = PrimaryKey(id)
 
