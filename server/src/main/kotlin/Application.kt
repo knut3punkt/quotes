@@ -12,7 +12,12 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.db.configureDatabase
+import no.esotericgames.quotes.server.dhammapada.DhammapadaClient
+import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
@@ -45,5 +50,11 @@ fun Application.module() {
         }
     }
     configureDatabase()
-    configureRouting(WikiquoteImportService(WikiquoteClient()), ImportedQuoteAdminService())
+    configureRouting(
+        wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
+        importedQuoteAdminService = ImportedQuoteAdminService(),
+        taoTeChingImportService = TaoTeChingImportService(),
+        bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
+        dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),
+    )
 }

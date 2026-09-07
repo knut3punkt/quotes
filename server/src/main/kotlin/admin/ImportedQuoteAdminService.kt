@@ -7,6 +7,8 @@ import no.esotericgames.quotes.server.db.ImportedQuotes
 import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.db.SourceTypes
 import no.esotericgames.quotes.server.db.Sources
+import no.esotericgames.quotes.server.importing.SourceDescriptor
+import no.esotericgames.quotes.server.importing.findOrCreateSource
 import no.esotericgames.quotes.server.importing.normalizeAuthorName
 import no.esotericgames.quotes.server.importing.normalizeQuoteText
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -125,7 +127,7 @@ class ImportedQuoteAdminService {
                 ?: request.newAuthorName?.let { name -> findOrCreateAuthor(name) }
                 ?: throw IllegalArgumentException("either authorId or newAuthorName is required")
 
-            val sourceId = request.sourceId ?: request.newSource?.let { findOrCreateSource(it) }
+            val sourceId = request.sourceId ?: request.newSource?.let { findOrCreateSource(it.toDescriptor()) }
 
             val quoteText = request.text ?: importedRow[ImportedQuotes.rawText]
             val language = importedRow[ImportedQuotes.language]
@@ -197,10 +199,12 @@ class ImportedQuoteAdminService {
         }
     }
 
-    suspend fun createSource(request: NewSourceRequest): SourceResponse = withContext(Dispatchers.IO) {
-        suspendTransaction {
-            val id = insertSource(request)
-            Sources.selectAll().where { Sources.id eq id }.first().toSourceResponse()
+    suspend fun createSource(request: NewSourceRequest): SourceResponse {
+        val id = findOrCreateSource(request.toDescriptor())
+        return withContext(Dispatchers.IO) {
+            suspendTransaction {
+                Sources.selectAll().where { Sources.id eq id }.first().toSourceResponse()
+            }
         }
     }
 
@@ -222,28 +226,17 @@ class ImportedQuoteAdminService {
         }[Authors.id]
     }
 
-    private fun findOrCreateSource(request: NewSourceRequest): Int {
-        val existing = Sources.selectAll()
-            .where { (Sources.title.lowerCase() eq request.title.lowercase()) and (Sources.typeCode eq request.typeCode) }
-            .firstOrNull()
-        if (existing != null) return existing[Sources.id]
-        return insertSource(request)
-    }
-
-    private fun insertSource(request: NewSourceRequest): Int {
-        val validTypeCodes = SourceTypes.selectAll().map { it[SourceTypes.code] }.toSet()
-        require(request.typeCode in validTypeCodes) { "typeCode must be one of $validTypeCodes" }
-        return Sources.insert {
-            it[title] = request.title
-            it[typeCode] = request.typeCode
-            it[year] = request.year
-            it[url] = request.url
-            it[citationUnit] = request.citationUnit
-            it[license] = request.license
-            it[attributionText] = request.attributionText
-        }[Sources.id]
-    }
 }
+
+private fun NewSourceRequest.toDescriptor() = SourceDescriptor(
+    title = title,
+    typeCode = typeCode,
+    year = year,
+    url = url,
+    citationUnit = citationUnit,
+    license = license,
+    attributionText = attributionText,
+)
 
 private fun ResultRow.toImportedQuoteResponse() = ImportedQuoteResponse(
     id = this[ImportedQuotes.id],

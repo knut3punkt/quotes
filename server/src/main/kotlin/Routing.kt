@@ -18,11 +18,17 @@ import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun Application.configureRouting(
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
+    taoTeChingImportService: TaoTeChingImportService,
+    bhagavadGitaImportService: BhagavadGitaImportService,
+    dhammapadaImportService: DhammapadaImportService,
 ) {
     routing {
         get("/health") {
@@ -38,6 +44,15 @@ fun Application.configureRouting(
         get("/admin/import/wikiquote/authors") {
             val query = call.request.queryParameters["q"].orEmpty()
             call.respond(WikiquoteAuthorSearchResponse(wikiquoteImportService.searchAuthors(query)))
+        }
+        post("/admin/import/tao-te-ching") {
+            call.respond(taoTeChingImportService.import())
+        }
+        post("/admin/import/bhagavad-gita") {
+            call.respond(bhagavadGitaImportService.import())
+        }
+        post("/admin/import/dhammapada") {
+            call.respond(dhammapadaImportService.import())
         }
         get("/admin/imported-quotes") {
             val params = call.request.queryParameters
