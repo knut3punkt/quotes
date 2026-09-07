@@ -21,6 +21,7 @@ import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
 import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun Application.configureRouting(
@@ -29,6 +30,7 @@ fun Application.configureRouting(
     taoTeChingImportService: TaoTeChingImportService,
     bhagavadGitaImportService: BhagavadGitaImportService,
     dhammapadaImportService: DhammapadaImportService,
+    authorEnrichmentService: AuthorEnrichmentService,
 ) {
     routing {
         get("/health") {
@@ -93,6 +95,9 @@ fun Application.configureRouting(
         }
         get("/admin/authors") {
             call.respond(importedQuoteAdminService.listAuthors())
+        }
+        post("/admin/authors/enrich") {
+            call.respond(authorEnrichmentService.enrichAuthorsFromWikidata())
         }
         get("/admin/sources") {
             call.respond(importedQuoteAdminService.listSources())

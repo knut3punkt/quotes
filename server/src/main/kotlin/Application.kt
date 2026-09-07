@@ -18,6 +18,8 @@ import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.dhammapada.DhammapadaClient
 import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
 import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
+import no.esotericgames.quotes.server.wikidata.WikidataClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
@@ -56,5 +58,6 @@ fun Application.module() {
         taoTeChingImportService = TaoTeChingImportService(),
         bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
         dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),
+        authorEnrichmentService = AuthorEnrichmentService(WikidataClient()),
     )
 }
