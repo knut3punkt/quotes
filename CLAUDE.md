@@ -2,12 +2,12 @@
 
 Guidance for Claude Code sessions working in this repository.
 
-## Product overview
+## The product vision
 
-TV Quotes: an Android TV app that will eventually display quotes fetched from a companion Kotlin
-server. Today the TV app is boilerplate only — a placeholder screen not yet wired to the server.
-The server has grown a Wikiquote importer and an admin website for reviewing imports, but the
-Android TV app and server are still not connected to each other.
+TV Quotes: An app for TVs (initially webOS and Android TV) that displays interesting quotes. The two
+key features are visually and intelectually pleasing quote screens, and intelligent voice search
+that takes various interpretations of quotes into account to provide relevant and thought
+provoking results.
 
 ## Current scope
 
