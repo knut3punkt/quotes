@@ -1,5 +1,6 @@
 import type {
   Author,
+  AuthorEnrichmentResponse,
   ApproveImportedQuoteRequest,
   BulkActionResponse,
   BulkDeleteImportedQuotesRequest,
@@ -9,6 +10,7 @@ import type {
   PagedImportedQuotes,
   ProcessingStatus,
   Quote,
+  ScriptureImportResult,
   Source,
   SourceType,
   WikiquoteAuthorSearchResponse,
@@ -105,4 +107,28 @@ export function importWikiquoteAuthors(body: WikiquoteImportRequest): Promise<Wi
 
 export function searchWikiquoteAuthors(query: string): Promise<WikiquoteAuthorSearchResponse> {
   return request(`/admin/import/wikiquote/authors?q=${encodeURIComponent(query)}`)
+}
+
+export function importTaoTeChing(): Promise<ScriptureImportResult> {
+  return request('/admin/import/tao-te-ching', { method: 'POST' })
+}
+
+export function importBhagavadGita(): Promise<ScriptureImportResult> {
+  return request('/admin/import/bhagavad-gita', { method: 'POST' })
+}
+
+export function importDhammapada(): Promise<ScriptureImportResult> {
+  return request('/admin/import/dhammapada', { method: 'POST' })
+}
+
+export function importBible(): Promise<ScriptureImportResult> {
+  return request('/admin/import/bible', { method: 'POST' })
+}
+
+export function importQuran(): Promise<ScriptureImportResult> {
+  return request('/admin/import/quran', { method: 'POST' })
+}
+
+export function enrichAuthorsFromWikidata(): Promise<AuthorEnrichmentResponse> {
+  return request('/admin/authors/enrich', { method: 'POST' })
 }

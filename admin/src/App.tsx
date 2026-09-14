@@ -13,8 +13,8 @@ import { ApproveDialog } from './components/ApproveDialog'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
+import { ImportPage } from './components/ImportPage'
 import { SelectionBar } from './components/SelectionBar'
-import { WikiquoteImportPage } from './components/WikiquoteImportPage'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type {
   ApproveImportedQuoteRequest,
@@ -311,11 +311,11 @@ function App() {
     <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import from Wikiquote'}</h1>
+          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import quotes'}</h1>
           <p className="text-muted-foreground">
             {page === 'review'
               ? 'Review staged imports and promote them into the quote library.'
-              : 'Fetch quotes for one or more authors from Wikiquote into the staging table.'}
+              : 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -323,7 +323,7 @@ function App() {
             Review imports
           </Button>
           <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
-            Import from Wikiquote
+            Import quotes
           </Button>
         </div>
       </header>
@@ -433,7 +433,7 @@ function App() {
         </>
       )}
 
-      {page === 'import' && <WikiquoteImportPage />}
+      {page === 'import' && <ImportPage />}
     </div>
   )
 }

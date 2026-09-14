@@ -122,3 +122,16 @@ export interface WikiquoteImportResponse {
 export interface WikiquoteAuthorSearchResponse {
   results: string[]
 }
+
+export interface ScriptureImportResult {
+  sourceId: number
+  quotesInserted: number
+  quotesSkippedAsDuplicate: number
+  quotesFailedToFetch: number
+}
+
+export interface AuthorEnrichmentResponse {
+  checked: number
+  enriched: number
+  skipped: number
+}
