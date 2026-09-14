@@ -66,7 +66,7 @@ class TaoTeChingImportService {
                     providerQuoteId = "chapter-${chapter.chapter}",
                     rawText = chapter.text,
                     rawAuthor = "Laozi",
-                    rawSourceLocation = chapter.chapter.toString(),
+                    rawSourceLocation = "Chapter ${chapter.chapter}",
                     sourceId = sourceId,
                     sourceConfidence = "sourced",
                     rawPayload = payload,

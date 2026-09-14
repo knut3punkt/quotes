@@ -69,7 +69,7 @@ class DhammapadaImportService(private val client: DhammapadaClient) {
                         providerQuoteId = "dhp$verseNumber",
                         rawText = text,
                         rawAuthor = "Buddha",
-                        rawSourceLocation = verseNumber.toString(),
+                        rawSourceLocation = "Verse $verseNumber",
                         sourceId = sourceId,
                         sourceConfidence = "sourced",
                         rawPayload = payload,

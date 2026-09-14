@@ -57,6 +57,7 @@ class QuranImportService(private val client: QuranClient) {
             }
 
             val text = ayahs.joinToString(" ") { it.text.trim() }
+            val ayahLabel = if (ayahStart == ayahEnd) "Ayah $ayahStart" else "Ayahs $ayahStart-$ayahEnd"
             val payload = buildJsonObject {
                 put("surah", ayahs.first().surah.englishName)
                 put("surahMeaning", ayahs.first().surah.englishNameTranslation)
@@ -69,7 +70,7 @@ class QuranImportService(private val client: QuranClient) {
                     providerQuoteId = reference,
                     rawText = text,
                     rawAuthor = null,
-                    rawSourceLocation = reference,
+                    rawSourceLocation = "Surah $surah, $ayahLabel",
                     sourceId = sourceId,
                     sourceConfidence = "sourced",
                     rawPayload = payload,
