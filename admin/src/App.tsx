@@ -220,7 +220,7 @@ function App() {
           authorId: existingAuthorId,
           newAuthorName: existingAuthorId ? undefined : quote.rawAuthor!.trim(),
         })
-        authorIdByName.set(key, result.authorId)
+        if (result.authorId !== null) authorIdByName.set(key, result.authorId)
         approvedIds.push(quote.id)
       } catch {
         failures += 1

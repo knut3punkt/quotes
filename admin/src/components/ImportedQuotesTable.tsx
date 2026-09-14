@@ -119,7 +119,13 @@ export function ImportedQuotesTable({
                     {expanded ? truncate(quote.rawText, 500) : truncate(quote.rawText, 90)}
                   </button>
                 </TableCell>
-                <TableCell className="align-top">{quote.rawAuthor ?? '—'}</TableCell>
+                <TableCell className="align-top">
+                  {quote.rawAuthor ?? (
+                    <span className="text-muted-foreground">
+                      — {quote.rawSourceLocation && <>· {quote.rawSourceLocation}</>}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="align-top">{quote.provider}</TableCell>
                 <TableCell className="align-top">
                   {quote.sourceConfidence ? (

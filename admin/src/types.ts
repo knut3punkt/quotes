@@ -10,6 +10,7 @@ export interface ImportedQuote {
   providerQuoteId: string
   rawText: string
   rawAuthor: string | null
+  rawSourceLocation: string | null
   rawPayload: Record<string, unknown>
   importedAt: string
   processingStatus: ProcessingStatus
@@ -33,7 +34,7 @@ export interface PagedImportedQuotes {
 export interface Quote {
   id: number
   text: string
-  authorId: number
+  authorId: number | null
   sourceId: number | null
   sourceDetail: string | null
   verified: boolean
@@ -57,6 +58,7 @@ export interface Source {
   citationUnit: string | null
   license: string | null
   attributionText: string | null
+  translation: string | null
 }
 
 export interface SourceType {
@@ -72,6 +74,7 @@ export interface NewSourceRequest {
   citationUnit?: string
   license?: string
   attributionText?: string
+  translation?: string
 }
 
 export interface ApproveImportedQuoteRequest {

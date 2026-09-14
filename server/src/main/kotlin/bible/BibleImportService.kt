@@ -27,11 +27,12 @@ class BibleImportService(private val client: BibleClient) {
         val references = loadSeedReferences()
         val sourceId = findOrCreateSource(
             SourceDescriptor(
-                title = "The Bible (King James Version)",
+                title = "The Bible",
                 typeCode = "scripture",
                 citationUnit = "book chapter:verse",
                 license = "PD",
                 attributionText = "King James Version (public domain)",
+                translation = "King James Version",
             ),
         )
 
@@ -56,7 +57,8 @@ class BibleImportService(private val client: BibleClient) {
                     provider = PROVIDER,
                     providerQuoteId = verse.reference,
                     rawText = text,
-                    rawAuthor = "Bible",
+                    rawAuthor = null,
+                    rawSourceLocation = verse.reference,
                     sourceConfidence = "sourced",
                     rawPayload = payload,
                 ),

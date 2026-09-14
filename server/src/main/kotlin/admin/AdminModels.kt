@@ -10,6 +10,7 @@ data class ImportedQuoteResponse(
     val providerQuoteId: String,
     val rawText: String,
     val rawAuthor: String?,
+    val rawSourceLocation: String?,
     val rawPayload: JsonElement,
     val importedAt: String,
     val processingStatus: String,
@@ -61,6 +62,7 @@ data class NewSourceRequest(
     val citationUnit: String? = null,
     val license: String? = null,
     val attributionText: String? = null,
+    val translation: String? = null,
 )
 
 @Serializable
@@ -79,7 +81,7 @@ data class ApproveImportedQuoteRequest(
 data class QuoteResponse(
     val id: Int,
     val text: String,
-    val authorId: Int,
+    val authorId: Int?,
     val sourceId: Int?,
     val sourceDetail: String?,
     val verified: Boolean,
@@ -99,6 +101,7 @@ data class SourceResponse(
     val citationUnit: String?,
     val license: String?,
     val attributionText: String?,
+    val translation: String?,
 )
 
 @Serializable

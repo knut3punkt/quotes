@@ -19,18 +19,25 @@ data class SourceDescriptor(
     val citationUnit: String? = null,
     val license: String? = null,
     val attributionText: String? = null,
+    val translation: String? = null,
 )
 
 /**
- * Finds an existing `sources` row matching [descriptor] (case-insensitive title + type), or creates
- * one. Shared by the admin API's `POST /admin/sources` / inline approve-time source creation and
- * every scripture importer, so a batch import (e.g. all 81 Tao Te Ching chapters) only ever creates
- * its source row once instead of racing duplicate inserts.
+ * Finds an existing `sources` row matching [descriptor] (case-insensitive title + type +
+ * translation), or creates one. Translation is part of the match key so e.g. a future Bible NIV
+ * import creates a distinct row from the existing Bible KJV one rather than colliding with it.
+ * Shared by the admin API's `POST /admin/sources` / inline approve-time source creation and every
+ * scripture importer, so a batch import (e.g. all 81 Tao Te Ching chapters) only ever creates its
+ * source row once instead of racing duplicate inserts.
  */
 suspend fun findOrCreateSource(descriptor: SourceDescriptor): Int = withContext(Dispatchers.IO) {
     suspendTransaction {
         val existing = Sources.selectAll()
-            .where { (Sources.title.lowerCase() eq descriptor.title.lowercase()) and (Sources.typeCode eq descriptor.typeCode) }
+            .where {
+                (Sources.title.lowerCase() eq descriptor.title.lowercase()) and
+                    (Sources.typeCode eq descriptor.typeCode) and
+                    (Sources.translation eq descriptor.translation)
+            }
             .firstOrNull()
         if (existing != null) return@suspendTransaction existing[Sources.id]
 
@@ -44,6 +51,7 @@ suspend fun findOrCreateSource(descriptor: SourceDescriptor): Int = withContext(
             it[citationUnit] = descriptor.citationUnit
             it[license] = descriptor.license
             it[attributionText] = descriptor.attributionText
+            it[translation] = descriptor.translation
         }[Sources.id]
     }
 }

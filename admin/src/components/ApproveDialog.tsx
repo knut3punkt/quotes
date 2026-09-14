@@ -21,7 +21,7 @@ interface ApproveDialogProps {
   onSubmit: (request: ApproveImportedQuoteRequest) => void
 }
 
-type AuthorMode = 'existing' | 'new'
+type AuthorMode = 'existing' | 'new' | 'none'
 
 const UNSET = '__unset__'
 
@@ -39,11 +39,13 @@ export function ApproveDialog({
   const [authorId, setAuthorId] = useState<string>('')
   const [newAuthorName, setNewAuthorName] = useState(quote.rawAuthor ?? '')
   const [sourceId, setSourceId] = useState<string>('')
-  const [sourceDetail, setSourceDetail] = useState('')
+  const [sourceDetail, setSourceDetail] = useState(quote.rawSourceLocation ?? '')
   const [verified, setVerified] = useState(false)
 
-  const authorValid = authorMode === 'existing' ? authorId !== '' : newAuthorName.trim() !== ''
-  const canSubmit = text.trim() !== '' && authorValid && !submitting
+  const authorValid =
+    authorMode === 'existing' ? authorId !== '' : authorMode === 'new' ? newAuthorName.trim() !== '' : true
+  const canSubmit =
+    text.trim() !== '' && authorValid && (authorMode !== 'none' || sourceId !== '') && !submitting
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -101,9 +103,17 @@ export function ApproveDialog({
                   New author
                 </Label>
               </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="none" id="author-mode-none" />
+                <Label htmlFor="author-mode-none" className="font-normal">
+                  No individual author
+                </Label>
+              </div>
             </RadioGroup>
 
-            {authorMode === 'existing' ? (
+            {authorMode === 'none' ? (
+              <p className="text-xs text-muted-foreground">A source is required when there's no individual author.</p>
+            ) : authorMode === 'existing' ? (
               <Select value={authorId || UNSET} onValueChange={(value) => setAuthorId(value === UNSET ? '' : value)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -128,7 +138,7 @@ export function ApproveDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Source (optional)</Label>
+            <Label>{authorMode === 'none' ? 'Source' : 'Source (optional)'}</Label>
             <Select value={sourceId || UNSET} onValueChange={(value) => setSourceId(value === UNSET ? '' : value)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -138,6 +148,7 @@ export function ApproveDialog({
                 {sources.map((source) => (
                   <SelectItem key={source.id} value={String(source.id)}>
                     {source.title}
+                    {source.translation ? ` — ${source.translation}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

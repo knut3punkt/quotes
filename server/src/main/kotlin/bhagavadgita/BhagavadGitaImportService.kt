@@ -32,6 +32,7 @@ class BhagavadGitaImportService(private val client: BhagavadGitaClient) {
                 citationUnit = "chapter.verse",
                 license = "PD",
                 attributionText = "Trans. Shri Purohit Swami (1935)",
+                translation = "Shri Purohit Swami",
             ),
         )
 
@@ -56,7 +57,8 @@ class BhagavadGitaImportService(private val client: BhagavadGitaClient) {
                         provider = PROVIDER,
                         providerQuoteId = verse.id,
                         rawText = translation,
-                        rawAuthor = "Bhagavad Gita",
+                        rawAuthor = null,
+                        rawSourceLocation = "$chapterNumber.$verseNumber",
                         sourceConfidence = "sourced",
                         rawPayload = payload,
                     ),

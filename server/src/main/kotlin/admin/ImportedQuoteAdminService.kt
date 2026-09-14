@@ -123,19 +123,20 @@ class ImportedQuoteAdminService {
                 )
             }
 
-            val authorId = request.authorId
-                ?: request.newAuthorName?.let { name -> findOrCreateAuthor(name) }
-                ?: throw IllegalArgumentException("either authorId or newAuthorName is required")
-
+            val authorId = request.authorId ?: request.newAuthorName?.let { name -> findOrCreateAuthor(name) }
             val sourceId = request.sourceId ?: request.newSource?.let { findOrCreateSource(it.toDescriptor()) }
+            if (authorId == null && sourceId == null) {
+                throw IllegalArgumentException("either an author or a source is required")
+            }
 
             val quoteText = request.text ?: importedRow[ImportedQuotes.rawText]
+            val sourceDetailValue = request.sourceDetail ?: importedRow[ImportedQuotes.rawSourceLocation]
             val language = importedRow[ImportedQuotes.language]
             val insertedQuoteId = Quotes.insert {
                 it[text] = quoteText
                 it[Quotes.authorId] = authorId
                 it[Quotes.sourceId] = sourceId
-                it[sourceDetail] = request.sourceDetail
+                it[sourceDetail] = sourceDetailValue
                 it[verified] = request.verified
                 it[Quotes.language] = language
                 it[normalizedText] = normalizeQuoteText(quoteText)
@@ -153,7 +154,7 @@ class ImportedQuoteAdminService {
                 text = quoteText,
                 authorId = authorId,
                 sourceId = sourceId,
-                sourceDetail = request.sourceDetail,
+                sourceDetail = sourceDetailValue,
                 verified = request.verified,
                 language = language,
             )
@@ -236,6 +237,7 @@ private fun NewSourceRequest.toDescriptor() = SourceDescriptor(
     citationUnit = citationUnit,
     license = license,
     attributionText = attributionText,
+    translation = translation,
 )
 
 private fun ResultRow.toImportedQuoteResponse() = ImportedQuoteResponse(
@@ -244,6 +246,7 @@ private fun ResultRow.toImportedQuoteResponse() = ImportedQuoteResponse(
     providerQuoteId = this[ImportedQuotes.providerQuoteId],
     rawText = this[ImportedQuotes.rawText],
     rawAuthor = this[ImportedQuotes.rawAuthor],
+    rawSourceLocation = this[ImportedQuotes.rawSourceLocation],
     rawPayload = this[ImportedQuotes.rawPayload],
     importedAt = this[ImportedQuotes.importedAt].toString(),
     processingStatus = this[ImportedQuotes.processingStatus],
@@ -266,4 +269,5 @@ private fun ResultRow.toSourceResponse() = SourceResponse(
     citationUnit = this[Sources.citationUnit],
     license = this[Sources.license],
     attributionText = this[Sources.attributionText],
+    translation = this[Sources.translation],
 )

@@ -33,6 +33,7 @@ class QuranImportService(private val client: QuranClient) {
                 citationUnit = "surah:ayah",
                 license = "verify-before-commercial-use",
                 attributionText = "Trans. Mohammed Marmaduke William Pickthall (1930)",
+                translation = "Pickthall",
             ),
         )
 
@@ -67,7 +68,8 @@ class QuranImportService(private val client: QuranClient) {
                     provider = PROVIDER,
                     providerQuoteId = reference,
                     rawText = text,
-                    rawAuthor = "Quran",
+                    rawAuthor = null,
+                    rawSourceLocation = reference,
                     sourceConfidence = "sourced",
                     rawPayload = payload,
                 ),

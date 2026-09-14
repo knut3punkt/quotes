@@ -38,6 +38,7 @@ class DhammapadaImportService(private val client: DhammapadaClient) {
                 citationUnit = "verse",
                 license = "CC0",
                 attributionText = "Trans. Bhikkhu Sujato",
+                translation = "Sujato",
             ),
         )
 
@@ -68,6 +69,7 @@ class DhammapadaImportService(private val client: DhammapadaClient) {
                         providerQuoteId = "dhp$verseNumber",
                         rawText = text,
                         rawAuthor = "Buddha",
+                        rawSourceLocation = verseNumber.toString(),
                         sourceConfidence = "sourced",
                         rawPayload = payload,
                     ),

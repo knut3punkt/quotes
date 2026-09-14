@@ -47,6 +47,7 @@ class TaoTeChingImportService {
                 citationUnit = "chapter",
                 license = resource.license,
                 attributionText = "Trans. ${resource.translator} (${resource.publicationYear})",
+                translation = resource.translator,
             ),
         )
 
@@ -65,6 +66,7 @@ class TaoTeChingImportService {
                     providerQuoteId = "chapter-${chapter.chapter}",
                     rawText = chapter.text,
                     rawAuthor = "Laozi",
+                    rawSourceLocation = chapter.chapter.toString(),
                     sourceConfidence = "sourced",
                     rawPayload = payload,
                 ),

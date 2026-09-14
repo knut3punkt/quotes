@@ -34,6 +34,7 @@ object Sources : Table("sources") {
     val citationUnit = text("citation_unit").nullable()
     val license = text("license").nullable()
     val attributionText = text("attribution_text").nullable()
+    val translation = text("translation").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -41,7 +42,7 @@ object Sources : Table("sources") {
 object Quotes : Table("quotes") {
     val id = integer("id").autoIncrement()
     val text = text("text")
-    val authorId = integer("author_id").references(Authors.id)
+    val authorId = integer("author_id").references(Authors.id).nullable()
     val sourceId = integer("source_id").references(Sources.id).nullable()
     val sourceDetail = text("source_detail").nullable()
     val verified = bool("verified").default(false)
@@ -71,6 +72,7 @@ object ImportedQuotes : Table("imported_quotes") {
     val providerQuoteId = text("provider_quote_id")
     val rawText = text("raw_text")
     val rawAuthor = text("raw_author").nullable()
+    val rawSourceLocation = text("raw_source_location").nullable()
     val rawPayload = jsonb<JsonElement>("raw_payload", Json.Default)
     val importedAt = timestampWithTimeZone("imported_at").defaultExpression(CurrentTimestampWithTimeZone)
     val processingStatus = text("processing_status").default("pending")
