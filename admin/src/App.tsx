@@ -386,6 +386,7 @@ function App() {
           ) : (
             <ImportedQuotesTable
               quotes={filteredQuotes}
+              sources={sources}
               busyId={busyId}
               bulkBusy={bulkBusy}
               selectedIds={selectedIds}

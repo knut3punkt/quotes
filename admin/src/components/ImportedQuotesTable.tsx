@@ -5,10 +5,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from '../statusRules'
 import { confidenceBadgeClassName, statusBadgeClassName } from '../statusBadgeClasses'
-import type { ImportedQuote } from '../types'
+import type { ImportedQuote, Source } from '../types'
 
 interface ImportedQuotesTableProps {
   quotes: ImportedQuote[]
+  sources: Source[]
   busyId: number | null
   bulkBusy: boolean
   selectedIds: Set<number>
@@ -38,6 +39,7 @@ function payloadStringArray(payload: Record<string, unknown>, key: string): stri
 
 export function ImportedQuotesTable({
   quotes,
+  sources,
   busyId,
   bulkBusy,
   selectedIds,
@@ -53,6 +55,7 @@ export function ImportedQuotesTable({
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const someVisibleSelected = quotes.some((quote) => selectedIds.has(quote.id))
   const selectAllChecked = allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false
+  const sourcesById = new Map(sources.map((source) => [source.id, source]))
 
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
@@ -83,6 +86,9 @@ export function ImportedQuotesTable({
           </TableHead>
           <TableHead>Quote</TableHead>
           <TableHead>Author</TableHead>
+          <TableHead>Source</TableHead>
+          <TableHead>Version</TableHead>
+          <TableHead>Location</TableHead>
           <TableHead>Provider</TableHead>
           <TableHead>Confidence</TableHead>
           <TableHead>Status</TableHead>
@@ -96,6 +102,7 @@ export function ImportedQuotesTable({
           const busy = busyId === quote.id || bulkBusy
           const pageUrl = payloadString(quote.rawPayload, 'pageUrl')
           const citations = payloadStringArray(quote.rawPayload, 'citations')
+          const source = quote.sourceId !== null ? sourcesById.get(quote.sourceId) : undefined
 
           return (
             <Fragment key={quote.id}>
@@ -119,13 +126,10 @@ export function ImportedQuotesTable({
                     {expanded ? truncate(quote.rawText, 500) : truncate(quote.rawText, 90)}
                   </button>
                 </TableCell>
-                <TableCell className="align-top">
-                  {quote.rawAuthor ?? (
-                    <span className="text-muted-foreground">
-                      — {quote.rawSourceLocation && <>· {quote.rawSourceLocation}</>}
-                    </span>
-                  )}
-                </TableCell>
+                <TableCell className="align-top">{quote.rawAuthor ?? '—'}</TableCell>
+                <TableCell className="align-top">{source?.title ?? '—'}</TableCell>
+                <TableCell className="align-top">{source?.translation ?? '—'}</TableCell>
+                <TableCell className="align-top">{quote.rawSourceLocation ?? '—'}</TableCell>
                 <TableCell className="align-top">{quote.provider}</TableCell>
                 <TableCell className="align-top">
                   {quote.sourceConfidence ? (
@@ -192,7 +196,7 @@ export function ImportedQuotesTable({
               </TableRow>
               {expanded && (
                 <TableRow>
-                  <TableCell colSpan={8} className="whitespace-normal bg-card">
+                  <TableCell colSpan={11} className="whitespace-normal bg-card">
                     <div className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
                       <p>
                         <strong className="text-foreground">Full text:</strong> {quote.rawText}
