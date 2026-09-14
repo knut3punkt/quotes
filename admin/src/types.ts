@@ -11,6 +11,7 @@ export interface ImportedQuote {
   rawText: string
   rawAuthor: string | null
   rawSourceLocation: string | null
+  sourceId: number | null
   rawPayload: Record<string, unknown>
   importedAt: string
   processingStatus: ProcessingStatus

@@ -11,6 +11,7 @@ data class ImportedQuoteResponse(
     val rawText: String,
     val rawAuthor: String?,
     val rawSourceLocation: String?,
+    val sourceId: Int?,
     val rawPayload: JsonElement,
     val importedAt: String,
     val processingStatus: String,

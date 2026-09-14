@@ -25,6 +25,12 @@ type AuthorMode = 'existing' | 'new' | 'none'
 
 const UNSET = '__unset__'
 
+function findMatchingAuthorId(authors: Author[], rawAuthor: string | null): number | null {
+  if (!rawAuthor) return null
+  const needle = rawAuthor.trim().toLowerCase()
+  return authors.find((author) => author.name.trim().toLowerCase() === needle)?.id ?? null
+}
+
 export function ApproveDialog({
   quote,
   authors,
@@ -34,11 +40,22 @@ export function ApproveDialog({
   onCancel,
   onSubmit,
 }: ApproveDialogProps) {
+  const matchingAuthorId = findMatchingAuthorId(authors, quote.rawAuthor)
+  const initialAuthorMode: AuthorMode = quote.rawAuthor
+    ? matchingAuthorId !== null
+      ? 'existing'
+      : 'new'
+    : quote.sourceId !== null
+      ? 'none'
+      : authors.length > 0
+        ? 'existing'
+        : 'new'
+
   const [text, setText] = useState(quote.rawText)
-  const [authorMode, setAuthorMode] = useState<AuthorMode>(authors.length > 0 ? 'existing' : 'new')
-  const [authorId, setAuthorId] = useState<string>('')
+  const [authorMode, setAuthorMode] = useState<AuthorMode>(initialAuthorMode)
+  const [authorId, setAuthorId] = useState<string>(matchingAuthorId !== null ? String(matchingAuthorId) : '')
   const [newAuthorName, setNewAuthorName] = useState(quote.rawAuthor ?? '')
-  const [sourceId, setSourceId] = useState<string>('')
+  const [sourceId, setSourceId] = useState<string>(quote.sourceId !== null ? String(quote.sourceId) : '')
   const [sourceDetail, setSourceDetail] = useState(quote.rawSourceLocation ?? '')
   const [verified, setVerified] = useState(false)
 

@@ -59,6 +59,7 @@ class BhagavadGitaImportService(private val client: BhagavadGitaClient) {
                         rawText = translation,
                         rawAuthor = null,
                         rawSourceLocation = "$chapterNumber.$verseNumber",
+                        sourceId = sourceId,
                         sourceConfidence = "sourced",
                         rawPayload = payload,
                     ),

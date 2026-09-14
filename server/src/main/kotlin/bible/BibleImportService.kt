@@ -59,6 +59,7 @@ class BibleImportService(private val client: BibleClient) {
                     rawText = text,
                     rawAuthor = null,
                     rawSourceLocation = verse.reference,
+                    sourceId = sourceId,
                     sourceConfidence = "sourced",
                     rawPayload = payload,
                 ),

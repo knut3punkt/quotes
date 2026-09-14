@@ -31,6 +31,7 @@ data class StagedQuoteCandidate(
     val rawText: String,
     val rawAuthor: String?,
     val rawSourceLocation: String? = null,
+    val sourceId: Int? = null,
     val sourceConfidence: String?,
     val language: String = "en",
     val rawPayload: JsonElement,
@@ -62,6 +63,7 @@ suspend fun stageQuote(candidate: StagedQuoteCandidate): StageResult = withConte
             it[rawText] = candidate.rawText
             it[rawAuthor] = candidate.rawAuthor
             it[rawSourceLocation] = candidate.rawSourceLocation
+            it[sourceId] = candidate.sourceId
             it[rawPayload] = candidate.rawPayload
             it[sourceConfidence] = candidate.sourceConfidence
             it[language] = candidate.language

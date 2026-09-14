@@ -70,6 +70,7 @@ class QuranImportService(private val client: QuranClient) {
                     rawText = text,
                     rawAuthor = null,
                     rawSourceLocation = reference,
+                    sourceId = sourceId,
                     sourceConfidence = "sourced",
                     rawPayload = payload,
                 ),

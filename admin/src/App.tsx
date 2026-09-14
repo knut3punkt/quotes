@@ -159,11 +159,17 @@ function App() {
   const clearSelection = () => setSelectedIds(new Set())
 
   const bulkApproveTargets = useMemo(
-    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && quote.rawAuthor?.trim()),
+    () =>
+      selectedQuotes.filter(
+        (quote) => canApprove(quote.processingStatus) && (quote.rawAuthor?.trim() || quote.sourceId !== null),
+      ),
     [selectedQuotes],
   )
   const bulkApproveSkipped = useMemo(
-    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && !quote.rawAuthor?.trim()).length,
+    () =>
+      selectedQuotes.filter(
+        (quote) => canApprove(quote.processingStatus) && !quote.rawAuthor?.trim() && quote.sourceId === null,
+      ).length,
     [selectedQuotes],
   )
   const bulkRejectTargets = useMemo(
@@ -208,19 +214,14 @@ function App() {
     if (bulkApproveTargets.length === 0) return
     setBulkBusy(true)
     setActionError(null)
-    const authorIdByName = new Map(authors.map((author) => [author.name.toLowerCase(), author.id]))
     const approvedIds: number[] = []
     let failures = 0
+    // Sequential, not Promise.allSettled: two quotes by the same not-yet-existing author
+    // approved concurrently could both miss the "does this author exist" check server-side and
+    // collide on authors.normalized_name's unique index.
     for (const quote of bulkApproveTargets) {
-      const key = quote.rawAuthor!.trim().toLowerCase()
-      const existingAuthorId = authorIdByName.get(key)
       try {
-        const result = await approveImportedQuote(quote.id, {
-          text: quote.rawText,
-          authorId: existingAuthorId,
-          newAuthorName: existingAuthorId ? undefined : quote.rawAuthor!.trim(),
-        })
-        if (result.authorId !== null) authorIdByName.set(key, result.authorId)
+        await approveImportedQuote(quote.id, {})
         approvedIds.push(quote.id)
       } catch {
         failures += 1

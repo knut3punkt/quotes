@@ -123,8 +123,14 @@ class ImportedQuoteAdminService {
                 )
             }
 
-            val authorId = request.authorId ?: request.newAuthorName?.let { name -> findOrCreateAuthor(name) }
-            val sourceId = request.sourceId ?: request.newSource?.let { findOrCreateSource(it.toDescriptor()) }
+            val authorId = request.authorId
+                ?: request.newAuthorName?.let { name -> findOrCreateAuthor(name) }
+                ?: importedRow[ImportedQuotes.rawAuthor]?.let { name -> findOrCreateAuthor(name) }
+
+            val sourceId = request.sourceId
+                ?: request.newSource?.let { findOrCreateSource(it.toDescriptor()) }
+                ?: importedRow[ImportedQuotes.sourceId]
+
             if (authorId == null && sourceId == null) {
                 throw IllegalArgumentException("either an author or a source is required")
             }
@@ -247,6 +253,7 @@ private fun ResultRow.toImportedQuoteResponse() = ImportedQuoteResponse(
     rawText = this[ImportedQuotes.rawText],
     rawAuthor = this[ImportedQuotes.rawAuthor],
     rawSourceLocation = this[ImportedQuotes.rawSourceLocation],
+    sourceId = this[ImportedQuotes.sourceId],
     rawPayload = this[ImportedQuotes.rawPayload],
     importedAt = this[ImportedQuotes.importedAt].toString(),
     processingStatus = this[ImportedQuotes.processingStatus],

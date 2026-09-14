@@ -70,6 +70,7 @@ class DhammapadaImportService(private val client: DhammapadaClient) {
                         rawText = text,
                         rawAuthor = "Buddha",
                         rawSourceLocation = verseNumber.toString(),
+                        sourceId = sourceId,
                         sourceConfidence = "sourced",
                         rawPayload = payload,
                     ),
