@@ -12,7 +12,18 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.bible.BibleClient
+import no.esotericgames.quotes.server.bible.BibleImportService
 import no.esotericgames.quotes.server.db.configureDatabase
+import no.esotericgames.quotes.server.dhammapada.DhammapadaClient
+import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.quran.QuranClient
+import no.esotericgames.quotes.server.quran.QuranImportService
+import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
+import no.esotericgames.quotes.server.wikidata.WikidataClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
@@ -40,7 +51,19 @@ fun Application.module() {
         exception<IllegalArgumentException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to cause.message))
         }
+        exception<IllegalStateException> { call, cause ->
+            call.respond(HttpStatusCode.Conflict, mapOf("error" to cause.message))
+        }
     }
     configureDatabase()
-    configureRouting(WikiquoteImportService(WikiquoteClient()), ImportedQuoteAdminService())
+    configureRouting(
+        wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
+        importedQuoteAdminService = ImportedQuoteAdminService(),
+        taoTeChingImportService = TaoTeChingImportService(),
+        bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
+        dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),
+        authorEnrichmentService = AuthorEnrichmentService(WikidataClient()),
+        bibleImportService = BibleImportService(BibleClient()),
+        quranImportService = QuranImportService(QuranClient()),
+    )
 }

@@ -1,7 +1,5 @@
 package no.esotericgames.quotes.server.wikiquote
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -10,19 +8,27 @@ import kotlinx.serialization.json.putJsonArray
 import no.esotericgames.quotes.server.WikiquoteAuthorImportResult
 import no.esotericgames.quotes.server.WikiquoteImportRequest
 import no.esotericgames.quotes.server.WikiquoteImportResponse
-import no.esotericgames.quotes.server.db.ImportedQuotes
-import org.jetbrains.exposed.v1.jdbc.insertIgnore
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import java.security.MessageDigest
+import no.esotericgames.quotes.server.importing.StagedQuoteCandidate
+import no.esotericgames.quotes.server.importing.sha256Hex
+import no.esotericgames.quotes.server.importing.stageQuote
 import java.time.Instant
 
 private const val WIKIQUOTE_PAGE_BASE_URL = "https://en.wikiquote.org/wiki/"
 private const val PROVIDER = "wikiquote"
 
+// Verified against real Wikiquote pages (Jung, Einstein, Nietzsche, Kierkegaard, Marcus Aurelius,
+// William James, ...): top-level sections are drawn from a small, predictable vocabulary. Per-work
+// sections (e.g. "Memories, Dreams, Reflections") are h3+ subheadings *within* "Quotes", already
+// captured via headingPath — they were never actually being dropped. "Disputed" is the one real gap:
+// a recurring top-level section for quotes of doubtful authenticity, distinct from "Unsourced". The
+// other common top-level sections ("Misattributed", "Quotes about X") are deliberately never mapped
+// here — they are quotes confirmed *not* to be this person's, or quotes about them said by someone
+// else, and importing either would inject wrong attributions into the database.
 private val SECTION_CONFIDENCE = mapOf(
     "Quotes" to "sourced",
     "Attributed" to "attributed",
     "Unsourced" to "unsourced",
+    "Disputed" to "disputed",
 )
 
 class WikiquoteImportService(private val client: WikiquoteClient) {
@@ -99,19 +105,17 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
             parsedQuote = parsedQuote,
         )
 
-        val insertedCount = withContext(Dispatchers.IO) {
-            suspendTransaction {
-                ImportedQuotes.insertIgnore {
-                    it[provider] = PROVIDER
-                    it[ImportedQuotes.providerQuoteId] = providerQuoteId
-                    it[rawText] = resolveImportText(parsedQuote)
-                    it[rawAuthor] = resolvedTitle
-                    it[rawPayload] = payload
-                    it[sourceConfidence] = confidence
-                }.insertedCount
-            }
-        }
-        return insertedCount > 0
+        val result = stageQuote(
+            StagedQuoteCandidate(
+                provider = PROVIDER,
+                providerQuoteId = providerQuoteId,
+                rawText = resolveImportText(parsedQuote),
+                rawAuthor = resolvedTitle,
+                sourceConfidence = confidence,
+                rawPayload = payload,
+            ),
+        )
+        return result.inserted
     }
 }
 
@@ -133,9 +137,4 @@ internal fun buildRawPayload(
     put("translationCandidate", parsedQuote.translationCandidate)
     put("originalText", parsedQuote.text)
     put("fetchedAt", Instant.now().toString())
-}
-
-private fun sha256Hex(input: String): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
-    return digest.joinToString("") { "%02x".format(it) }
 }

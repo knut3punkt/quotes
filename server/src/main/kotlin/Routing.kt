@@ -12,13 +12,29 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.util.getOrFail
 import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
+import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
+import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
+import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
+import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
+import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.bible.BibleImportService
+import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.quran.QuranImportService
+import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun Application.configureRouting(
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
+    taoTeChingImportService: TaoTeChingImportService,
+    bhagavadGitaImportService: BhagavadGitaImportService,
+    dhammapadaImportService: DhammapadaImportService,
+    authorEnrichmentService: AuthorEnrichmentService,
+    bibleImportService: BibleImportService,
+    quranImportService: QuranImportService,
 ) {
     routing {
         get("/health") {
@@ -35,13 +51,47 @@ fun Application.configureRouting(
             val query = call.request.queryParameters["q"].orEmpty()
             call.respond(WikiquoteAuthorSearchResponse(wikiquoteImportService.searchAuthors(query)))
         }
+        post("/admin/import/tao-te-ching") {
+            call.respond(taoTeChingImportService.import())
+        }
+        post("/admin/import/bhagavad-gita") {
+            call.respond(bhagavadGitaImportService.import())
+        }
+        post("/admin/import/dhammapada") {
+            call.respond(dhammapadaImportService.import())
+        }
+        post("/admin/import/bible") {
+            call.respond(bibleImportService.import())
+        }
+        post("/admin/import/quran") {
+            call.respond(quranImportService.import())
+        }
         get("/admin/imported-quotes") {
-            call.respond(importedQuoteAdminService.listImportedQuotes())
+            val params = call.request.queryParameters
+            val filter = ImportedQuoteFilter(
+                statuses = params.getAll("status")?.toSet(),
+                provider = params["provider"],
+                sourceConfidence = params["sourceConfidence"],
+                search = params["search"],
+                page = params["page"]?.toIntOrNull() ?: 1,
+                pageSize = params["pageSize"]?.toIntOrNull() ?: 200,
+            )
+            call.respond(importedQuoteAdminService.listImportedQuotes(filter))
         }
         patch("/admin/imported-quotes/{id}/status") {
             val id = call.parameters.getOrFail("id").toInt()
             val request = call.receive<UpdateImportedQuoteStatusRequest>()
-            call.respond(importedQuoteAdminService.updateStatus(id, request.status))
+            call.respond(importedQuoteAdminService.updateStatus(id, request.status, request.reviewedBy, request.reviewNote))
+        }
+        post("/admin/imported-quotes/bulk/status") {
+            val request = call.receive<BulkUpdateImportedQuoteStatusRequest>()
+            call.respond(
+                importedQuoteAdminService.bulkUpdateStatus(request.ids, request.status, request.reviewedBy, request.reviewNote),
+            )
+        }
+        post("/admin/imported-quotes/bulk/delete") {
+            val request = call.receive<BulkDeleteImportedQuotesRequest>()
+            call.respond(importedQuoteAdminService.bulkDelete(request.ids))
         }
         post("/admin/imported-quotes/{id}/approve") {
             val id = call.parameters.getOrFail("id").toInt()
@@ -56,8 +106,18 @@ fun Application.configureRouting(
         get("/admin/authors") {
             call.respond(importedQuoteAdminService.listAuthors())
         }
+        post("/admin/authors/enrich") {
+            call.respond(authorEnrichmentService.enrichAuthorsFromWikidata())
+        }
         get("/admin/sources") {
             call.respond(importedQuoteAdminService.listSources())
+        }
+        post("/admin/sources") {
+            val request = call.receive<NewSourceRequest>()
+            call.respond(HttpStatusCode.Created, importedQuoteAdminService.createSource(request))
+        }
+        get("/admin/source-types") {
+            call.respond(importedQuoteAdminService.listSourceTypes())
         }
     }
 }

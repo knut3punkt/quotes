@@ -13,8 +13,8 @@ import { ApproveDialog } from './components/ApproveDialog'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
+import { ImportPage } from './components/ImportPage'
 import { SelectionBar } from './components/SelectionBar'
-import { WikiquoteImportPage } from './components/WikiquoteImportPage'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type {
   ApproveImportedQuoteRequest,
@@ -159,11 +159,17 @@ function App() {
   const clearSelection = () => setSelectedIds(new Set())
 
   const bulkApproveTargets = useMemo(
-    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && quote.rawAuthor?.trim()),
+    () =>
+      selectedQuotes.filter(
+        (quote) => canApprove(quote.processingStatus) && (quote.rawAuthor?.trim() || quote.sourceId !== null),
+      ),
     [selectedQuotes],
   )
   const bulkApproveSkipped = useMemo(
-    () => selectedQuotes.filter((quote) => canApprove(quote.processingStatus) && !quote.rawAuthor?.trim()).length,
+    () =>
+      selectedQuotes.filter(
+        (quote) => canApprove(quote.processingStatus) && !quote.rawAuthor?.trim() && quote.sourceId === null,
+      ).length,
     [selectedQuotes],
   )
   const bulkRejectTargets = useMemo(
@@ -208,19 +214,14 @@ function App() {
     if (bulkApproveTargets.length === 0) return
     setBulkBusy(true)
     setActionError(null)
-    const authorIdByName = new Map(authors.map((author) => [author.name.toLowerCase(), author.id]))
     const approvedIds: number[] = []
     let failures = 0
+    // Sequential, not Promise.allSettled: two quotes by the same not-yet-existing author
+    // approved concurrently could both miss the "does this author exist" check server-side and
+    // collide on authors.normalized_name's unique index.
     for (const quote of bulkApproveTargets) {
-      const key = quote.rawAuthor!.trim().toLowerCase()
-      const existingAuthorId = authorIdByName.get(key)
       try {
-        const result = await approveImportedQuote(quote.id, {
-          text: quote.rawText,
-          authorId: existingAuthorId,
-          newAuthorName: existingAuthorId ? undefined : quote.rawAuthor!.trim(),
-        })
-        authorIdByName.set(key, result.authorId)
+        await approveImportedQuote(quote.id, {})
         approvedIds.push(quote.id)
       } catch {
         failures += 1
@@ -311,11 +312,11 @@ function App() {
     <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import from Wikiquote'}</h1>
+          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import quotes'}</h1>
           <p className="text-muted-foreground">
             {page === 'review'
               ? 'Review staged imports and promote them into the quote library.'
-              : 'Fetch quotes for one or more authors from Wikiquote into the staging table.'}
+              : 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -323,7 +324,7 @@ function App() {
             Review imports
           </Button>
           <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
-            Import from Wikiquote
+            Import quotes
           </Button>
         </div>
       </header>
@@ -385,6 +386,7 @@ function App() {
           ) : (
             <ImportedQuotesTable
               quotes={filteredQuotes}
+              sources={sources}
               busyId={busyId}
               bulkBusy={bulkBusy}
               selectedIds={selectedIds}
@@ -433,7 +435,7 @@ function App() {
         </>
       )}
 
-      {page === 'import' && <WikiquoteImportPage />}
+      {page === 'import' && <ImportPage />}
     </div>
   )
 }

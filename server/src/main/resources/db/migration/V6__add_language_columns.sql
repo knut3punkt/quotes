@@ -1,0 +1,2 @@
+ALTER TABLE quotes ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
+ALTER TABLE imported_quotes ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
