@@ -4,9 +4,9 @@
       "WebSearch",
       "WebFetch(domain:ktor.io)"
     ],
-     "deny": [
-      "Read(**/.env)",
-      "Edit(**/.env)"
+    "deny": [
+      "Edit(**/.env)",
+      "Read(**/.env)"
     ]
   }
 }
