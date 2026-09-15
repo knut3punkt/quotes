@@ -94,20 +94,24 @@ class ImportedQuoteAdminService {
         reviewNote: String?,
     ): BulkActionResponse {
         require(status in MANUAL_STATUSES) { "status must be one of $MANUAL_STATUSES" }
+        if (ids.isEmpty()) return BulkActionResponse(succeededIds = emptyList(), failedIds = emptyList())
         return withContext(Dispatchers.IO) {
             suspendTransaction {
-                val succeeded = mutableListOf<Int>()
-                val failed = mutableListOf<Int>()
-                for (id in ids) {
-                    val updatedRows = ImportedQuotes.update({ ImportedQuotes.id eq id }) {
+                val existingIds = ImportedQuotes.selectAll().where { ImportedQuotes.id inList ids }
+                    .map { it[ImportedQuotes.id] }
+                    .toSet()
+                if (existingIds.isNotEmpty()) {
+                    ImportedQuotes.update({ ImportedQuotes.id inList existingIds }) {
                         it[processingStatus] = status
                         it[ImportedQuotes.reviewedBy] = reviewedBy
                         it[reviewedAt] = OffsetDateTime.now()
                         it[ImportedQuotes.reviewNote] = reviewNote
                     }
-                    if (updatedRows > 0) succeeded += id else failed += id
                 }
-                BulkActionResponse(succeededIds = succeeded, failedIds = failed)
+                BulkActionResponse(
+                    succeededIds = ids.filter { it in existingIds },
+                    failedIds = ids.filterNot { it in existingIds },
+                )
             }
         }
     }
@@ -174,15 +178,21 @@ class ImportedQuoteAdminService {
         }
     }
 
-    suspend fun bulkDelete(ids: List<Int>): BulkActionResponse = withContext(Dispatchers.IO) {
-        suspendTransaction {
-            val succeeded = mutableListOf<Int>()
-            val failed = mutableListOf<Int>()
-            for (id in ids) {
-                val deletedRows = ImportedQuotes.deleteWhere { ImportedQuotes.id eq id }
-                if (deletedRows > 0) succeeded += id else failed += id
+    suspend fun bulkDelete(ids: List<Int>): BulkActionResponse {
+        if (ids.isEmpty()) return BulkActionResponse(succeededIds = emptyList(), failedIds = emptyList())
+        return withContext(Dispatchers.IO) {
+            suspendTransaction {
+                val existingIds = ImportedQuotes.selectAll().where { ImportedQuotes.id inList ids }
+                    .map { it[ImportedQuotes.id] }
+                    .toSet()
+                if (existingIds.isNotEmpty()) {
+                    ImportedQuotes.deleteWhere { ImportedQuotes.id inList existingIds }
+                }
+                BulkActionResponse(
+                    succeededIds = ids.filter { it in existingIds },
+                    failedIds = ids.filterNot { it in existingIds },
+                )
             }
-            BulkActionResponse(succeededIds = succeeded, failedIds = failed)
         }
     }
 
