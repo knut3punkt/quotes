@@ -5,8 +5,49 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class WikiquoteImportServiceTest {
+
+    @Test
+    fun `resolveImportText falls back to the first citation when the heuristic finds no candidate`() {
+        // Every nested citation looks citation-like (per looksLikeCitation), so the primary
+        // heuristic finds nothing even though the quote text is non-English — per the product
+        // scope of English-only quotes, the first citation is used as a last-resort guess rather
+        // than leaving the foreign text unresolved.
+        val quote = ParsedQuote(
+            text = "Où est la vérité?",
+            citations = listOf("Where is the truth? (1929)", "p. 12"),
+            headingPath = emptyList(),
+            translationCandidate = null,
+        )
+
+        assertEquals("Where is the truth? (1929)", resolveImportText(quote))
+    }
+
+    @Test
+    fun `resolveImportText returns null when no English text can be found anywhere`() {
+        val quote = ParsedQuote(
+            text = "Où est la vérité?",
+            citations = listOf("C'est là.", "p. 12"),
+            headingPath = emptyList(),
+            translationCandidate = null,
+        )
+
+        assertNull(resolveImportText(quote))
+    }
+
+    @Test
+    fun `resolveImportText returns null when there are no citations to fall back to`() {
+        val quote = ParsedQuote(
+            text = "Où est la vérité?",
+            citations = emptyList(),
+            headingPath = emptyList(),
+            translationCandidate = null,
+        )
+
+        assertNull(resolveImportText(quote))
+    }
 
     @Test
     fun `resolveImportText prefers the translation candidate when present`() {

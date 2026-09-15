@@ -118,6 +118,7 @@ export interface WikiquoteAuthorImportResult {
   found: boolean
   quotesInserted: number
   quotesSkippedAsDuplicate: number
+  quotesSkippedUntranslatable: number
   quotesBySection: Record<string, number>
 }
 

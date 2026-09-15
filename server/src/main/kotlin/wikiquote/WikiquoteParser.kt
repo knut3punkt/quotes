@@ -119,3 +119,21 @@ private fun looksLikeCitation(element: Element): Boolean {
     if (CITATION_PAGE_REGEX.containsMatchIn(text)) return true
     return CITATION_KEYWORDS.any { text.contains(it) }
 }
+
+/**
+ * Resolves the English text to stage for [parsedQuote], or `null` when none can be found — the
+ * scope is English-only quotes, so an unresolved non-English quote must be skipped at staging
+ * rather than imported untranslated. Order: the primary translation-candidate heuristic (see
+ * [toParsedQuote]); else, if the quote text is non-English, the first listed citation as a
+ * last-resort guess (some pages list a plain-prose translation after citation-shaped bullets the
+ * primary heuristic didn't consider); else the quote text itself, when it's already English. A
+ * final non-English check catches a still-wrong guess in either fallback.
+ */
+internal fun resolveImportText(parsedQuote: ParsedQuote): String? {
+    val resolved = when {
+        parsedQuote.translationCandidate != null -> parsedQuote.translationCandidate
+        looksNonEnglish(parsedQuote.text) -> parsedQuote.citations.firstOrNull() ?: parsedQuote.text
+        else -> parsedQuote.text
+    }
+    return resolved.takeUnless { looksNonEnglish(it) }
+}

@@ -31,6 +31,7 @@ data class WikiquoteAuthorImportResult(
     val found: Boolean,
     val quotesInserted: Int,
     val quotesSkippedAsDuplicate: Int,
+    val quotesSkippedUntranslatable: Int,
     val quotesBySection: Map<String, Int>,
 )
 

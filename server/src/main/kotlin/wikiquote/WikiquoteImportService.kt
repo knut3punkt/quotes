@@ -52,6 +52,7 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
                 found = false,
                 quotesInserted = 0,
                 quotesSkippedAsDuplicate = 0,
+                quotesSkippedUntranslatable = 0,
                 quotesBySection = emptyMap(),
             )
 
@@ -61,6 +62,7 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
 
         var inserted = 0
         var duplicates = 0
+        var untranslatable = 0
         val bySection = mutableMapOf<String, Int>()
 
         for ((section, confidence) in sectionsToFetch) {
@@ -69,14 +71,19 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
             bySection[confidence] = parsedQuotes.size
 
             for (parsedQuote in parsedQuotes) {
-                val wasInserted = insertQuote(
-                    resolvedTitle = resolvedTitle,
-                    requestedName = requestedName,
-                    revisionId = content.revisionId,
-                    confidence = confidence,
-                    parsedQuote = parsedQuote,
-                )
-                if (wasInserted) inserted++ else duplicates++
+                when (
+                    insertQuote(
+                        resolvedTitle = resolvedTitle,
+                        requestedName = requestedName,
+                        revisionId = content.revisionId,
+                        confidence = confidence,
+                        parsedQuote = parsedQuote,
+                    )
+                ) {
+                    InsertOutcome.INSERTED -> inserted++
+                    InsertOutcome.DUPLICATE -> duplicates++
+                    InsertOutcome.SKIPPED_UNTRANSLATABLE -> untranslatable++
+                }
             }
         }
 
@@ -86,6 +93,7 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
             found = true,
             quotesInserted = inserted,
             quotesSkippedAsDuplicate = duplicates,
+            quotesSkippedUntranslatable = untranslatable,
             quotesBySection = bySection,
         )
     }
@@ -96,7 +104,9 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
         revisionId: Long,
         confidence: String,
         parsedQuote: ParsedQuote,
-    ): Boolean {
+    ): InsertOutcome {
+        val rawText = resolveImportText(parsedQuote) ?: return InsertOutcome.SKIPPED_UNTRANSLATABLE
+
         val providerQuoteId = sha256Hex("$resolvedTitle ${parsedQuote.text}")
         val payload = buildRawPayload(
             resolvedTitle = resolvedTitle,
@@ -104,23 +114,30 @@ class WikiquoteImportService(private val client: WikiquoteClient) {
             revisionId = revisionId,
             parsedQuote = parsedQuote,
         )
+        val sourceHints = extractSourceHints(
+            sectionPath = parsedQuote.headingPath,
+            citations = parsedQuote.citations,
+            consumedTranslationCitation = parsedQuote.translationCandidate,
+        )
 
         val result = stageQuote(
             StagedQuoteCandidate(
                 provider = PROVIDER,
                 providerQuoteId = providerQuoteId,
-                rawText = resolveImportText(parsedQuote),
+                rawText = rawText,
                 rawAuthor = resolvedTitle,
+                rawSourceLocation = sourceHints.location,
+                rawSourceTitle = sourceHints.title,
+                rawSourceYear = sourceHints.year,
                 sourceConfidence = confidence,
                 rawPayload = payload,
             ),
         )
-        return result.inserted
+        return if (result.inserted) InsertOutcome.INSERTED else InsertOutcome.DUPLICATE
     }
 }
 
-internal fun resolveImportText(parsedQuote: ParsedQuote): String =
-    parsedQuote.translationCandidate ?: parsedQuote.text
+private enum class InsertOutcome { INSERTED, DUPLICATE, SKIPPED_UNTRANSLATABLE }
 
 internal fun buildRawPayload(
     resolvedTitle: String,

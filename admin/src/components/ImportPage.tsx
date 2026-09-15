@@ -114,6 +114,7 @@ export function ImportPage() {
                 <TableHead>Resolved title</TableHead>
                 <TableHead>Inserted</TableHead>
                 <TableHead>Skipped as duplicate</TableHead>
+                <TableHead>Skipped (no translation)</TableHead>
                 <TableHead>By section</TableHead>
               </TableRow>
             </TableHeader>
@@ -132,6 +133,7 @@ export function ImportPage() {
                   </TableCell>
                   <TableCell className="align-top">{result.quotesInserted}</TableCell>
                   <TableCell className="align-top">{result.quotesSkippedAsDuplicate}</TableCell>
+                  <TableCell className="align-top">{result.quotesSkippedUntranslatable}</TableCell>
                   <TableCell className="align-top whitespace-normal text-muted-foreground">
                     {formatSections(result.quotesBySection)}
                   </TableCell>
