@@ -31,6 +31,8 @@ data class StagedQuoteCandidate(
     val rawText: String,
     val rawAuthor: String?,
     val rawSourceLocation: String? = null,
+    val rawSourceTitle: String? = null,
+    val rawSourceYear: Int? = null,
     val sourceId: Int? = null,
     val sourceConfidence: String?,
     val language: String = "en",
@@ -63,6 +65,8 @@ suspend fun stageQuote(candidate: StagedQuoteCandidate): StageResult = withConte
             it[rawText] = candidate.rawText
             it[rawAuthor] = candidate.rawAuthor
             it[rawSourceLocation] = candidate.rawSourceLocation
+            it[rawSourceTitle] = candidate.rawSourceTitle
+            it[rawSourceYear] = candidate.rawSourceYear
             it[sourceId] = candidate.sourceId
             it[rawPayload] = candidate.rawPayload
             it[sourceConfidence] = candidate.sourceConfidence

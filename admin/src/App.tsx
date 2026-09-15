@@ -7,6 +7,7 @@ import {
   fetchAuthors,
   fetchImportedQuotes,
   fetchSources,
+  fetchSourceTypes,
   updateImportedQuoteStatus,
 } from './api'
 import { ApproveDialog } from './components/ApproveDialog'
@@ -24,6 +25,7 @@ import type {
   ProcessingStatus,
   Source,
   SourceConfidence,
+  SourceType,
 } from './types'
 
 function errorMessage(err: unknown): string {
@@ -40,6 +42,7 @@ function App() {
   const [importedQuotes, setImportedQuotes] = useState<ImportedQuote[]>([])
   const [authors, setAuthors] = useState<Author[]>([])
   const [sources, setSources] = useState<Source[]>([])
+  const [sourceTypes, setSourceTypes] = useState<SourceType[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -68,14 +71,16 @@ function App() {
     setLoading(true)
     setLoadError(null)
     try {
-      const [quotes, authorList, sourceList] = await Promise.all([
+      const [quotes, authorList, sourceList, sourceTypeList] = await Promise.all([
         fetchImportedQuotes(),
         fetchAuthors(),
         fetchSources(),
+        fetchSourceTypes(),
       ])
       setImportedQuotes(quotes)
       setAuthors(authorList)
       setSources(sourceList)
+      setSourceTypes(sourceTypeList)
     } catch (err) {
       setLoadError(errorMessage(err))
     } finally {
@@ -406,6 +411,7 @@ function App() {
               quote={approveTarget}
               authors={authors}
               sources={sources}
+              sourceTypes={sourceTypes}
               submitting={approveSubmitting}
               error={approveError}
               onCancel={() => {

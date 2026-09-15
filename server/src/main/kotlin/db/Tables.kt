@@ -73,6 +73,8 @@ object ImportedQuotes : Table("imported_quotes") {
     val rawText = text("raw_text")
     val rawAuthor = text("raw_author").nullable()
     val rawSourceLocation = text("raw_source_location").nullable()
+    val rawSourceTitle = text("raw_source_title").nullable()
+    val rawSourceYear = integer("raw_source_year").nullable()
     val sourceId = integer("source_id").references(Sources.id).nullable()
     val rawPayload = jsonb<JsonElement>("raw_payload", Json.Default)
     val importedAt = timestampWithTimeZone("imported_at").defaultExpression(CurrentTimestampWithTimeZone)

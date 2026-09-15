@@ -127,7 +127,9 @@ export function ImportedQuotesTable({
                   </button>
                 </TableCell>
                 <TableCell className="align-top">{quote.rawAuthor ?? '—'}</TableCell>
-                <TableCell className="align-top">{source?.title ?? '—'}</TableCell>
+                <TableCell className="align-top">
+                  {source?.title ?? (quote.rawSourceTitle ? `${quote.rawSourceTitle} (suggested)` : '—')}
+                </TableCell>
                 <TableCell className="align-top">{source?.translation ?? '—'}</TableCell>
                 <TableCell className="align-top">{quote.rawSourceLocation ?? '—'}</TableCell>
                 <TableCell className="align-top">{quote.provider}</TableCell>

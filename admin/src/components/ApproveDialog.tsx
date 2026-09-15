@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import type { ApproveImportedQuoteRequest, Author, ImportedQuote, Source } from '../types'
+import type { ApproveImportedQuoteRequest, Author, ImportedQuote, Source, SourceType } from '../types'
 
 interface ApproveDialogProps {
   quote: ImportedQuote
   authors: Author[]
   sources: Source[]
+  sourceTypes: SourceType[]
   submitting: boolean
   error: string | null
   onCancel: () => void
@@ -22,8 +23,13 @@ interface ApproveDialogProps {
 }
 
 type AuthorMode = 'existing' | 'new' | 'none'
+type SourceMode = 'existing' | 'new' | 'none'
 
 const UNSET = '__unset__'
+
+function normalizeTitle(title: string): string {
+  return title.trim().toLowerCase().replace(/\s+/g, ' ')
+}
 
 function findMatchingAuthorId(authors: Author[], rawAuthor: string | null): number | null {
   if (!rawAuthor) return null
@@ -31,10 +37,20 @@ function findMatchingAuthorId(authors: Author[], rawAuthor: string | null): numb
   return authors.find((author) => author.name.trim().toLowerCase() === needle)?.id ?? null
 }
 
+// Auto-computed at Wikiquote import time from section headings/citations (see
+// wikiquote/SourceHintExtractor.kt server-side) — matched against existing sources so a reviewer
+// isn't offered "create new" for a work already in the catalog from an earlier quote.
+function findMatchingSourceId(sources: Source[], rawSourceTitle: string | null): number | null {
+  if (!rawSourceTitle) return null
+  const needle = normalizeTitle(rawSourceTitle)
+  return sources.find((source) => normalizeTitle(source.title) === needle)?.id ?? null
+}
+
 export function ApproveDialog({
   quote,
   authors,
   sources,
+  sourceTypes,
   submitting,
   error,
   onCancel,
@@ -51,18 +67,37 @@ export function ApproveDialog({
         ? 'existing'
         : 'new'
 
+  const matchingSourceId = quote.sourceId ?? findMatchingSourceId(sources, quote.rawSourceTitle)
+  const initialSourceMode: SourceMode =
+    matchingSourceId !== null ? 'existing' : quote.rawSourceTitle ? 'new' : 'none'
+  const defaultSourceTypeCode = sourceTypes.find((type) => type.code === 'book')?.code ?? sourceTypes[0]?.code ?? ''
+
   const [text, setText] = useState(quote.rawText)
   const [authorMode, setAuthorMode] = useState<AuthorMode>(initialAuthorMode)
   const [authorId, setAuthorId] = useState<string>(matchingAuthorId !== null ? String(matchingAuthorId) : '')
   const [newAuthorName, setNewAuthorName] = useState(quote.rawAuthor ?? '')
-  const [sourceId, setSourceId] = useState<string>(quote.sourceId !== null ? String(quote.sourceId) : '')
+  const [sourceMode, setSourceMode] = useState<SourceMode>(initialSourceMode)
+  const [sourceId, setSourceId] = useState<string>(matchingSourceId !== null ? String(matchingSourceId) : '')
+  const [newSourceTitle, setNewSourceTitle] = useState(quote.rawSourceTitle ?? '')
+  const [newSourceYear, setNewSourceYear] = useState(quote.rawSourceYear !== null ? String(quote.rawSourceYear) : '')
+  const [newSourceTypeCode, setNewSourceTypeCode] = useState(defaultSourceTypeCode)
   const [sourceDetail, setSourceDetail] = useState(quote.rawSourceLocation ?? '')
   const [verified, setVerified] = useState(false)
 
   const authorValid =
     authorMode === 'existing' ? authorId !== '' : authorMode === 'new' ? newAuthorName.trim() !== '' : true
+  const sourceValid =
+    sourceMode === 'existing'
+      ? sourceId !== ''
+      : sourceMode === 'new'
+        ? newSourceTitle.trim() !== '' && newSourceTypeCode !== ''
+        : true
   const canSubmit =
-    text.trim() !== '' && authorValid && (authorMode !== 'none' || sourceId !== '') && !submitting
+    text.trim() !== '' &&
+    authorValid &&
+    sourceValid &&
+    (authorMode !== 'none' || sourceMode !== 'none') &&
+    !submitting
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -71,7 +106,15 @@ export function ApproveDialog({
       text: text.trim(),
       authorId: authorMode === 'existing' ? Number(authorId) : undefined,
       newAuthorName: authorMode === 'new' ? newAuthorName.trim() : undefined,
-      sourceId: sourceId !== '' ? Number(sourceId) : undefined,
+      sourceId: sourceMode === 'existing' ? Number(sourceId) : undefined,
+      newSource:
+        sourceMode === 'new'
+          ? {
+              title: newSourceTitle.trim(),
+              typeCode: newSourceTypeCode,
+              year: newSourceYear.trim() !== '' ? Number(newSourceYear) : undefined,
+            }
+          : undefined,
       sourceDetail: sourceDetail.trim() || undefined,
       verified,
     })
@@ -156,20 +199,77 @@ export function ApproveDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label>{authorMode === 'none' ? 'Source' : 'Source (optional)'}</Label>
-            <Select value={sourceId || UNSET} onValueChange={(value) => setSourceId(value === UNSET ? '' : value)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UNSET}>None</SelectItem>
-                {sources.map((source) => (
-                  <SelectItem key={source.id} value={String(source.id)}>
-                    {source.title}
-                    {source.translation ? ` — ${source.translation}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RadioGroup
+              value={sourceMode}
+              onValueChange={(value) => setSourceMode(value as SourceMode)}
+              className="flex flex-row gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="existing" id="source-mode-existing" />
+                <Label htmlFor="source-mode-existing" className="font-normal">
+                  Existing source
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="new" id="source-mode-new" />
+                <Label htmlFor="source-mode-new" className="font-normal">
+                  New source
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="none" id="source-mode-none" />
+                <Label htmlFor="source-mode-none" className="font-normal">
+                  None
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {sourceMode === 'existing' ? (
+              <Select value={sourceId || UNSET} onValueChange={(value) => setSourceId(value === UNSET ? '' : value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNSET}>Select a source…</SelectItem>
+                  {sources.map((source) => (
+                    <SelectItem key={source.id} value={String(source.id)}>
+                      {source.title}
+                      {source.translation ? ` — ${source.translation}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : sourceMode === 'new' ? (
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="text"
+                  value={newSourceTitle}
+                  onChange={(event) => setNewSourceTitle(event.target.value)}
+                  placeholder="Source title"
+                />
+                <div className="flex flex-row gap-2">
+                  <Select value={newSourceTypeCode} onValueChange={setNewSourceTypeCode}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sourceTypes.map((type) => (
+                        <SelectItem key={type.code} value={type.code}>
+                          {type.description}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    value={newSourceYear}
+                    onChange={(event) => setNewSourceYear(event.target.value)}
+                    placeholder="Year"
+                    className="w-28"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-1.5">
