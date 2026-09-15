@@ -1,7 +1,7 @@
 [versions]
 # Android Gradle Plugin — see https://developer.android.com/build/releases/agp-9-2-0-release-notes
 # 9.2.1 is a same-line patch (R8 crash fix) with unchanged Gradle/JDK requirements.
-agp = "9.3.1"
+agp = "9.4.0"
 # Kotlin — see https://kotlinlang.org/docs/releases.html (used by the server module and the
 # Compose compiler plugin; tv-app's Android compilation itself uses AGP's built-in Kotlin support)
 kotlin = "2.4.10"
