@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -23,7 +24,7 @@ interface FilterBarProps {
   onLengthValueChange: (value: string) => void
 }
 
-export function FilterBar({
+function FilterBarComponent({
   statusCounts,
   selectedStatuses,
   onToggleStatus,
@@ -150,3 +151,5 @@ export function FilterBar({
     </div>
   )
 }
+
+export const FilterBar = memo(FilterBarComponent)

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -305,6 +306,7 @@ export function ApproveDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
+              {submitting && <Loader2 className="animate-spin" />}
               {submitting ? 'Approving…' : 'Approve'}
             </Button>
           </DialogFooter>

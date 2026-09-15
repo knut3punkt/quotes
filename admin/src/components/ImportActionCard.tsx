@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { toast } from '../hooks/use-toast'
 
 export interface StatEntry {
   label: string
@@ -9,6 +12,10 @@ export interface StatEntry {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
+}
+
+function formatStats(stats: StatEntry[]): string {
+  return stats.map((stat) => `${stat.label}: ${stat.value}`).join(', ')
 }
 
 interface ImportActionCardProps {
@@ -26,9 +33,13 @@ export function ImportActionCard({ title, description, run }: ImportActionCardPr
     setSubmitting(true)
     setError(null)
     try {
-      setStats(await run())
+      const result = await run()
+      setStats(result)
+      toast.success(`${title} complete`, formatStats(result))
     } catch (err) {
-      setError(errorMessage(err))
+      const message = errorMessage(err)
+      setError(message)
+      toast.error(`${title} failed`, message)
     } finally {
       setSubmitting(false)
     }
@@ -41,10 +52,14 @@ export function ImportActionCard({ title, description, run }: ImportActionCardPr
         <p className="mt-1 text-[13px] text-muted-foreground">{description}</p>
       </div>
 
-      <div>
-        <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={handleRun}>
-          {submitting ? 'Running…' : 'Run'}
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div>
+          <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={handleRun}>
+            {submitting && <Loader2 className="animate-spin" />}
+            {submitting ? 'Running…' : 'Run'}
+          </Button>
+        </div>
+        {submitting && <Progress value={null} />}
       </div>
 
       {error && (

@@ -3,7 +3,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   approveImportedQuote,
-  deleteImportedQuote,
+  bulkDeleteImportedQuotes,
+  bulkUpdateImportedQuoteStatus,
   fetchAuthors,
   fetchImportedQuotes,
   fetchSources,
@@ -16,6 +17,9 @@ import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { ImportPage } from './components/ImportPage'
 import { SelectionBar } from './components/SelectionBar'
+import { Toaster } from './components/Toaster'
+import { useDebouncedValue } from './hooks/use-debounced-value'
+import { toast } from './hooks/use-toast'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
 import type {
   ApproveImportedQuoteRequest,
@@ -28,12 +32,21 @@ import type {
   SourceType,
 } from './types'
 
+const FILTER_DEBOUNCE_MILLIS = 250
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
 }
 
 function truncateForDialog(text: string): string {
   return text.length > 120 ? `${text.slice(0, 120).trimEnd()}…` : text
+}
+
+const STATUS_LABELS: Record<ProcessingStatus, string> = {
+  pending: 'Reset to pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  duplicate: 'Marked duplicate',
 }
 
 function App() {
@@ -52,16 +65,18 @@ function App() {
   const [search, setSearch] = useState('')
   const [lengthOp, setLengthOp] = useState<LengthFilterOp>('above')
   const [lengthValue, setLengthValue] = useState('')
+  const debouncedSearch = useDebouncedValue(search, FILTER_DEBOUNCE_MILLIS)
+  const debouncedLengthValue = useDebouncedValue(lengthValue, FILTER_DEBOUNCE_MILLIS)
 
   const [approveTarget, setApproveTarget] = useState<ImportedQuote | null>(null)
   const [approveSubmitting, setApproveSubmitting] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
-  const [busyId, setBusyId] = useState<number | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [busyAction, setBusyAction] = useState<{ id: number; status: ProcessingStatus } | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkApproveProgress, setBulkApproveProgress] = useState<{ done: number; total: number } | null>(null)
 
   const [deleteRequest, setDeleteRequest] = useState<ImportedQuote[] | null>(null)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
@@ -104,8 +119,8 @@ function App() {
   )
 
   const filteredQuotes = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    const lengthThreshold = lengthValue.trim() === '' ? null : Number(lengthValue)
+    const term = debouncedSearch.trim().toLowerCase()
+    const lengthThreshold = debouncedLengthValue.trim() === '' ? null : Number(debouncedLengthValue)
     const hasLengthFilter = lengthThreshold !== null && Number.isFinite(lengthThreshold) && lengthThreshold >= 0
     return importedQuotes.filter((quote) => {
       if (!selectedStatuses.has(quote.processingStatus)) return false
@@ -122,16 +137,16 @@ function App() {
       }
       return true
     })
-  }, [importedQuotes, selectedStatuses, confidence, provider, lengthOp, lengthValue, search])
+  }, [importedQuotes, selectedStatuses, confidence, provider, lengthOp, debouncedLengthValue, debouncedSearch])
 
-  const toggleStatus = (status: ProcessingStatus) => {
+  const toggleStatus = useCallback((status: ProcessingStatus) => {
     setSelectedStatuses((prev) => {
       const next = new Set(prev)
       if (next.has(status)) next.delete(status)
       else next.add(status)
       return next
     })
-  }
+  }, [])
 
   const selectedQuotes = useMemo(
     () => importedQuotes.filter((quote) => selectedIds.has(quote.id)),
@@ -140,16 +155,16 @@ function App() {
 
   const allVisibleSelected = filteredQuotes.length > 0 && filteredQuotes.every((quote) => selectedIds.has(quote.id))
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = useCallback((id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }
+  }, [])
 
-  const toggleSelectAllVisible = () => {
+  const toggleSelectAllVisible = useCallback(() => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (allVisibleSelected) {
@@ -159,9 +174,9 @@ function App() {
       }
       return next
     })
-  }
+  }, [allVisibleSelected, filteredQuotes])
 
-  const clearSelection = () => setSelectedIds(new Set())
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
 
   const bulkApproveTargets = useMemo(
     () =>
@@ -194,127 +209,196 @@ function App() {
     [selectedQuotes],
   )
 
-  const runBulkStatusAction = async (status: ProcessingStatus, targets: ImportedQuote[]) => {
+  const runBulkStatusAction = useCallback(async (status: ProcessingStatus, targets: ImportedQuote[]) => {
     if (targets.length === 0) return
     setBulkBusy(true)
-    setActionError(null)
-    const results = await Promise.allSettled(targets.map((quote) => updateImportedQuoteStatus(quote.id, status)))
-    const updates = new Map<number, ImportedQuote>()
-    let failures = 0
-    for (const result of results) {
-      if (result.status === 'fulfilled') updates.set(result.value.id, result.value)
-      else failures += 1
+    const ids = targets.map((quote) => quote.id)
+    const label = STATUS_LABELS[status]
+    try {
+      const result = await bulkUpdateImportedQuoteStatus({ ids, status })
+      const succeeded = new Set(result.succeededIds)
+      const now = new Date().toISOString()
+      setImportedQuotes((prev) =>
+        prev.map((existing) =>
+          succeeded.has(existing.id) ? { ...existing, processingStatus: status, reviewedAt: now } : existing,
+        ),
+      )
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of result.succeededIds) next.delete(id)
+        return next
+      })
+      if (result.failedIds.length > 0) {
+        toast.error(
+          `${result.failedIds.length} of ${ids.length} failed`,
+          `${label}: ${result.succeededIds.length} succeeded`,
+        )
+      } else {
+        toast.success(`${label}: ${result.succeededIds.length} quote${result.succeededIds.length === 1 ? '' : 's'}`)
+      }
+    } catch (err) {
+      toast.error(`${label} failed`, errorMessage(err))
+    } finally {
+      setBulkBusy(false)
     }
-    setImportedQuotes((prev) => prev.map((existing) => updates.get(existing.id) ?? existing))
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      for (const id of updates.keys()) next.delete(id)
-      return next
-    })
-    if (failures > 0) setActionError(`${failures} of ${targets.length} updates failed`)
-    setBulkBusy(false)
-  }
+  }, [])
 
-  const handleBulkApprove = async () => {
-    if (bulkApproveTargets.length === 0) return
+  const handleBulkReject = useCallback(
+    () => runBulkStatusAction('rejected', bulkRejectTargets),
+    [runBulkStatusAction, bulkRejectTargets],
+  )
+  const handleBulkMarkDuplicate = useCallback(
+    () => runBulkStatusAction('duplicate', bulkDuplicateTargets),
+    [runBulkStatusAction, bulkDuplicateTargets],
+  )
+  const handleBulkResetToPending = useCallback(
+    () => runBulkStatusAction('pending', bulkResetTargets),
+    [runBulkStatusAction, bulkResetTargets],
+  )
+
+  const handleBulkApprove = useCallback(async () => {
+    const targets = bulkApproveTargets
+    if (targets.length === 0) return
     setBulkBusy(true)
-    setActionError(null)
-    const approvedIds: number[] = []
+    setBulkApproveProgress({ done: 0, total: targets.length })
+    const patchedQuoteIds = new Map<number, number>()
+    let mayHaveCreatedAuthor = false
     let failures = 0
-    // Sequential, not Promise.allSettled: two quotes by the same not-yet-existing author
-    // approved concurrently could both miss the "does this author exist" check server-side and
-    // collide on authors.normalized_name's unique index.
-    for (const quote of bulkApproveTargets) {
+    for (const [index, quote] of targets.entries()) {
       try {
-        await approveImportedQuote(quote.id, {})
-        approvedIds.push(quote.id)
+        const response = await approveImportedQuote(quote.id, {})
+        patchedQuoteIds.set(quote.id, response.id)
+        if (quote.rawAuthor?.trim()) mayHaveCreatedAuthor = true
       } catch {
         failures += 1
       }
+      setBulkApproveProgress({ done: index + 1, total: targets.length })
     }
+    const now = new Date().toISOString()
+    setImportedQuotes((prev) =>
+      prev.map((existing) => {
+        const quoteId = patchedQuoteIds.get(existing.id)
+        return quoteId !== undefined
+          ? { ...existing, processingStatus: 'approved', quoteId, reviewedAt: now }
+          : existing
+      }),
+    )
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      for (const id of approvedIds) next.delete(id)
+      for (const id of patchedQuoteIds.keys()) next.delete(id)
       return next
     })
-    if (failures > 0) setActionError(`${failures} of ${bulkApproveTargets.length} approvals failed`)
-    await loadAll()
+    if (failures > 0) {
+      toast.error(`${failures} of ${targets.length} approvals failed`, `${patchedQuoteIds.size} succeeded`)
+    } else if (patchedQuoteIds.size > 0) {
+      toast.success(`Approved ${patchedQuoteIds.size} quote${patchedQuoteIds.size === 1 ? '' : 's'}`)
+    }
+    if (mayHaveCreatedAuthor) fetchAuthors().then(setAuthors).catch(() => undefined)
+    setBulkApproveProgress(null)
     setBulkBusy(false)
-  }
+  }, [bulkApproveTargets])
 
-  const runStatusAction = async (quote: ImportedQuote, status: ProcessingStatus) => {
-    setBusyId(quote.id)
-    setActionError(null)
+  const runStatusAction = useCallback(async (quote: ImportedQuote, status: ProcessingStatus) => {
+    setBusyAction({ id: quote.id, status })
+    const label = STATUS_LABELS[status]
     try {
       const updated = await updateImportedQuoteStatus(quote.id, status)
       setImportedQuotes((prev) => prev.map((existing) => (existing.id === updated.id ? updated : existing)))
+      toast.success(label)
     } catch (err) {
-      setActionError(errorMessage(err))
+      toast.error(`${label} failed`, errorMessage(err))
     } finally {
-      setBusyId(null)
+      setBusyAction(null)
     }
-  }
+  }, [])
 
-  const handleApproveSubmit = async (request: ApproveImportedQuoteRequest) => {
-    if (!approveTarget) return
-    setApproveSubmitting(true)
-    setApproveError(null)
-    try {
-      await approveImportedQuote(approveTarget.id, request)
-      setApproveTarget(null)
-      await loadAll()
-    } catch (err) {
-      setApproveError(errorMessage(err))
-    } finally {
-      setApproveSubmitting(false)
-    }
-  }
+  const handleReject = useCallback((quote: ImportedQuote) => runStatusAction(quote, 'rejected'), [runStatusAction])
+  const handleMarkDuplicate = useCallback(
+    (quote: ImportedQuote) => runStatusAction(quote, 'duplicate'),
+    [runStatusAction],
+  )
+  const handleResetToPending = useCallback(
+    (quote: ImportedQuote) => runStatusAction(quote, 'pending'),
+    [runStatusAction],
+  )
 
-  const requestDelete = (quote: ImportedQuote) => {
+  const handleApproveSubmit = useCallback(
+    async (request: ApproveImportedQuoteRequest) => {
+      if (!approveTarget) return
+      const target = approveTarget
+      setApproveSubmitting(true)
+      setApproveError(null)
+      try {
+        const quote = await approveImportedQuote(target.id, request)
+        const now = new Date().toISOString()
+        setImportedQuotes((prev) =>
+          prev.map((existing) =>
+            existing.id === target.id
+              ? { ...existing, processingStatus: 'approved', quoteId: quote.id, reviewedAt: now }
+              : existing,
+          ),
+        )
+        setApproveTarget(null)
+        toast.success('Approved', truncateForDialog(target.rawText))
+        if (request.newAuthorName) fetchAuthors().then(setAuthors).catch(() => undefined)
+        if (request.newSource) fetchSources().then(setSources).catch(() => undefined)
+      } catch (err) {
+        setApproveError(errorMessage(err))
+      } finally {
+        setApproveSubmitting(false)
+      }
+    },
+    [approveTarget],
+  )
+
+  const requestDelete = useCallback((quote: ImportedQuote) => {
     setDeleteError(null)
     setDeleteRequest([quote])
-  }
+  }, [])
 
-  const requestBulkDelete = () => {
+  const requestBulkDelete = useCallback(() => {
     if (bulkDeleteTargets.length === 0) return
     setDeleteError(null)
     setDeleteRequest(bulkDeleteTargets)
-  }
+  }, [bulkDeleteTargets])
 
-  const cancelDelete = () => {
+  const cancelDelete = useCallback(() => {
     if (deleteSubmitting) return
     setDeleteRequest(null)
     setDeleteError(null)
-  }
+  }, [deleteSubmitting])
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteRequest) return
     setDeleteSubmitting(true)
     setDeleteError(null)
-    const results = await Promise.allSettled(deleteRequest.map((quote) => deleteImportedQuote(quote.id)))
-    const deletedIds = new Set<number>()
-    let failures = 0
-    deleteRequest.forEach((quote, index) => {
-      if (results[index].status === 'fulfilled') deletedIds.add(quote.id)
-      else failures += 1
-    })
-    setImportedQuotes((prev) => prev.filter((quote) => !deletedIds.has(quote.id)))
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      for (const id of deletedIds) next.delete(id)
-      return next
-    })
-    setDeleteSubmitting(false)
-    if (failures > 0) {
-      setDeleteError(`${failures} of ${deleteRequest.length} deletions failed`)
-      setDeleteRequest((prev) => prev?.filter((quote) => !deletedIds.has(quote.id)) ?? null)
-    } else {
-      setDeleteRequest(null)
+    const ids = deleteRequest.map((quote) => quote.id)
+    try {
+      const result = await bulkDeleteImportedQuotes({ ids })
+      const deleted = new Set(result.succeededIds)
+      setImportedQuotes((prev) => prev.filter((quote) => !deleted.has(quote.id)))
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of result.succeededIds) next.delete(id)
+        return next
+      })
+      if (result.failedIds.length > 0) {
+        setDeleteError(`${result.failedIds.length} of ${ids.length} deletions failed`)
+        setDeleteRequest((prev) => prev?.filter((quote) => !deleted.has(quote.id)) ?? null)
+      } else {
+        toast.success(ids.length === 1 ? 'Deleted' : `Deleted ${ids.length} quotes`)
+        setDeleteRequest(null)
+      }
+    } catch (err) {
+      setDeleteError(errorMessage(err))
+    } finally {
+      setDeleteSubmitting(false)
     }
-  }
+  }, [deleteRequest])
 
   return (
     <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
+      <Toaster />
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import quotes'}</h1>
@@ -341,11 +425,6 @@ function App() {
               <AlertDescription>{loadError}</AlertDescription>
             </Alert>
           )}
-          {actionError && (
-            <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
-              <AlertDescription>{actionError}</AlertDescription>
-            </Alert>
-          )}
 
           <FilterBar
             statusCounts={statusCounts}
@@ -370,6 +449,7 @@ function App() {
               visibleCount={filteredQuotes.length}
               allVisibleSelected={allVisibleSelected}
               bulkBusy={bulkBusy}
+              approveProgress={bulkApproveProgress}
               onToggleSelectAllVisible={toggleSelectAllVisible}
               onClearSelection={clearSelection}
               approveCount={bulkApproveTargets.length}
@@ -379,9 +459,9 @@ function App() {
               resetCount={bulkResetTargets.length}
               deleteCount={bulkDeleteTargets.length}
               onBulkApprove={handleBulkApprove}
-              onBulkReject={() => runBulkStatusAction('rejected', bulkRejectTargets)}
-              onBulkMarkDuplicate={() => runBulkStatusAction('duplicate', bulkDuplicateTargets)}
-              onBulkResetToPending={() => runBulkStatusAction('pending', bulkResetTargets)}
+              onBulkReject={handleBulkReject}
+              onBulkMarkDuplicate={handleBulkMarkDuplicate}
+              onBulkResetToPending={handleBulkResetToPending}
               onBulkDelete={requestBulkDelete}
             />
           )}
@@ -392,16 +472,16 @@ function App() {
             <ImportedQuotesTable
               quotes={filteredQuotes}
               sources={sources}
-              busyId={busyId}
+              busyAction={busyAction}
               bulkBusy={bulkBusy}
               selectedIds={selectedIds}
               allVisibleSelected={allVisibleSelected}
               onToggleSelect={toggleSelect}
               onToggleSelectAllVisible={toggleSelectAllVisible}
               onApprove={setApproveTarget}
-              onReject={(quote) => runStatusAction(quote, 'rejected')}
-              onMarkDuplicate={(quote) => runStatusAction(quote, 'duplicate')}
-              onResetToPending={(quote) => runStatusAction(quote, 'pending')}
+              onReject={handleReject}
+              onMarkDuplicate={handleMarkDuplicate}
+              onResetToPending={handleResetToPending}
               onDelete={requestDelete}
             />
           )}

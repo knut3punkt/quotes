@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { importWikiquoteAuthors } from '../api'
+import { toast } from '../hooks/use-toast'
 import type { SourceConfidence, WikiquoteAuthorImportResult } from '../types'
 import { QuickImportsSection } from './QuickImportsSection'
 import { WikiquoteAuthorPicker } from './WikiquoteAuthorPicker'
@@ -47,8 +50,16 @@ export function ImportPage() {
         sourceConfidence: Array.from(selectedConfidence),
       })
       setResults(response.results)
+      const totalInserted = response.results.reduce((sum, result) => sum + result.quotesInserted, 0)
+      const notFound = response.results.filter((result) => !result.found).length
+      toast.success(
+        'Wikiquote import complete',
+        `${totalInserted} quotes inserted${notFound > 0 ? `, ${notFound} author(s) not found` : ''}`,
+      )
     } catch (err) {
-      setError(errorMessage(err))
+      const message = errorMessage(err)
+      setError(message)
+      toast.error('Wikiquote import failed', message)
     } finally {
       setSubmitting(false)
     }
@@ -89,14 +100,18 @@ export function ImportPage() {
             </div>
           </div>
 
-          <div>
-            <Button
-              type="button"
-              disabled={submitting || authorNames.length === 0 || selectedConfidence.size === 0}
-              onClick={handleSubmit}
-            >
-              {submitting ? 'Importing…' : 'Import'}
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div>
+              <Button
+                type="button"
+                disabled={submitting || authorNames.length === 0 || selectedConfidence.size === 0}
+                onClick={handleSubmit}
+              >
+                {submitting && <Loader2 className="animate-spin" />}
+                {submitting ? 'Importing…' : 'Import'}
+              </Button>
+            </div>
+            {submitting && <Progress value={null} className="max-w-xs" />}
           </div>
         </div>
 

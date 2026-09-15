@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -49,6 +50,7 @@ export function ConfirmDialog({
             Cancel
           </Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={submitting}>
+            {submitting && <Loader2 className="animate-spin" />}
             {submitting ? submittingLabel : confirmLabel}
           </Button>
         </DialogFooter>

@@ -135,6 +135,15 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

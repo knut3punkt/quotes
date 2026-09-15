@@ -94,10 +94,6 @@ export function approveImportedQuote(id: number, body: ApproveImportedQuoteReque
   })
 }
 
-export function deleteImportedQuote(id: number): Promise<void> {
-  return request(`/admin/imported-quotes/${id}`, { method: 'DELETE' })
-}
-
 export function importWikiquoteAuthors(body: WikiquoteImportRequest): Promise<WikiquoteImportResponse> {
   return request('/admin/import/wikiquote', {
     method: 'POST',
