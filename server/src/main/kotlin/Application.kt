@@ -38,7 +38,7 @@ fun Application.module() {
         json()
     }
     install(CORS) {
-        allowHost("localhost:5173")
+        anyHost()
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Patch)
@@ -58,6 +58,7 @@ fun Application.module() {
     }
     configureDatabase()
     configureRouting(
+        publicQuoteService = PublicQuoteService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
         quoteAdminService = QuoteAdminService(),

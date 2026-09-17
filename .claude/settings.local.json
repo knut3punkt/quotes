@@ -7,8 +7,10 @@
     "deny": [
       "Read(server/.env)",
       "Edit(server/.env)",
-      "Read(tv-app/.env)",
-      "Edit(tv-app/.env)"
+      "Read(platforms/android-tv/.env)",
+      "Edit(platforms/android-tv/.env)",
+      "Read(platforms/tv-web/.env)",
+      "Edit(platforms/tv-web/.env)"
     ]
   }
 }

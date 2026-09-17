@@ -29,6 +29,7 @@ import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun Application.configureRouting(
+    publicQuoteService: PublicQuoteService,
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
     quoteAdminService: QuoteAdminService,
@@ -45,6 +46,10 @@ fun Application.configureRouting(
         }
         get("/api/quotes") {
             call.respond(sampleQuotes)
+        }
+        get("/api/quotes/random") {
+            val count = call.request.queryParameters["count"]?.toIntOrNull() ?: PublicQuoteService.DEFAULT_COUNT
+            call.respond(publicQuoteService.randomQuotes(count))
         }
         post("/admin/import/wikiquote") {
             val request = call.receive<WikiquoteImportRequest>()

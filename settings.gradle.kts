@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "quote-viewer"
 
-include(":tv-app")
+include(":platforms:android-tv")
 include(":server")

@@ -1,0 +1,10 @@
+{
+  "id": "no.esotericgames.quotes.tvweb",
+  "version": "0.0.1",
+  "vendor": "esotericgames",
+  "type": "web",
+  "main": "index.html",
+  "title": "TV Quotes",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png"
+}
