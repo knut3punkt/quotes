@@ -16,6 +16,7 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { FilterBar } from './components/FilterBar'
 import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { ImportPage } from './components/ImportPage'
+import { QuotesPage } from './components/QuotesPage'
 import { SelectionBar } from './components/SelectionBar'
 import { Toaster } from './components/Toaster'
 import { useDebouncedValue } from './hooks/use-debounced-value'
@@ -50,7 +51,7 @@ const STATUS_LABELS: Record<ProcessingStatus, string> = {
 }
 
 function App() {
-  const [page, setPage] = useState<'review' | 'import'>('review')
+  const [page, setPage] = useState<'review' | 'import' | 'quotes'>('review')
 
   const [importedQuotes, setImportedQuotes] = useState<ImportedQuote[]>([])
   const [authors, setAuthors] = useState<Author[]>([])
@@ -401,11 +402,15 @@ function App() {
       <Toaster />
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="mb-1 text-[28px]">{page === 'review' ? 'Imported quotes' : 'Import quotes'}</h1>
+          <h1 className="mb-1 text-[28px]">
+            {page === 'review' ? 'Imported quotes' : page === 'import' ? 'Import quotes' : 'Approved quotes'}
+          </h1>
           <p className="text-muted-foreground">
             {page === 'review'
               ? 'Review staged imports and promote them into the quote library.'
-              : 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'}
+              : page === 'import'
+                ? 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'
+                : 'Browse the curated quotes that have been approved into the library.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -421,6 +426,9 @@ function App() {
           </Button>
           <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
             Import quotes
+          </Button>
+          <Button type="button" variant={page === 'quotes' ? 'default' : 'outline'} onClick={() => setPage('quotes')}>
+            Approved quotes
           </Button>
         </div>
       </header>
@@ -529,6 +537,8 @@ function App() {
       )}
 
       {page === 'import' && <ImportPage />}
+
+      {page === 'quotes' && <QuotesPage />}
     </div>
   )
 }

@@ -92,6 +92,27 @@ data class QuoteResponse(
 )
 
 @Serializable
+data class QuoteListItemResponse(
+    val id: Int,
+    val text: String,
+    val authorId: Int?,
+    val authorName: String?,
+    val sourceId: Int?,
+    val sourceTitle: String?,
+    val sourceDetail: String?,
+    val verified: Boolean,
+    val language: String,
+)
+
+@Serializable
+data class PagedQuotesResponse(
+    val items: List<QuoteListItemResponse>,
+    val total: Long,
+    val page: Int,
+    val pageSize: Int,
+)
+
+@Serializable
 data class AuthorResponse(val id: Int, val name: String, val birthYear: Int?, val deathYear: Int?, val wikidataQid: String?)
 
 @Serializable

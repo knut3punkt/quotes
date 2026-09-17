@@ -17,6 +17,8 @@ import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.NewSourceRequest
+import no.esotericgames.quotes.server.admin.QuoteAdminService
+import no.esotericgames.quotes.server.admin.QuoteFilter
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.bible.BibleImportService
@@ -29,6 +31,7 @@ import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 fun Application.configureRouting(
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
+    quoteAdminService: QuoteAdminService,
     taoTeChingImportService: TaoTeChingImportService,
     bhagavadGitaImportService: BhagavadGitaImportService,
     dhammapadaImportService: DhammapadaImportService,
@@ -102,6 +105,18 @@ fun Application.configureRouting(
             val id = call.parameters.getOrFail("id").toInt()
             importedQuoteAdminService.delete(id)
             call.respond(HttpStatusCode.NoContent)
+        }
+        get("/admin/quotes") {
+            val params = call.request.queryParameters
+            val filter = QuoteFilter(
+                authorId = params["authorId"]?.toIntOrNull(),
+                verified = params["verified"]?.toBooleanStrictOrNull(),
+                language = params["language"],
+                search = params["search"],
+                page = params["page"]?.toIntOrNull() ?: 1,
+                pageSize = params["pageSize"]?.toIntOrNull() ?: 50,
+            )
+            call.respond(quoteAdminService.listQuotes(filter))
         }
         get("/admin/authors") {
             call.respond(importedQuoteAdminService.listAuthors())

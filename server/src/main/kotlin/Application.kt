@@ -12,6 +12,7 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
+import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.bible.BibleClient
@@ -59,6 +60,7 @@ fun Application.module() {
     configureRouting(
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
+        quoteAdminService = QuoteAdminService(),
         taoTeChingImportService = TaoTeChingImportService(),
         bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
         dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),

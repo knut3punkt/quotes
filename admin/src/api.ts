@@ -8,8 +8,10 @@ import type {
   ImportedQuote,
   NewSourceRequest,
   PagedImportedQuotes,
+  PagedQuotes,
   ProcessingStatus,
   Quote,
+  QuoteFilter,
   ScriptureImportResult,
   Source,
   SourceType,
@@ -40,6 +42,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export async function fetchImportedQuotes(): Promise<ImportedQuote[]> {
   const page = await request<PagedImportedQuotes>(`/admin/imported-quotes?pageSize=${DEFAULT_PAGE_SIZE}`)
   return page.items
+}
+
+export function fetchQuotes(filter: QuoteFilter): Promise<PagedQuotes> {
+  const params = new URLSearchParams()
+  if (filter.authorId !== undefined) params.set('authorId', String(filter.authorId))
+  if (filter.verified !== undefined) params.set('verified', String(filter.verified))
+  if (filter.language) params.set('language', filter.language)
+  if (filter.search) params.set('search', filter.search)
+  params.set('page', String(filter.page))
+  params.set('pageSize', String(filter.pageSize))
+  return request(`/admin/quotes?${params.toString()}`)
 }
 
 export function fetchAuthors(): Promise<Author[]> {
