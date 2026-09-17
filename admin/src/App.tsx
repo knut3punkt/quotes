@@ -409,7 +409,14 @@ function App() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant={page === 'review' ? 'default' : 'outline'} onClick={() => setPage('review')}>
+          <Button
+            type="button"
+            variant={page === 'review' ? 'default' : 'outline'}
+            onClick={() => {
+              setPage('review')
+              loadAll()
+            }}
+          >
             Review imports
           </Button>
           <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
