@@ -18,6 +18,12 @@ Expects the server (see `../../server`) running on `http://localhost:8080`; over
 
 Requires LG's `ares-cli` installed and on `PATH` separately — not part of this repo.
 
+`VITE_API_BASE_URL` is baked in at build time, so for a device build point it at your dev
+machine's LAN IP, not `localhost` — on the TV, `localhost` resolves to the TV itself. Set it in
+`.env` before building (e.g. `VITE_API_BASE_URL=http://192.168.1.45:8080`), and make sure the
+server (`../../server`) is running and reachable on that IP/port — it binds `0.0.0.0` by default,
+but a firewall on the dev machine may need to allow inbound connections on the port.
+
 ```powershell
 npm run build          # production build to dist/
 npm run package:webos   # wraps `ares-package dist -o dist-ipk`
