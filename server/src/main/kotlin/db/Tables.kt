@@ -2,6 +2,7 @@ package no.esotericgames.quotes.server.db
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
@@ -94,4 +95,39 @@ object ImportedQuotes : Table("imported_quotes") {
     init {
         uniqueIndex(provider, providerQuoteId)
     }
+}
+
+object QuoteExtractionAttempts : Table("quote_extraction_attempts") {
+    val id = integer("id").autoIncrement()
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val extractionMethod = text("extraction_method").default("llm-unit-selection")
+    val extractionMethodVersion = text("extraction_method_version")
+    val promptVersion = text("prompt_version")
+    val modelId = text("model_id").nullable()
+    val attemptedAt = timestampWithTimeZone("attempted_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val status = text("status")
+    val excerptCount = integer("excerpt_count").default(0)
+    val errorMessage = text("error_message").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object QuoteExcerpts : Table("quote_excerpts") {
+    val id = integer("id").autoIncrement()
+    val attemptId = integer("attempt_id").references(QuoteExtractionAttempts.id, onDelete = ReferenceOption.CASCADE)
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val text = text("text")
+    val startOffset = integer("start_offset")
+    val endOffset = integer("end_offset")
+    val startUnit = integer("start_unit")
+    val endUnit = integer("end_unit")
+    val wordCount = integer("word_count")
+    val independenceScore = integer("independence_score")
+    val completenessScore = integer("completeness_score")
+    val quotabilityScore = integer("quotability_score")
+    val contextFidelityScore = integer("context_fidelity_score")
+    val reason = text("reason").nullable()
+    val meetsThresholds = bool("meets_thresholds")
+
+    override val primaryKey = PrimaryKey(id)
 }

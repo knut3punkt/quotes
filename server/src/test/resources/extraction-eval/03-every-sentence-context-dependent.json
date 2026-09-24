@@ -1,0 +1,5 @@
+{
+  "id": "03-every-sentence-context-dependent",
+  "description": "A passage where every sentence depends on the previous one; no contiguous range should be selected as independent since removing any part destroys the argument's coherence.",
+  "sourceText": "Suppose first that the two quantities are equal, as we assumed at the outset of this argument. Given that assumption, the second condition follows immediately from the definition stated above. Because the second condition holds, the third quantity must also satisfy the same relation we derived earlier. It is only at this point, having established all three conditions in sequence, that the final conclusion becomes valid, and none of these steps can be understood correctly without the ones that came directly before them in this chain of reasoning."
+}

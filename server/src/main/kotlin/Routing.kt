@@ -14,6 +14,7 @@ import io.ktor.server.util.getOrFail
 import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
 import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
+import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.NewSourceRequest
@@ -23,6 +24,7 @@ import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.bible.BibleImportService
 import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.quran.QuranImportService
 import no.esotericgames.quotes.server.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
@@ -39,6 +41,7 @@ fun Application.configureRouting(
     authorEnrichmentService: AuthorEnrichmentService,
     bibleImportService: BibleImportService,
     quranImportService: QuranImportService,
+    quoteExtractionService: QuoteExtractionService,
 ) {
     routing {
         get("/health") {
@@ -138,6 +141,10 @@ fun Application.configureRouting(
         }
         get("/admin/source-types") {
             call.respond(importedQuoteAdminService.listSourceTypes())
+        }
+        post("/admin/quotes/extract-excerpts") {
+            val request = call.receive<ExtractQuoteExcerptsRequest>()
+            call.respond(quoteExtractionService.extractForQuotes(request.quoteIds))
         }
     }
 }

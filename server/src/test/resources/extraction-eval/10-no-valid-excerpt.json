@@ -1,0 +1,5 @@
+{
+  "id": "10-no-valid-excerpt",
+  "description": "A passage for which the correct result is no excerpt at all: purely procedural, bibliographic, and transitional prose with no independent, quotable point anywhere in it.",
+  "sourceText": "This chapter is organized into four sections, each addressing a distinct phase of the project as outlined in the introduction. Section one covers the initial data collection, which took place over eighteen months across three separate sites. Section two describes the methodology used to clean and normalize the resulting records before analysis. Section three presents the analysis itself, and section four summarizes the findings in relation to the questions posed at the beginning of this chapter, with full citations provided in the appendix."
+}

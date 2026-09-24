@@ -44,6 +44,32 @@ export interface Quote {
   language: string
 }
 
+export interface QuoteExcerpt {
+  id: number
+  quoteId: number
+  text: string
+  startOffset: number
+  endOffset: number
+  independence: number
+  completeness: number
+  quotability: number
+  contextualFidelity: number
+  reason: string
+  meetsThresholds: boolean
+}
+
+export type QuoteExtractionOutcome = 'extracted' | 'skippedTooShort' | 'noExcerptsFound' | 'failed' | 'notFound'
+
+export interface QuoteExtractionResult {
+  quoteId: number
+  outcome: QuoteExtractionOutcome
+  excerpts: QuoteExcerpt[]
+}
+
+export interface ExtractQuoteExcerptsResponse {
+  results: QuoteExtractionResult[]
+}
+
 export interface QuoteListItem {
   id: number
   text: string
@@ -54,6 +80,7 @@ export interface QuoteListItem {
   sourceDetail: string | null
   verified: boolean
   language: string
+  excerpts: QuoteExcerpt[]
 }
 
 export interface PagedQuotes {

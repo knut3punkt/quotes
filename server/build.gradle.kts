@@ -44,3 +44,11 @@ dependencies {
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.kotlin.test)
 }
+
+tasks.register<JavaExec>("runExtractionEval") {
+    group = "verification"
+    description = "Manually runs the quote-extraction model-quality corpus against a local llama-server (not part of `test`)."
+    dependsOn("testClasses")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("no.esotericgames.quotes.server.extraction.eval.ExtractionEvalRunnerKt")
+}

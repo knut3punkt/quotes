@@ -1,0 +1,5 @@
+{
+  "id": "06-single-extremely-long-sentence",
+  "description": "A single extremely long sentence with no terminal punctuation until the very end, testing clause-level segmentation on semicolons and em dashes rather than sentence boundaries.",
+  "sourceText": "It is easy, when everything is going well, to mistake good fortune for good judgment; it is only when circumstances turn against us — when the plans fail, the timing is wrong, and the people we counted on are nowhere to be found — that we discover whether what we called wisdom was ever more than the accidental alignment of effort and luck, and it is this discovery, however uncomfortable, that ultimately separates those who learn from those who merely repeat their earlier mistakes with greater confidence."
+}
