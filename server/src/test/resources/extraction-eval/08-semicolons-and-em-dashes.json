@@ -1,0 +1,5 @@
+{
+  "id": "08-semicolons-and-em-dashes",
+  "description": "A quotation containing semicolons and em dashes throughout, testing clause-boundary segmentation quality on strongly punctuated prose.",
+  "sourceText": "Ambition is a strange companion; it flatters you when you succeed and abandons you the moment you falter. Some call this cruelty — others simply call it honesty about the nature of the thing itself. Either way, the lesson is the same: build your sense of worth on something sturdier than ambition's fickle approval, because ambition, unlike character, was never designed to stay with you once the applause has faded and the next challenge has already begun."
+}

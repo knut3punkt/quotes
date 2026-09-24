@@ -5,6 +5,7 @@ import type {
   BulkActionResponse,
   BulkDeleteImportedQuotesRequest,
   BulkUpdateImportedQuoteStatusRequest,
+  ExtractQuoteExcerptsResponse,
   ImportedQuote,
   NewSourceRequest,
   PagedImportedQuotes,
@@ -140,4 +141,11 @@ export function importQuran(): Promise<ScriptureImportResult> {
 
 export function enrichAuthorsFromWikidata(): Promise<AuthorEnrichmentResponse> {
   return request('/admin/authors/enrich', { method: 'POST' })
+}
+
+export function extractQuoteExcerpts(quoteIds: number[]): Promise<ExtractQuoteExcerptsResponse> {
+  return request('/admin/quotes/extract-excerpts', {
+    method: 'POST',
+    body: JSON.stringify({ quoteIds }),
+  })
 }

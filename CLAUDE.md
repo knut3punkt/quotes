@@ -74,6 +74,31 @@ speculatively — only when a specific platform is explicitly requested.
   from the BOM, not the catalog. Compose for TV (`androidx.tv:tv-material`,
   `androidx.tv:tv-foundation`) is **not** covered by that BOM and is pinned explicitly.
 
+## LLM features
+
+The server may use locally hosted LLMs for offline/background processing of quote data.
+
+General rules:
+
+* Treat LLM output as untrusted data. Parse and validate all structured responses.
+* Prefer schema-constrained structured output over parsing free-form prose.
+* Do not allow an LLM to silently rewrite source quotations when the operation is intended to extract an excerpt.
+* Preserve the original quote text and provenance.
+* Reconstruct extracted quotations deterministically from the original text whenever possible.
+* Keep model provider/runtime details behind an application abstraction rather than coupling domain logic directly to llama.cpp.
+* LLM endpoints, model names, timeouts, and generation settings must be configurable.
+* Prompts used by application code should be version-controlled resources rather than large inline strings in Kotlin source.
+* Add deterministic tests around preprocessing, validation, reconstruction, and malformed model responses. Do not make ordinary unit tests depend on a running LLM.
+
+### Quote extraction
+
+When implementing or modifying quotable-excerpt extraction, first read:
+
+`docs/features/quote-extraction.md`
+
+That document defines the intended behavior, extraction constraints, model contract, and quality criteria. Do not substantially change those semantics merely to simplify implementation without documenting the decision.
+
+
 ## Build commands
 
 ```powershell

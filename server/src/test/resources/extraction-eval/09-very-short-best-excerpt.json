@@ -1,0 +1,5 @@
+{
+  "id": "09-very-short-best-excerpt",
+  "description": "A long passage whose single best excerpt is very short (well below the preferred minimum length), testing that a good short quotation is not rejected or padded merely to reach a target length.",
+  "sourceText": "The lecture had gone on for nearly an hour, covering the history of the observatory, the funding disputes of the previous decade, and the technical specifications of the new telescope in exhausting detail. Near the very end, almost as a throwaway remark before the closing thanks, the speaker paused and said simply: the sky does not care what we believe about it. A few people in the audience laughed softly, and then the applause began, and everyone filed out into the cold evening air discussing dinner plans."
+}

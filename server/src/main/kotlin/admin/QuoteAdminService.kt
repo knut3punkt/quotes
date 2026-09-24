@@ -3,11 +3,13 @@ package no.esotericgames.quotes.server.admin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.esotericgames.quotes.server.db.Authors
+import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.db.Sources
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -40,11 +42,21 @@ class QuoteAdminService {
             }
 
             val total = query.count()
-            val items = query
+            val rows = query
                 .orderBy(Quotes.id to SortOrder.DESC)
                 .limit(pageSize)
                 .offset((page - 1).toLong() * pageSize)
-                .map { it.toQuoteListItemResponse() }
+                .toList()
+
+            val quoteIds = rows.map { it[Quotes.id] }
+            val excerptsByQuoteId = if (quoteIds.isEmpty()) {
+                emptyMap()
+            } else {
+                QuoteExcerpts.selectAll().where { QuoteExcerpts.quoteId inList quoteIds }
+                    .map { it.toQuoteExcerptResponse() }
+                    .groupBy { it.quoteId }
+            }
+            val items = rows.map { it.toQuoteListItemResponse(excerptsByQuoteId[it[Quotes.id]].orEmpty()) }
 
             PagedQuotesResponse(items = items, total = total, page = page, pageSize = pageSize)
         }
@@ -52,7 +64,7 @@ class QuoteAdminService {
 
 }
 
-private fun ResultRow.toQuoteListItemResponse() = QuoteListItemResponse(
+private fun ResultRow.toQuoteListItemResponse(excerpts: List<QuoteExcerptResponse>) = QuoteListItemResponse(
     id = this[Quotes.id],
     text = this[Quotes.text],
     authorId = this[Quotes.authorId],
@@ -62,4 +74,19 @@ private fun ResultRow.toQuoteListItemResponse() = QuoteListItemResponse(
     sourceDetail = this[Quotes.sourceDetail],
     verified = this[Quotes.verified],
     language = this[Quotes.language],
+    excerpts = excerpts,
+)
+
+private fun ResultRow.toQuoteExcerptResponse() = QuoteExcerptResponse(
+    id = this[QuoteExcerpts.id],
+    quoteId = this[QuoteExcerpts.quoteId],
+    text = this[QuoteExcerpts.text],
+    startOffset = this[QuoteExcerpts.startOffset],
+    endOffset = this[QuoteExcerpts.endOffset],
+    independence = this[QuoteExcerpts.independenceScore],
+    completeness = this[QuoteExcerpts.completenessScore],
+    quotability = this[QuoteExcerpts.quotabilityScore],
+    contextualFidelity = this[QuoteExcerpts.contextFidelityScore],
+    reason = this[QuoteExcerpts.reason].orEmpty(),
+    meetsThresholds = this[QuoteExcerpts.meetsThresholds],
 )
