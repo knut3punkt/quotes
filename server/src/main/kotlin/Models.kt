@@ -19,6 +19,15 @@ val sampleQuotes = listOf(
 )
 
 @Serializable
+data class PublicQuoteResponse(
+    val id: Int,
+    val text: String,
+    val author: String?,
+    val sourceTitle: String?,
+    val sourceDetail: String?,
+)
+
+@Serializable
 data class WikiquoteImportRequest(
     val authorNames: List<String>,
     val sourceConfidence: Set<String> = setOf("sourced", "attributed", "unsourced", "disputed"),

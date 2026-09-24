@@ -1,15 +1,15 @@
 # TV Quotes
 
-A boilerplate for an Android TV app that will eventually display quotes fetched from a small
-Kotlin server. Right now it's foundation only: the TV app shows one placeholder quote screen and
-the server exposes two static endpoints. Nothing here is wired together yet.
+An app for TVs that displays interesting quotes, targeting multiple TV platforms. Frontends live
+under `platforms/`, one directory per TV platform.
 
 ## Modules
 
-- **`tv-app`** — Native Android TV application (Kotlin, Jetpack Compose, Compose for TV).
-  Single activity, one placeholder screen. Package: `no.esotericgames.quotes`.
-- **`server`** — Kotlin/JVM Ktor server (Netty engine) with two static endpoints. Package:
-  `no.esotericgames.quotes.server`.
+- **`platforms/android-tv`** — Native Android TV application (Kotlin, Jetpack Compose, Compose for
+  TV). Single activity, one placeholder screen. Package: `no.esotericgames.quotes`.
+- **`platforms/tv-web`** — React + TypeScript + Vite frontend for web-based TV platforms
+  (browser-testable, webOS-packageable). Not a Gradle module.
+- **`server`** — Kotlin/JVM Ktor server (Netty engine). Package: `no.esotericgames.quotes.server`.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ JDK setup required.
 1. **File → Open** and select the repository root (`quote-viewer/`).
 2. Let Android Studio sync Gradle. This uses `gradlew`/`gradlew.bat`, so no separately installed
    Gradle is involved.
-3. Once synced, both `tv-app` and `server` appear as modules in the project view.
+3. Once synced, both `platforms/android-tv` and `server` appear as modules in the project view.
 
 ## Creating or selecting an Android TV emulator
 
@@ -45,16 +45,16 @@ JDK setup required.
 
 ## Running the TV app
 
-- From Android Studio: select the `tv-app` run configuration, choose the TV emulator (or a
+- From Android Studio: select the `android-tv` run configuration, choose the TV emulator (or a
   physical Android TV device with USB debugging enabled), and click **Run**.
 - From the command line:
 
   ```powershell
-  .\gradlew.bat :tv-app:installDebug
+  .\gradlew.bat :platforms:android-tv:installDebug
   ```
 
   ```bash
-  ./gradlew :tv-app:installDebug
+  ./gradlew :platforms:android-tv:installDebug
   ```
 
   Then launch "TV Quotes" from the emulator/device's leanback launcher.
@@ -101,11 +101,11 @@ $env:PORT = "9090"; .\gradlew.bat :server:run
 ```
 
 This runs the server's Ktor `testApplication` tests and the TV app's JVM unit test. The TV app
-also has one Compose UI test under `tv-app/src/androidTest`, which requires a connected
-device/emulator:
+also has one Compose UI test under `platforms/android-tv/src/androidTest`, which requires a
+connected device/emulator:
 
 ```powershell
-.\gradlew.bat :tv-app:connectedDebugAndroidTest
+.\gradlew.bat :platforms:android-tv:connectedDebugAndroidTest
 ```
 
 ## Building everything from the command line
@@ -119,7 +119,7 @@ device/emulator:
 ```
 
 This compiles both modules, runs unit tests and lint, and assembles a debug APK
-(`tv-app/build/outputs/apk/debug/`) plus a runnable server jar
+(`platforms/android-tv/build/outputs/apk/debug/`) plus a runnable server jar
 (`server/build/libs/server-all.jar`).
 
 ## Where dependency versions are managed
@@ -130,7 +130,7 @@ hard-coded version strings.
 
 ## Where the future server base URL is configured
 
-`tv-app/build.gradle.kts` sets a single `buildConfigField` named `SERVER_BASE_URL`
+`platforms/android-tv/build.gradle.kts` sets a single `buildConfigField` named `SERVER_BASE_URL`
 (`no.esotericgames.quotes.BuildConfig.SERVER_BASE_URL`) as the one place to change it later. It
 currently defaults to `http://10.0.2.2:8080` and is **not** wired to any network call yet.
 

@@ -12,6 +12,7 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
+import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
 import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.bible.BibleClient
@@ -37,7 +38,7 @@ fun Application.module() {
         json()
     }
     install(CORS) {
-        allowHost("localhost:5173")
+        anyHost()
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Patch)
@@ -57,8 +58,10 @@ fun Application.module() {
     }
     configureDatabase()
     configureRouting(
+        publicQuoteService = PublicQuoteService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
+        quoteAdminService = QuoteAdminService(),
         taoTeChingImportService = TaoTeChingImportService(),
         bhagavadGitaImportService = BhagavadGitaImportService(BhagavadGitaClient()),
         dhammapadaImportService = DhammapadaImportService(DhammapadaClient()),

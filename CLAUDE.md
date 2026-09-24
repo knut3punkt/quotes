@@ -12,79 +12,57 @@ provoking results.
 ## Current scope
 
 The TV app is still a fresh foundation. There is **no** authentication, dependency injection,
-navigation framework, networking layer, or background work in `tv-app`, and none of that should be
+navigation framework, or background work in `platforms/android-tv`, and none of that should be
 added speculatively. See the "possible future features" list in the original project brief for
 context on where this is headed — none of it is implemented, and none of it should be started
 without an explicit request. The `admin` website (see below) is the first concrete step into that
 list and exists because it was explicitly requested — don't take it as license to build out the
 rest of the list unprompted.
 
+Frontends live under `platforms/`, one directory per TV platform, since the product targets
+multiple TV systems (webOS and Android TV now, more later). Don't add a new platform directory
+speculatively — only when a specific platform is explicitly requested.
+
 ## Module responsibilities
 
-- **`tv-app`** (`no.esotericgames.quotes`) — Native Android TV app. Single activity
+- **`platforms/android-tv`** (`no.esotericgames.quotes`) — Native Android TV app. Single activity
   (`MainActivity`), one composable screen (`QuoteScreen`) showing a hard-coded `Quote`. TV theming
   lives in `theme/` (`Theme.kt`, `Color.kt`, `Type.kt`) and uses `androidx.tv.material3`, not the
   phone `androidx.compose.material3` artifact.
+- **`platforms/tv-web`** — React + TypeScript + Vite frontend for web-based TV platforms (not a
+  Gradle module — a separate npm project, same tooling conventions as `admin`). Browser-testable
+  and webOS-packageable (see `platforms/tv-web/README.md` for packaging/install/launch via LG's
+  `ares-cli`); written to be reusable for other web-based TV platforms (e.g. Tizen) later. Fetches
+  a random batch of quotes from the server's `/api/quotes/random` endpoint and displays one at a
+  time, full-screen, with conditional author/source fields, 30s auto-advance, and D-pad/arrow-key
+  navigation with wrap-around. `src/platform/` provides `webos`/`browser` detection for future
+  platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
-  entry point (`EngineMain`), which wires up every import service and calls `configureRouting`;
-  `Routing.kt` defines routes; `Models.kt` holds the `@Serializable` response types and the
-  hard-coded `/api/quotes` sample quotes (the TV app's real feed, still unimplemented). `db/` holds
-  the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`, `source_types`,
-  `sources`, `quotes`, `tags`, `imported_quotes`). Each importable source has its own package
-  (`wikiquote/`, `bible/`, `quran/`, `bhagavadgita/`, `dhammapada/`, `taote/`) built on the shared
-  staging pipeline in `importing/` — see "Quote import pipeline" below. `wikidata/` enriches
-  existing `authors` rows (birth/death year, QID) from Wikidata rather than importing quotes.
-  `admin/` (package, not to be confused with the top-level `admin` frontend project) holds the
-  admin API — DTOs and the service backing the `/admin/*` routes used to review and approve staged
-  imports into real `authors`/`quotes` rows, manage `sources`, and enrich authors. See
-  `server/CLAUDE.md` for the local Postgres access/migration convention.
-- **`admin`** — React 19 + TypeScript + Vite admin website (not a Gradle module — a separate npm
-  project), using Tailwind v4, shadcn/ui-style components (`src/components/ui/`, radix-nova style,
-  see `components.json`) built on Radix primitives, and oxlint. Talks to the `server`'s `/admin/*`
-  routes over plain `fetch` (`src/api.ts`), no auth yet. Lets a human filter `imported_quotes` by
-  processing status/confidence/provider/search, review individually or in bulk (status
-  update/delete), approve into `authors`/`quotes` rows, trigger scripture/Wikiquote imports
-  (`QuickImportsSection`, `ImportPage`), and trigger Wikidata author enrichment. The imported-quotes
-  table is virtualized (`@tanstack/react-virtual`) for large review queues.
+  entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
+  response types and the hard-coded sample quotes. `PublicQuoteService.kt` backs the public
+  `GET /api/quotes/random` endpoint (random verified quotes with author/source, for TV frontends).
+  `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
+  `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
+  stages results in `imported_quotes`. `admin/` (package, not to be confused with the top-level
+  `admin` frontend project) holds the admin API — DTOs and the service backing the
+  `/admin/imported-quotes` routes used to review and approve staged imports into real `quotes`
+  rows.
+- **`admin`** — React + TypeScript + Vite admin website (not a Gradle module — a separate npm
+  project). Talks to the `server`'s `/admin/*` routes over plain `fetch`, no auth yet. Lets a human
+  filter `imported_quotes` by processing status/confidence/provider and approve, reject, mark
+  duplicate, or reset rows; approving creates the corresponding `authors`/`quotes` rows.
 
 ## Key architectural decisions
 
-- **AGP 9's built-in Kotlin support** compiles `tv-app`; the standalone
+- **AGP 9's built-in Kotlin support** compiles `platforms/android-tv`; the standalone
   `org.jetbrains.kotlin.android` plugin is intentionally *not* applied there. `server` uses the
   standard `org.jetbrains.kotlin.jvm` plugin, since built-in Kotlin only covers Android modules.
 - The Ktor Gradle plugin (`io.ktor.plugin`) is applied in `server`; it implicitly manages the Ktor
   BOM, so `io.ktor:*` dependencies are declared without explicit versions.
-- No ViewModel in `tv-app` — there's no state or lifecycle need yet. Add one only when a concrete
-  need appears, not preemptively.
-- `SERVER_BASE_URL` is a single `buildConfigField` in `tv-app/build.gradle.kts` — the one place to
-  point the app at a server later. It is not wired to a network call yet.
-
-## Quote import pipeline
-
-Every source-specific importer (`wikiquote/`, `bible/`, `quran/`, `bhagavadgita/`, `dhammapada/`,
-`taote/`) follows the same two-layer shape, and a new source should too:
-
-- A **`*Client`** (e.g. `WikiquoteClient`, `BibleClient`) fetches/parses raw content from its
-  origin — a live HTTP source for Wikiquote/Bible/Quran/Bhagavad Gita/Dhammapada, or a bundled
-  resource file under `server/src/main/resources/scripture/` for sources with a fixed public-domain
-  text (Tao Te Ching) where vendoring avoids a live dependency.
-- A **`*ImportService`** turns that raw content into `StagedQuoteCandidate`s and hands each one to
-  the shared `importing/` package, which every importer must go through rather than inserting into
-  `ImportedQuotes` directly:
-  - `findOrCreateSource` (`SourceRegistry.kt`) dedupes `sources` rows by case-insensitive
-    title + type + translation, so re-running an importer doesn't create duplicate source rows.
-  - `stageQuote` (`ImportStaging.kt`) inserts into `imported_quotes` and applies two dedup tiers: an
-    exact-after-normalization match (against both `quotes` and other `imported_quotes` rows) that
-    immediately marks the row `duplicate`, and a `pg_trgm` fuzzy-similarity match that only leaves a
-    `possible_duplicate_of_id` hint for a human reviewer.
-  - `TextNormalization.kt` defines the normalization used for both dedup tiers.
-  - `ScriptureImportResult` is the shared response shape (`sourceId`, `quotesInserted`,
-    `quotesSkippedAsDuplicate`, `quotesFailedToFetch`) returned by the whole-canon and seed-list
-    scripture importers.
-- Whole-canon importers (Tao Te Ching, Bhagavad Gita, Dhammapada) enumerate their entire source and
-  never have unresolvable entries; seed-list importers (Bible, Quran) walk a bundled list of
-  references (`bible-kjv-seed-refs.json`, `quran-pickthall-seed-refs.json`) that a live API call can
-  fail to resolve, which is what `quotesFailedToFetch` tracks.
+- No ViewModel in `platforms/android-tv` — there's no state or lifecycle need yet. Add one only
+  when a concrete need appears, not preemptively.
+- `SERVER_BASE_URL` is a single `buildConfigField` in `platforms/android-tv/build.gradle.kts` — the
+  one place to point the app at a server later. It is not wired to a network call yet.
 
 ## Dependency and version-management conventions
 
@@ -101,20 +79,26 @@ Every source-specific importer (`wikiquote/`, `bible/`, `quran/`, `bhagavadgita/
 ```powershell
 .\gradlew.bat projects        # list modules
 .\gradlew.bat build            # compile, test, lint, assemble everything
-.\gradlew.bat :tv-app:assembleDebug
+.\gradlew.bat :platforms:android-tv:assembleDebug
 .\gradlew.bat :server:run      # run the server locally (Ctrl+C to stop)
 ```
 
 (Unix/macOS: same commands with `./gradlew`.)
 
-`admin` is a plain npm project, not part of the Gradle build:
+`admin` and `platforms/tv-web` are plain npm projects, not part of the Gradle build:
 
 ```powershell
 cd admin
 npm install
 npm run dev      # Vite dev server on http://localhost:5173, expects the server on :8080
 npm run build     # type-check (tsc -b) then production build to admin/dist
-npm run lint      # oxlint
+```
+
+```powershell
+cd platforms/tv-web
+npm install
+npm run dev      # Vite dev server, defaults to http://localhost:5173 (or next free port)
+npm run build     # type-check (tsc -b) then production build to platforms/tv-web/dist
 ```
 
 `.\scripts\dev.ps1` starts both `:server:run` and the admin `npm run dev` in separate PowerShell
@@ -123,14 +107,14 @@ windows for local development.
 ## Test commands
 
 ```powershell
-.\gradlew.bat test                              # server + tv-app JVM unit tests
+.\gradlew.bat test                                            # server + android-tv JVM unit tests
 .\gradlew.bat :server:test
-.\gradlew.bat :tv-app:testDebugUnitTest
-.\gradlew.bat :tv-app:connectedDebugAndroidTest  # Compose UI test; needs a device/emulator
+.\gradlew.bat :platforms:android-tv:testDebugUnitTest
+.\gradlew.bat :platforms:android-tv:connectedDebugAndroidTest  # Compose UI test; needs a device/emulator
 
 # single test class or method
 .\gradlew.bat :server:test --tests "no.esotericgames.quotes.server.ApplicationTest"
-.\gradlew.bat :tv-app:testDebugUnitTest --tests "no.esotericgames.quotes.QuoteFormattingTest"
+.\gradlew.bat :platforms:android-tv:testDebugUnitTest --tests "no.esotericgames.quotes.QuoteFormattingTest"
 ```
 
 ## Code-style expectations

@@ -44,6 +44,34 @@ export interface Quote {
   language: string
 }
 
+export interface QuoteListItem {
+  id: number
+  text: string
+  authorId: number | null
+  authorName: string | null
+  sourceId: number | null
+  sourceTitle: string | null
+  sourceDetail: string | null
+  verified: boolean
+  language: string
+}
+
+export interface PagedQuotes {
+  items: QuoteListItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface QuoteFilter {
+  authorId?: number
+  verified?: boolean
+  language?: string
+  search?: string
+  page: number
+  pageSize: number
+}
+
 export interface Author {
   id: number
   name: string

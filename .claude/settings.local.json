@@ -5,8 +5,12 @@
       "WebFetch(domain:ktor.io)"
     ],
     "deny": [
-      "Edit(**/.env)",
-      "Read(**/.env)"
+      "Read(server/.env)",
+      "Edit(server/.env)",
+      "Read(platforms/android-tv/.env)",
+      "Edit(platforms/android-tv/.env)",
+      "Read(platforms/tv-web/.env)",
+      "Edit(platforms/tv-web/.env)"
     ]
   }
 }
