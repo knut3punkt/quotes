@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.dhammapada
+package no.esotericgames.quotes.server.sources.dhammapada
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

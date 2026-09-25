@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.bhagavadgita
+package no.esotericgames.quotes.server.sources.bhagavadgita
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

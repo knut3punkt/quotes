@@ -21,14 +21,14 @@ import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteFilter
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
-import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
-import no.esotericgames.quotes.server.bible.BibleImportService
-import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
-import no.esotericgames.quotes.server.quran.QuranImportService
-import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.sources.bible.BibleImportService
+import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.sources.quran.QuranImportService
+import no.esotericgames.quotes.server.sources.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteImportService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
-import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun Application.configureRouting(
     publicQuoteService: PublicQuoteService,

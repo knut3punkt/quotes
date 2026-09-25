@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.dhammapada
+package no.esotericgames.quotes.server.sources.dhammapada
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

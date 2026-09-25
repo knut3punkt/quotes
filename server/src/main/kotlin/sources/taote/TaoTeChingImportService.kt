@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.taote
+package no.esotericgames.quotes.server.sources.taote
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject

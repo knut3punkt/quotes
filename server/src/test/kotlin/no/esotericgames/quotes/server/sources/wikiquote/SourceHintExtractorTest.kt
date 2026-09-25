@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.wikiquote
+package no.esotericgames.quotes.server.sources.wikiquote
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

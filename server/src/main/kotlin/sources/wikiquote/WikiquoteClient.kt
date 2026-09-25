@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.wikiquote
+package no.esotericgames.quotes.server.sources.wikiquote
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

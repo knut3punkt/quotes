@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.wikiquote
+package no.esotericgames.quotes.server.sources.wikiquote
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.add

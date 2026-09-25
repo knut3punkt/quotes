@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.quran
+package no.esotericgames.quotes.server.sources.quran
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

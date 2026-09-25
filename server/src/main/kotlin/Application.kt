@@ -13,23 +13,23 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteAdminService
-import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaClient
-import no.esotericgames.quotes.server.bhagavadgita.BhagavadGitaImportService
-import no.esotericgames.quotes.server.bible.BibleClient
-import no.esotericgames.quotes.server.bible.BibleImportService
 import no.esotericgames.quotes.server.db.configureDatabase
-import no.esotericgames.quotes.server.dhammapada.DhammapadaClient
-import no.esotericgames.quotes.server.dhammapada.DhammapadaImportService
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptSelectionClient
-import no.esotericgames.quotes.server.quran.QuranClient
-import no.esotericgames.quotes.server.quran.QuranImportService
-import no.esotericgames.quotes.server.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaClient
+import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
+import no.esotericgames.quotes.server.sources.bible.BibleClient
+import no.esotericgames.quotes.server.sources.bible.BibleImportService
+import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaClient
+import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaImportService
+import no.esotericgames.quotes.server.sources.quran.QuranClient
+import no.esotericgames.quotes.server.sources.quran.QuranImportService
+import no.esotericgames.quotes.server.sources.taote.TaoTeChingImportService
+import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteClient
+import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteImportService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikidata.WikidataClient
-import no.esotericgames.quotes.server.wikiquote.WikiquoteClient
-import no.esotericgames.quotes.server.wikiquote.WikiquoteImportService
 
 fun main(args: Array<String>) {
     loadDotEnvIntoSystemProperties()

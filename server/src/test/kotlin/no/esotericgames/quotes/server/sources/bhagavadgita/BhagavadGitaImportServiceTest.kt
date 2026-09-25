@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.bhagavadgita
+package no.esotericgames.quotes.server.sources.bhagavadgita
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

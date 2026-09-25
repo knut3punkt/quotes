@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.bible
+package no.esotericgames.quotes.server.sources.bible
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

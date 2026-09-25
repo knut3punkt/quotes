@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.quran
+package no.esotericgames.quotes.server.sources.quran
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

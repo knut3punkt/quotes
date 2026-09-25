@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.wikiquote
+package no.esotericgames.quotes.server.sources.wikiquote
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element

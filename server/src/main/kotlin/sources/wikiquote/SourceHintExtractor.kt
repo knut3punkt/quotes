@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.wikiquote
+package no.esotericgames.quotes.server.sources.wikiquote
 
 data class SourceHints(val title: String?, val year: Int?, val location: String?)
 

@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.quran
+package no.esotericgames.quotes.server.sources.quran
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

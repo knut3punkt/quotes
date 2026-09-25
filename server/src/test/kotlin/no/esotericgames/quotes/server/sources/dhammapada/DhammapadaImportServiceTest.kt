@@ -1,4 +1,4 @@
-package no.esotericgames.quotes.server.dhammapada
+package no.esotericgames.quotes.server.sources.dhammapada
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
