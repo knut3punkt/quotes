@@ -17,6 +17,9 @@ import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptSelectionClient
+import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
+import no.esotericgames.quotes.server.interpretation.loadInterpretationConfig
+import no.esotericgames.quotes.server.interpretation.llm.LlamaCppInterpretationClient
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaClient
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.sources.bible.BibleClient
@@ -61,6 +64,7 @@ fun Application.module() {
     }
     configureDatabase()
     val extractionConfig = loadExtractionConfig(environment.config)
+    val interpretationLlmConfig = loadInterpretationConfig(environment.config)
     configureRouting(
         publicQuoteService = PublicQuoteService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
@@ -73,5 +77,9 @@ fun Application.module() {
         bibleImportService = BibleImportService(BibleClient()),
         quranImportService = QuranImportService(QuranClient()),
         quoteExtractionService = QuoteExtractionService(LlamaCppExcerptSelectionClient(extractionConfig.llm), extractionConfig),
+        quoteInterpretationService = QuoteInterpretationService(
+            LlamaCppInterpretationClient(interpretationLlmConfig),
+            interpretationLlmConfig,
+        ),
     )
 }

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   approveImportedQuote,
   bulkDeleteImportedQuotes,
@@ -398,148 +399,150 @@ function App() {
   }, [deleteRequest])
 
   return (
-    <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
-      <Toaster />
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="mb-1 text-[28px]">
-            {page === 'review' ? 'Imported quotes' : page === 'import' ? 'Import quotes' : 'Approved quotes'}
-          </h1>
-          <p className="text-muted-foreground">
-            {page === 'review'
-              ? 'Review staged imports and promote them into the quote library.'
-              : page === 'import'
-                ? 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'
-                : 'Browse the curated quotes that have been approved into the library.'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={page === 'review' ? 'default' : 'outline'}
-            onClick={() => {
-              setPage('review')
-              loadAll()
-            }}
-          >
-            Review imports
-          </Button>
-          <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
-            Import quotes
-          </Button>
-          <Button type="button" variant={page === 'quotes' ? 'default' : 'outline'} onClick={() => setPage('quotes')}>
-            Approved quotes
-          </Button>
-        </div>
-      </header>
-
-      {page === 'review' && (
-        <>
-          {loadError && (
-            <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
-              <AlertDescription>{loadError}</AlertDescription>
-            </Alert>
-          )}
-
-          <FilterBar
-            statusCounts={statusCounts}
-            selectedStatuses={selectedStatuses}
-            onToggleStatus={toggleStatus}
-            confidence={confidence}
-            onConfidenceChange={setConfidence}
-            providers={providers}
-            provider={provider}
-            onProviderChange={setProvider}
-            search={search}
-            onSearchChange={setSearch}
-            lengthOp={lengthOp}
-            onLengthOpChange={setLengthOp}
-            lengthValue={lengthValue}
-            onLengthValueChange={setLengthValue}
-          />
-
-          {!loading && (
-            <SelectionBar
-              selectedCount={selectedIds.size}
-              visibleCount={filteredQuotes.length}
-              allVisibleSelected={allVisibleSelected}
-              bulkBusy={bulkBusy}
-              approveProgress={bulkApproveProgress}
-              onToggleSelectAllVisible={toggleSelectAllVisible}
-              onClearSelection={clearSelection}
-              approveCount={bulkApproveTargets.length}
-              approveSkippedCount={bulkApproveSkipped}
-              rejectCount={bulkRejectTargets.length}
-              duplicateCount={bulkDuplicateTargets.length}
-              resetCount={bulkResetTargets.length}
-              deleteCount={bulkDeleteTargets.length}
-              onBulkApprove={handleBulkApprove}
-              onBulkReject={handleBulkReject}
-              onBulkMarkDuplicate={handleBulkMarkDuplicate}
-              onBulkResetToPending={handleBulkResetToPending}
-              onBulkDelete={requestBulkDelete}
-            />
-          )}
-
-          {loading ? (
-            <p className="py-8 text-center text-muted-foreground">Loading…</p>
-          ) : (
-            <ImportedQuotesTable
-              quotes={filteredQuotes}
-              sources={sources}
-              busyAction={busyAction}
-              bulkBusy={bulkBusy}
-              selectedIds={selectedIds}
-              allVisibleSelected={allVisibleSelected}
-              onToggleSelect={toggleSelect}
-              onToggleSelectAllVisible={toggleSelectAllVisible}
-              onApprove={setApproveTarget}
-              onReject={handleReject}
-              onMarkDuplicate={handleMarkDuplicate}
-              onResetToPending={handleResetToPending}
-              onDelete={requestDelete}
-            />
-          )}
-
-          {approveTarget && (
-            <ApproveDialog
-              quote={approveTarget}
-              authors={authors}
-              sources={sources}
-              sourceTypes={sourceTypes}
-              submitting={approveSubmitting}
-              error={approveError}
-              onCancel={() => {
-                setApproveTarget(null)
-                setApproveError(null)
+    <TooltipProvider>
+      <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
+        <Toaster />
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="mb-1 text-[28px]">
+              {page === 'review' ? 'Imported quotes' : page === 'import' ? 'Import quotes' : 'Approved quotes'}
+            </h1>
+            <p className="text-muted-foreground">
+              {page === 'review'
+                ? 'Review staged imports and promote them into the quote library.'
+                : page === 'import'
+                  ? 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'
+                  : 'Browse the curated quotes that have been approved into the library.'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={page === 'review' ? 'default' : 'outline'}
+              onClick={() => {
+                setPage('review')
+                loadAll()
               }}
-              onSubmit={handleApproveSubmit}
+            >
+              Review imports
+            </Button>
+            <Button type="button" variant={page === 'import' ? 'default' : 'outline'} onClick={() => setPage('import')}>
+              Import quotes
+            </Button>
+            <Button type="button" variant={page === 'quotes' ? 'default' : 'outline'} onClick={() => setPage('quotes')}>
+              Approved quotes
+            </Button>
+          </div>
+        </header>
+
+        {page === 'review' && (
+          <>
+            {loadError && (
+              <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
+                <AlertDescription>{loadError}</AlertDescription>
+              </Alert>
+            )}
+
+            <FilterBar
+              statusCounts={statusCounts}
+              selectedStatuses={selectedStatuses}
+              onToggleStatus={toggleStatus}
+              confidence={confidence}
+              onConfidenceChange={setConfidence}
+              providers={providers}
+              provider={provider}
+              onProviderChange={setProvider}
+              search={search}
+              onSearchChange={setSearch}
+              lengthOp={lengthOp}
+              onLengthOpChange={setLengthOp}
+              lengthValue={lengthValue}
+              onLengthValueChange={setLengthValue}
             />
-          )}
 
-          {deleteRequest && (
-            <ConfirmDialog
-              title={deleteRequest.length === 1 ? 'Delete imported quote' : `Delete ${deleteRequest.length} imported quotes`}
-              description={
-                deleteRequest.length === 1
-                  ? `"${truncateForDialog(deleteRequest[0].rawText)}" will be permanently deleted. This cannot be undone.`
-                  : `${deleteRequest.length} imported quotes will be permanently deleted. This cannot be undone.`
-              }
-              confirmLabel="Delete"
-              submittingLabel="Deleting…"
-              submitting={deleteSubmitting}
-              error={deleteError}
-              onCancel={cancelDelete}
-              onConfirm={confirmDelete}
-            />
-          )}
-        </>
-      )}
+            {!loading && (
+              <SelectionBar
+                selectedCount={selectedIds.size}
+                visibleCount={filteredQuotes.length}
+                allVisibleSelected={allVisibleSelected}
+                bulkBusy={bulkBusy}
+                approveProgress={bulkApproveProgress}
+                onToggleSelectAllVisible={toggleSelectAllVisible}
+                onClearSelection={clearSelection}
+                approveCount={bulkApproveTargets.length}
+                approveSkippedCount={bulkApproveSkipped}
+                rejectCount={bulkRejectTargets.length}
+                duplicateCount={bulkDuplicateTargets.length}
+                resetCount={bulkResetTargets.length}
+                deleteCount={bulkDeleteTargets.length}
+                onBulkApprove={handleBulkApprove}
+                onBulkReject={handleBulkReject}
+                onBulkMarkDuplicate={handleBulkMarkDuplicate}
+                onBulkResetToPending={handleBulkResetToPending}
+                onBulkDelete={requestBulkDelete}
+              />
+            )}
 
-      {page === 'import' && <ImportPage />}
+            {loading ? (
+              <p className="py-8 text-center text-muted-foreground">Loading…</p>
+            ) : (
+              <ImportedQuotesTable
+                quotes={filteredQuotes}
+                sources={sources}
+                busyAction={busyAction}
+                bulkBusy={bulkBusy}
+                selectedIds={selectedIds}
+                allVisibleSelected={allVisibleSelected}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAllVisible={toggleSelectAllVisible}
+                onApprove={setApproveTarget}
+                onReject={handleReject}
+                onMarkDuplicate={handleMarkDuplicate}
+                onResetToPending={handleResetToPending}
+                onDelete={requestDelete}
+              />
+            )}
 
-      {page === 'quotes' && <QuotesPage />}
-    </div>
+            {approveTarget && (
+              <ApproveDialog
+                quote={approveTarget}
+                authors={authors}
+                sources={sources}
+                sourceTypes={sourceTypes}
+                submitting={approveSubmitting}
+                error={approveError}
+                onCancel={() => {
+                  setApproveTarget(null)
+                  setApproveError(null)
+                }}
+                onSubmit={handleApproveSubmit}
+              />
+            )}
+
+            {deleteRequest && (
+              <ConfirmDialog
+                title={deleteRequest.length === 1 ? 'Delete imported quote' : `Delete ${deleteRequest.length} imported quotes`}
+                description={
+                  deleteRequest.length === 1
+                    ? `"${truncateForDialog(deleteRequest[0].rawText)}" will be permanently deleted. This cannot be undone.`
+                    : `${deleteRequest.length} imported quotes will be permanently deleted. This cannot be undone.`
+                }
+                confirmLabel="Delete"
+                submittingLabel="Deleting…"
+                submitting={deleteSubmitting}
+                error={deleteError}
+                onCancel={cancelDelete}
+                onConfirm={confirmDelete}
+              />
+            )}
+          </>
+        )}
+
+        {page === 'import' && <ImportPage />}
+
+        {page === 'quotes' && <QuotesPage />}
+      </div>
+    </TooltipProvider>
   )
 }
 

@@ -70,6 +70,28 @@ export interface ExtractQuoteExcerptsResponse {
   results: QuoteExtractionResult[]
 }
 
+export interface QuoteInterpretation {
+  id: number
+  quoteId: number
+  excerptId: number | null
+  lens: string
+  interpretation: string
+  textualSupport: number
+  speculativeness: number
+}
+
+export type QuoteInterpretationOutcome = 'generated' | 'noInterpretationsFound' | 'failed' | 'notFound'
+
+export interface QuoteInterpretationResult {
+  quoteId: number
+  outcome: QuoteInterpretationOutcome
+  interpretations: QuoteInterpretation[]
+}
+
+export interface GenerateQuoteInterpretationsResponse {
+  results: QuoteInterpretationResult[]
+}
+
 export interface QuoteListItem {
   id: number
   text: string
@@ -81,6 +103,7 @@ export interface QuoteListItem {
   verified: boolean
   language: string
   excerpts: QuoteExcerpt[]
+  interpretations: QuoteInterpretation[]
 }
 
 export interface PagedQuotes {
