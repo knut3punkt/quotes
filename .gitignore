@@ -27,6 +27,7 @@ Thumbs.db
 
 .env
 .env.claude
+claude.local.md
 
 # Node / frontend
 node_modules/
