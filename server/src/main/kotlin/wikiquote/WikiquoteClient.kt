@@ -2,22 +2,15 @@ package no.esotericgames.quotes.server.wikiquote
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import no.esotericgames.quotes.server.httpclient.externalApiHttpClient
+import no.esotericgames.quotes.server.httpclient.getWithRetryAfter
 
 private const val WIKIQUOTE_API_BASE_URL = "https://en.wikiquote.org/w/api.php"
-private const val USER_AGENT = "TVQuotes-Importer/1.0 (contact: knut3punkt@gmail.com)"
 private const val REQUEST_INTERVAL_MILLIS = 250L
 private const val DEFAULT_RETRY_AFTER_SECONDS = 2L
 
@@ -26,14 +19,7 @@ private const val DEFAULT_RETRY_AFTER_SECONDS = 2L
  * concurrently by this class) and paced with a small delay per the Wikimedia API etiquette policy.
  */
 class WikiquoteClient(
-    private val httpClient: HttpClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        install(UserAgent) {
-            agent = USER_AGENT
-        }
-    },
+    private val httpClient: HttpClient = externalApiHttpClient(),
 ) {
     suspend fun resolveTitle(name: String): String? {
         val response = apiGet {
@@ -88,13 +74,7 @@ class WikiquoteClient(
 
     private suspend fun apiGet(block: HttpRequestBuilder.() -> Unit): HttpResponse {
         delay(REQUEST_INTERVAL_MILLIS)
-        val response = httpClient.get(WIKIQUOTE_API_BASE_URL, block)
-        if (response.status != HttpStatusCode.TooManyRequests) {
-            return response
-        }
-        val retryAfterSeconds = response.headers[HttpHeaders.RetryAfter]?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_SECONDS
-        delay(retryAfterSeconds * 1000)
-        return httpClient.get(WIKIQUOTE_API_BASE_URL, block)
+        return httpClient.getWithRetryAfter(WIKIQUOTE_API_BASE_URL, DEFAULT_RETRY_AFTER_SECONDS, block)
     }
 }
 

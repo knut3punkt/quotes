@@ -2,24 +2,19 @@ package no.esotericgames.quotes.server.wikidata
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.esotericgames.quotes.server.httpclient.externalApiHttpClient
 
 private const val WIKIDATA_API_BASE_URL = "https://www.wikidata.org/w/api.php"
-private const val USER_AGENT = "TVQuotes-Importer/1.0 (contact: knut3punkt@gmail.com)"
 private const val REQUEST_INTERVAL_MILLIS = 200L
 private const val BIRTH_DATE_PROPERTY = "P569"
 private const val DEATH_DATE_PROPERTY = "P570"
@@ -34,14 +29,7 @@ data class AuthorDates(val birthYear: Int?, val deathYear: Int?)
 /** Thin wrapper around Wikidata's public, CC0, unauthenticated API — used only for metadata (this
  * client never fetches quote text). */
 class WikidataClient(
-    private val httpClient: HttpClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        install(UserAgent) {
-            agent = USER_AGENT
-        }
-    },
+    private val httpClient: HttpClient = externalApiHttpClient(),
 ) {
     /** Best-effort name search; returns the top-ranked entity id, or null if nothing matched. */
     suspend fun searchEntity(name: String): String? {

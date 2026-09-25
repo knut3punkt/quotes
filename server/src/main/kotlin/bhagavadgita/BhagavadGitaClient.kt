@@ -2,30 +2,18 @@ package no.esotericgames.quotes.server.bhagavadgita
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import no.esotericgames.quotes.server.httpclient.externalApiHttpClient
 
 private const val BASE_URL = "https://vedicscriptures.github.io"
-private const val USER_AGENT = "TVQuotes-Importer/1.0 (contact: knut3punkt@gmail.com)"
 private const val REQUEST_INTERVAL_MILLIS = 150L
 
 /** Thin wrapper around the free, unauthenticated vedicscriptures.github.io Bhagavad Gita API. */
 class BhagavadGitaClient(
-    private val httpClient: HttpClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        install(UserAgent) {
-            agent = USER_AGENT
-        }
-    },
+    private val httpClient: HttpClient = externalApiHttpClient(),
 ) {
     suspend fun fetchChapter(chapter: Int): GitaChapter {
         delay(REQUEST_INTERVAL_MILLIS)

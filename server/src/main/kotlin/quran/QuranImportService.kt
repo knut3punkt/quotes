@@ -1,18 +1,17 @@
 package no.esotericgames.quotes.server.quran
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import no.esotericgames.quotes.server.importing.ScriptureImportResult
 import no.esotericgames.quotes.server.importing.SourceDescriptor
 import no.esotericgames.quotes.server.importing.StagedQuoteCandidate
 import no.esotericgames.quotes.server.importing.findOrCreateSource
+import no.esotericgames.quotes.server.importing.loadBundledJsonResource
 import no.esotericgames.quotes.server.importing.stageQuote
 
 private const val EDITION = "en.pickthall"
 private const val PROVIDER = "alquran-cloud-pickthall"
 private const val RESOURCE_PATH = "/scripture/quran-pickthall-seed-refs.json"
-private val json = Json { ignoreUnknownKeys = true }
 private val REFERENCE = Regex("""^(\d+):(\d+)(?:-(\d+))?$""")
 
 /**
@@ -25,7 +24,7 @@ private val REFERENCE = Regex("""^(\d+):(\d+)(?:-(\d+))?$""")
 class QuranImportService(private val client: QuranClient) {
 
     suspend fun import(): ScriptureImportResult {
-        val references = loadSeedReferences()
+        val references = loadBundledJsonResource<List<String>>(RESOURCE_PATH)
         val sourceId = findOrCreateSource(
             SourceDescriptor(
                 title = "The Quran",
@@ -85,12 +84,6 @@ class QuranImportService(private val client: QuranClient) {
             quotesSkippedAsDuplicate = duplicates,
             quotesFailedToFetch = failed,
         )
-    }
-
-    private fun loadSeedReferences(): List<String> {
-        val stream = javaClass.getResourceAsStream(RESOURCE_PATH) ?: error("bundled resource not found: $RESOURCE_PATH")
-        val content = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        return json.decodeFromString(content)
     }
 }
 

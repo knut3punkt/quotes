@@ -1,18 +1,17 @@
 package no.esotericgames.quotes.server.bible
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import no.esotericgames.quotes.server.importing.ScriptureImportResult
 import no.esotericgames.quotes.server.importing.SourceDescriptor
 import no.esotericgames.quotes.server.importing.StagedQuoteCandidate
 import no.esotericgames.quotes.server.importing.findOrCreateSource
+import no.esotericgames.quotes.server.importing.loadBundledJsonResource
 import no.esotericgames.quotes.server.importing.stageQuote
 
 private const val TRANSLATION = "kjv"
 private const val PROVIDER = "bible-api-$TRANSLATION"
 private const val RESOURCE_PATH = "/scripture/bible-kjv-seed-refs.json"
-private val json = Json { ignoreUnknownKeys = true }
 
 /**
  * Imports a small, hand-curated seed list of well-known Bible passages (King James Version, public
@@ -24,7 +23,7 @@ private val json = Json { ignoreUnknownKeys = true }
 class BibleImportService(private val client: BibleClient) {
 
     suspend fun import(): ScriptureImportResult {
-        val references = loadSeedReferences()
+        val references = loadBundledJsonResource<List<String>>(RESOURCE_PATH)
         val sourceId = findOrCreateSource(
             SourceDescriptor(
                 title = "The Bible",
@@ -73,11 +72,5 @@ class BibleImportService(private val client: BibleClient) {
             quotesSkippedAsDuplicate = duplicates,
             quotesFailedToFetch = failed,
         )
-    }
-
-    private fun loadSeedReferences(): List<String> {
-        val stream = javaClass.getResourceAsStream(RESOURCE_PATH) ?: error("bundled resource not found: $RESOURCE_PATH")
-        val content = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        return json.decodeFromString(content)
     }
 }

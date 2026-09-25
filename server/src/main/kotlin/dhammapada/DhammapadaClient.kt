@@ -2,18 +2,13 @@ package no.esotericgames.quotes.server.dhammapada
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import no.esotericgames.quotes.server.httpclient.externalApiHttpClient
 
 private const val BASE_URL = "https://suttacentral.net/api/bilarasuttas"
-private const val USER_AGENT = "TVQuotes-Importer/1.0 (contact: knut3punkt@gmail.com)"
 private const val REQUEST_INTERVAL_MILLIS = 250L
 
 /**
@@ -22,14 +17,7 @@ private const val REQUEST_INTERVAL_MILLIS = 250L
  * translator (Bhikkhu Sujato dedicates his translations to the public domain).
  */
 class DhammapadaClient(
-    private val httpClient: HttpClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-        install(UserAgent) {
-            agent = USER_AGENT
-        }
-    },
+    private val httpClient: HttpClient = externalApiHttpClient(),
 ) {
     suspend fun fetchRange(startVerse: Int, endVerse: Int, translator: String = "sujato"): BilaraRangeResponse {
         delay(REQUEST_INTERVAL_MILLIS)

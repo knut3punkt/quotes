@@ -1,18 +1,17 @@
 package no.esotericgames.quotes.server.taote
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import no.esotericgames.quotes.server.importing.ScriptureImportResult
 import no.esotericgames.quotes.server.importing.SourceDescriptor
 import no.esotericgames.quotes.server.importing.StagedQuoteCandidate
 import no.esotericgames.quotes.server.importing.findOrCreateSource
+import no.esotericgames.quotes.server.importing.loadBundledJsonResource
 import no.esotericgames.quotes.server.importing.stageQuote
 
 private const val PROVIDER = "tao-te-ching-legge"
 private const val RESOURCE_PATH = "/scripture/tao-te-ching-legge.json"
-private val json = Json { ignoreUnknownKeys = true }
 
 @Serializable
 private data class TaoTeChingResource(
@@ -37,7 +36,7 @@ private data class TaoTeChingChapter(val chapter: Int, val text: String)
 class TaoTeChingImportService {
 
     suspend fun import(): ScriptureImportResult {
-        val resource = loadResource()
+        val resource = loadBundledJsonResource<TaoTeChingResource>(RESOURCE_PATH)
         val sourceId = findOrCreateSource(
             SourceDescriptor(
                 title = resource.work,
@@ -76,12 +75,5 @@ class TaoTeChingImportService {
         }
 
         return ScriptureImportResult(sourceId = sourceId, quotesInserted = inserted, quotesSkippedAsDuplicate = duplicates)
-    }
-
-    private fun loadResource(): TaoTeChingResource {
-        val stream = javaClass.getResourceAsStream(RESOURCE_PATH)
-            ?: error("bundled resource not found: $RESOURCE_PATH")
-        val content = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        return json.decodeFromString(TaoTeChingResource.serializer(), content)
     }
 }
