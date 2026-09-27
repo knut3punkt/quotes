@@ -85,10 +85,11 @@ object ImportedQuotes : Table("imported_quotes") {
     val reviewedBy = text("reviewed_by").nullable()
     val reviewedAt = timestampWithTimeZone("reviewed_at").nullable()
     val reviewNote = text("review_note").nullable()
-    val duplicateOfId = integer("duplicate_of_id").references(id).nullable()
+    val duplicateOfId = integer("duplicate_of_id").references(id, onDelete = ReferenceOption.SET_NULL).nullable()
     val language = text("language").default("en")
     val normalizedText = text("normalized_text")
-    val possibleDuplicateOfId = integer("possible_duplicate_of_id").references(id).nullable()
+    val possibleDuplicateOfId =
+        integer("possible_duplicate_of_id").references(id, onDelete = ReferenceOption.SET_NULL).nullable()
 
     override val primaryKey = PrimaryKey(id)
 
