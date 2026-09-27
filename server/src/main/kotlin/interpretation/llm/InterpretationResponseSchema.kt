@@ -12,7 +12,7 @@ import kotlinx.serialization.json.putJsonObject
 // trusting the schema-constrained response alone.
 const val MAX_INTERPRETATIONS = 4
 const val MAX_LENS_LENGTH = 60
-const val MAX_INTERPRETATION_LENGTH = 600
+const val MAX_INTERPRETATION_LENGTH = 400
 
 /**
  * Schema-constrained `response_format` for llama-server's OpenAI-compatible chat-completions
@@ -45,7 +45,7 @@ val INTERPRETATION_JSON_SCHEMA: JsonObject = buildJsonObject {
                     putJsonObject("interpretation") {
                         put("type", "string")
                         put("maxLength", MAX_INTERPRETATION_LENGTH)
-                        put("description", "1-3 sentences explaining this specific reading of the quotation. Interpretation, not paraphrase.")
+                        put("description", "1-2 sentences explaining this specific reading of the quotation. Interpretation, not paraphrase.")
                     }
                     putJsonObject("textualSupport") {
                         put("type", "integer"); put("minimum", 0); put("maximum", 100)

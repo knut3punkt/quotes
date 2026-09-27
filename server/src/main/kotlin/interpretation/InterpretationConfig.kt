@@ -15,7 +15,7 @@ private val DEFAULT_LLM_CONFIG = InterpretationLlmConfig(
     baseUrl = "http://localhost:8888",
     model = "local-model",
     temperature = 0.5,
-    maxOutputTokens = 800,
+    maxOutputTokens = 1400,
     requestTimeoutMillis = 30_000,
     reasoningEffort = null,
 )

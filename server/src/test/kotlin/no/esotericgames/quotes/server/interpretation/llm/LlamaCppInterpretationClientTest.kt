@@ -98,6 +98,28 @@ class LlamaCppInterpretationClientTest {
     }
 
     @Test
+    fun `a finish_reason of length maps to MalformedResponse mentioning truncation, even with parseable content`() = runBlocking {
+        val client = clientRespondingWith {
+            """
+            {
+              "model": "test-model",
+              "choices": [
+                {
+                  "message": { "role": "assistant", "content": "{\"interpretations\":[{\"lens\":\"Ethical\",\"interpretation\":\"A close reading.\",\"textualSupport\":90,\"speculativeness\":20}]}" },
+                  "finish_reason": "length"
+                }
+              ]
+            }
+            """.trimIndent()
+        }
+
+        val outcome = client.generateInterpretations(requestFor())
+
+        val result = assertIs<InferenceOutcome.MalformedResponse>(outcome)
+        assertTrue(result.message.contains("truncated"))
+    }
+
+    @Test
     fun `a connection exception maps to ConnectionFailure`() = runBlocking {
         val mockEngine = MockEngine { throw java.net.ConnectException("connection refused") }
         val client = LlamaCppInterpretationClient(TEST_CONFIG, testHttpClient(mockEngine))

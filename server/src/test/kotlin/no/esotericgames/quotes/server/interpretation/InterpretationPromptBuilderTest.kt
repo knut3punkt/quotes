@@ -85,6 +85,6 @@ class InterpretationPromptBuilderTest {
 
     @Test
     fun `prompt version matches the resource filename stem`() {
-        assertEquals("quote-interpretation-v1", InterpretationPrompts.PROMPT_VERSION)
+        assertEquals("quote-interpretation-v2", InterpretationPrompts.PROMPT_VERSION)
     }
 }

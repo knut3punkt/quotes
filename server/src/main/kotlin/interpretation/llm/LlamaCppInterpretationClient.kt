@@ -77,8 +77,19 @@ class LlamaCppInterpretationClient(
             return InferenceOutcome.MalformedResponse("invalid chat-completion envelope: ${e.message}")
         }
 
-        val content = envelope.choices.firstOrNull()?.message?.content
+        val choice = envelope.choices.firstOrNull()
             ?: return InferenceOutcome.MalformedResponse("no choices in chat-completion response")
+
+        if (choice.finishReason == "length") {
+            // The model ran out of output tokens before finishing. The content may still happen to be
+            // valid, truncated-but-parseable JSON, so it must never be accepted as if it were complete.
+            return InferenceOutcome.MalformedResponse(
+                "model response truncated: finish_reason=length (increase interpretation.llm.maxOutputTokens)",
+            )
+        }
+
+        val content = choice.message.content
+            ?: return InferenceOutcome.MalformedResponse("no content in chat-completion response")
 
         val parsed = try {
             contentJson.decodeFromString(InterpretationResponseDto.serializer(), content)

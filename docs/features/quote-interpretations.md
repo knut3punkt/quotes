@@ -279,7 +279,9 @@ Each interpretation should:
 
 Suggested initial size:
 
-Approximately 1–3 sentences.
+Approximately 1–2 sentences (tightened from an initial 1–3 sentence target after early output showed
+verbose, essay-like interpretations that got cut off mid-thought against a 400-character field cap; see
+"Runtime system prompt — version 2").
 
 Prefer clarity and density over length.
 
@@ -489,6 +491,38 @@ Return only the structured response required by the response schema.
 
 ---
 
+## Runtime system prompt — version 2
+
+Same as version 1, plus a self-merge step and a firm length target inserted before the final line.
+Version 1 relied on a single sentence ("Generate only genuinely distinct interpretations...") plus the
+JSON schema's per-field length cap to keep interpretations short and distinct. In practice, at least one
+local model produced long, essay-like interpretations that ran into the schema's `maxLength` cap and were
+cut off mid-sentence, and returned interpretations under different lens labels (e.g. "Psychological" and
+"Metaphysical") that restated the same underlying claim in different terminology rather than genuinely
+disagreeing about the quotation's meaning. Version 2 adds:
+
+Before returning your final answer, compare every candidate interpretation against every other one. If
+two candidates make substantially the same underlying claim about the quotation's meaning — even when
+expressed through different terminology, jargon, or a different named lens — they are the same
+interpretation, not two. Merge them into a single, best-phrased interpretation, or drop the weaker one.
+For example, do not return separate "Psychological" and "Metaphysical" readings if both ultimately claim
+that confronting or dismantling one's repressed inner material enables genuine aliveness, merely
+described once in terms of habits and identity and once in terms of archetypes and the unconscious. Only
+return interpretations that disagree about what the quotation means, not ones that disagree only in
+vocabulary.
+
+and, replacing the schema-only length guidance with an explicit prompt-level instruction:
+
+Each interpretation must be 1-2 sentences: a complete, self-contained claim, not the opening of a longer
+exposition. Prefer density and directness over elaborate academic prose, extended chains of technical
+terminology, or multi-clause qualification. If you cannot state the reading in 1-2 sentences, it is too
+diffuse to be a distinct interpretation — sharpen it or drop it.
+
+Both prompt versions remain available as classpath resources for provenance; generated interpretations
+record which prompt version produced them.
+
+---
+
 # Suggested generation settings
 
 Interpretation generation benefits from somewhat more diversity than deterministic quote extraction.
@@ -497,11 +531,17 @@ Suggested initial values:
 
 * temperature: approximately 0.4–0.6
 * streaming: false
-* sufficient output token budget for up to four short interpretations
+* sufficient output token budget for up to four short interpretations — an initial 800-token budget
+  (copied from quote-extraction's much smaller per-item output) proved too tight and produced responses
+  truncated mid-array; 1400 tokens is the current default.
 
 Do not tune these aggressively until an evaluation corpus exists.
 
 The exact values should be configurable.
+
+A response whose `finish_reason` is `length` (the model ran out of output tokens) must be treated as a
+failed attempt, never decoded and accepted as if it were complete, since a truncated response can still
+happen to be parseable JSON.
 
 ---
 

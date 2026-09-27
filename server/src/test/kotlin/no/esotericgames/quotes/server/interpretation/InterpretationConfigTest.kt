@@ -14,6 +14,7 @@ class InterpretationConfigTest {
         assertEquals("http://localhost:8888", config.baseUrl)
         assertEquals("local-model", config.model)
         assertEquals(0.5, config.temperature)
+        assertEquals(1400, config.maxOutputTokens)
         assertNull(config.reasoningEffort)
     }
 
