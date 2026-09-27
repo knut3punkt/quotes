@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.esotericgames.quotes.server.db.Authors
 import no.esotericgames.quotes.server.db.QuoteExcerpts
+import no.esotericgames.quotes.server.db.QuoteInterpretations
 import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.db.Sources
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -56,7 +57,19 @@ class QuoteAdminService {
                     .map { it.toQuoteExcerptResponse() }
                     .groupBy { it.quoteId }
             }
-            val items = rows.map { it.toQuoteListItemResponse(excerptsByQuoteId[it[Quotes.id]].orEmpty()) }
+            val interpretationsByQuoteId = if (quoteIds.isEmpty()) {
+                emptyMap()
+            } else {
+                QuoteInterpretations.selectAll().where { QuoteInterpretations.quoteId inList quoteIds }
+                    .map { it.toQuoteInterpretationResponse() }
+                    .groupBy { it.quoteId }
+            }
+            val items = rows.map {
+                it.toQuoteListItemResponse(
+                    excerptsByQuoteId[it[Quotes.id]].orEmpty(),
+                    interpretationsByQuoteId[it[Quotes.id]].orEmpty(),
+                )
+            }
 
             PagedQuotesResponse(items = items, total = total, page = page, pageSize = pageSize)
         }
@@ -64,7 +77,10 @@ class QuoteAdminService {
 
 }
 
-private fun ResultRow.toQuoteListItemResponse(excerpts: List<QuoteExcerptResponse>) = QuoteListItemResponse(
+private fun ResultRow.toQuoteListItemResponse(
+    excerpts: List<QuoteExcerptResponse>,
+    interpretations: List<QuoteInterpretationResponse>,
+) = QuoteListItemResponse(
     id = this[Quotes.id],
     text = this[Quotes.text],
     authorId = this[Quotes.authorId],
@@ -75,6 +91,7 @@ private fun ResultRow.toQuoteListItemResponse(excerpts: List<QuoteExcerptRespons
     verified = this[Quotes.verified],
     language = this[Quotes.language],
     excerpts = excerpts,
+    interpretations = interpretations,
 )
 
 private fun ResultRow.toQuoteExcerptResponse() = QuoteExcerptResponse(
@@ -89,4 +106,14 @@ private fun ResultRow.toQuoteExcerptResponse() = QuoteExcerptResponse(
     contextualFidelity = this[QuoteExcerpts.contextFidelityScore],
     reason = this[QuoteExcerpts.reason].orEmpty(),
     meetsThresholds = this[QuoteExcerpts.meetsThresholds],
+)
+
+private fun ResultRow.toQuoteInterpretationResponse() = QuoteInterpretationResponse(
+    id = this[QuoteInterpretations.id],
+    quoteId = this[QuoteInterpretations.quoteId],
+    excerptId = this[QuoteInterpretations.excerptId],
+    lens = this[QuoteInterpretations.lens],
+    interpretation = this[QuoteInterpretations.interpretation],
+    textualSupport = this[QuoteInterpretations.textualSupport],
+    speculativeness = this[QuoteInterpretations.speculativeness],
 )

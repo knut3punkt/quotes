@@ -103,6 +103,7 @@ data class QuoteListItemResponse(
     val verified: Boolean,
     val language: String,
     val excerpts: List<QuoteExcerptResponse> = emptyList(),
+    val interpretations: List<QuoteInterpretationResponse> = emptyList(),
 )
 
 @Serializable

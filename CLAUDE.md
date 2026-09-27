@@ -98,6 +98,25 @@ When implementing or modifying quotable-excerpt extraction, first read:
 
 That document defines the intended behavior, extraction constraints, model contract, and quality criteria. Do not substantially change those semantics merely to simplify implementation without documenting the decision.
 
+### Quote interpretations
+
+When implementing or modifying quote interpretation generation, first read:
+
+`docs/features/quote-interpretations.md`
+
+Interpretation generation is separate from quote extraction.
+
+Important principles:
+
+* Generate plausible readings of the supplied quotation, not claims about the author's actual intention.
+* Distinguish interpretation from simple paraphrase.
+* Do not force predefined interpretive lenses onto every quote.
+* Several interpretations may legitimately conflict with one another.
+* Clearly distinguish strongly text-supported readings from more speculative readings.
+* Treat LLM output as untrusted and validate all structured responses.
+* Reuse the existing local LLM infrastructure used by quote extraction unless there is a concrete reason not to.
+* Runtime prompts must remain version-controlled resources.
+
 
 ## Build commands
 

@@ -131,3 +131,32 @@ object QuoteExcerpts : Table("quote_excerpts") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+object QuoteInterpretationAttempts : Table("quote_interpretation_attempts") {
+    val id = integer("id").autoIncrement()
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val excerptId = integer("excerpt_id").references(QuoteExcerpts.id, onDelete = ReferenceOption.CASCADE).nullable()
+    val interpretationMethod = text("interpretation_method").default("llm-freeform")
+    val interpretationMethodVersion = text("interpretation_method_version")
+    val promptVersion = text("prompt_version")
+    val modelId = text("model_id").nullable()
+    val attemptedAt = timestampWithTimeZone("attempted_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val status = text("status")
+    val interpretationCount = integer("interpretation_count").default(0)
+    val errorMessage = text("error_message").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object QuoteInterpretations : Table("quote_interpretations") {
+    val id = integer("id").autoIncrement()
+    val attemptId = integer("attempt_id").references(QuoteInterpretationAttempts.id, onDelete = ReferenceOption.CASCADE)
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val excerptId = integer("excerpt_id").references(QuoteExcerpts.id, onDelete = ReferenceOption.CASCADE).nullable()
+    val lens = text("lens")
+    val interpretation = text("interpretation")
+    val textualSupport = integer("textual_support")
+    val speculativeness = integer("speculativeness")
+
+    override val primaryKey = PrimaryKey(id)
+}

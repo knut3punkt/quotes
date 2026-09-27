@@ -9,9 +9,11 @@ interface QuotesSelectionBarProps {
   eligibleCount: number
   skippedCount: number
   extracting: boolean
+  interpreting: boolean
   onToggleSelectAllVisible: () => void
   onClearSelection: () => void
   onExtractExcerpts: () => void
+  onGenerateInterpretations: () => void
 }
 
 function QuotesSelectionBarComponent({
@@ -21,10 +23,14 @@ function QuotesSelectionBarComponent({
   eligibleCount,
   skippedCount,
   extracting,
+  interpreting,
   onToggleSelectAllVisible,
   onClearSelection,
   onExtractExcerpts,
+  onGenerateInterpretations,
 }: QuotesSelectionBarProps) {
+  const busy = extracting || interpreting
+
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-2.5">
@@ -33,14 +39,14 @@ function QuotesSelectionBarComponent({
           variant="outline"
           size="sm"
           onClick={onToggleSelectAllVisible}
-          disabled={extracting || visibleCount === 0}
+          disabled={busy || visibleCount === 0}
         >
           {allVisibleSelected ? `Deselect ${visibleCount} visible` : `Select all ${visibleCount} visible`}
         </Button>
         {selectedCount > 0 && (
           <>
             <span className="text-sm text-muted-foreground">{selectedCount} selected</span>
-            <Button type="button" variant="outline" size="sm" onClick={onClearSelection} disabled={extracting}>
+            <Button type="button" variant="outline" size="sm" onClick={onClearSelection} disabled={busy}>
               Clear selection
             </Button>
           </>
@@ -55,7 +61,7 @@ function QuotesSelectionBarComponent({
             size="sm"
             className="border-primary bg-brand-tint text-primary hover:bg-brand-tint hover:text-primary"
             onClick={onExtractExcerpts}
-            disabled={extracting || eligibleCount === 0}
+            disabled={busy || eligibleCount === 0}
           >
             {extracting && <Loader2 className="animate-spin" />}
             Extract excerpts {eligibleCount > 0 ? `(${eligibleCount})` : ''}
@@ -65,6 +71,20 @@ function QuotesSelectionBarComponent({
               {skippedCount} selected quote{skippedCount === 1 ? ' is' : 's are'} too short and will be skipped.
             </span>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-primary bg-brand-tint text-primary hover:bg-brand-tint hover:text-primary"
+            onClick={onGenerateInterpretations}
+            disabled={busy || selectedCount === 0}
+          >
+            {interpreting && <Loader2 className="animate-spin" />}
+            Generate interpretations ({selectedCount})
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Also generates interpretations for each quote's qualifying excerpts.
+          </span>
         </div>
       )}
     </div>

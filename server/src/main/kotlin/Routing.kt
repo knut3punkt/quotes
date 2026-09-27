@@ -15,6 +15,7 @@ import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
 import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
+import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.NewSourceRequest
@@ -22,6 +23,7 @@ import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteFilter
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
+import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.sources.bible.BibleImportService
 import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaImportService
@@ -42,6 +44,7 @@ fun Application.configureRouting(
     bibleImportService: BibleImportService,
     quranImportService: QuranImportService,
     quoteExtractionService: QuoteExtractionService,
+    quoteInterpretationService: QuoteInterpretationService,
 ) {
     routing {
         get("/health") {
@@ -145,6 +148,10 @@ fun Application.configureRouting(
         post("/admin/quotes/extract-excerpts") {
             val request = call.receive<ExtractQuoteExcerptsRequest>()
             call.respond(quoteExtractionService.extractForQuotes(request.quoteIds))
+        }
+        post("/admin/quotes/generate-interpretations") {
+            val request = call.receive<GenerateQuoteInterpretationsRequest>()
+            call.respond(quoteInterpretationService.generateForQuotes(request.quoteIds))
         }
     }
 }

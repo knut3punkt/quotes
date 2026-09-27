@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { extractQuoteExcerpts, fetchAuthors, fetchQuotes } from '../api'
+import { extractQuoteExcerpts, fetchAuthors, fetchQuotes, generateQuoteInterpretations } from '../api'
 import { useDebouncedValue } from '../hooks/use-debounced-value'
 import { toast } from '../hooks/use-toast'
-import type { Author, QuoteExtractionOutcome, QuoteListItem } from '../types'
+import type { Author, QuoteExtractionOutcome, QuoteInterpretationOutcome, QuoteListItem } from '../types'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
 import { QuotesSelectionBar } from './QuotesSelectionBar'
 
@@ -25,6 +27,13 @@ const OUTCOME_LABELS: Record<QuoteExtractionOutcome, string> = {
   extracted: 'extracted',
   noExcerptsFound: 'no excerpt found',
   skippedTooShort: 'skipped (too short)',
+  failed: 'failed',
+  notFound: 'not found',
+}
+
+const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> = {
+  generated: 'generated',
+  noInterpretationsFound: 'no interpretation found',
   failed: 'failed',
   notFound: 'not found',
 }
@@ -55,6 +64,7 @@ export function QuotesPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [extracting, setExtracting] = useState(false)
+  const [interpreting, setInterpreting] = useState(false)
 
   useEffect(() => {
     fetchAuthors().then(setAuthors).catch(() => undefined)
@@ -115,6 +125,50 @@ export function QuotesPage() {
   }, [allVisibleSelected, quotes])
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  const handleGenerateInterpretations = useCallback(async () => {
+    const ids = selectedQuotes.map((quote) => quote.id)
+    if (ids.length === 0) return
+    setInterpreting(true)
+    try {
+      const response = await generateQuoteInterpretations(ids)
+      const resultsById = new Map(response.results.map((result) => [result.quoteId, result]))
+
+      setQuotes((prev) =>
+        prev.map((quote) => {
+          const result = resultsById.get(quote.id)
+          if (!result) return quote
+          // A not-found outcome never touched the database, so leave existing interpretations as-is.
+          if (result.outcome === 'notFound') return quote
+          return { ...quote, interpretations: result.interpretations }
+        }),
+      )
+
+      const counts = response.results.reduce<Record<string, number>>((acc, result) => {
+        acc[result.outcome] = (acc[result.outcome] ?? 0) + 1
+        return acc
+      }, {})
+      const summary = Object.entries(counts)
+        .map(([outcome, count]) => `${count} ${INTERPRETATION_OUTCOME_LABELS[outcome as QuoteInterpretationOutcome]}`)
+        .join(', ')
+      const failedCount = counts.failed ?? 0
+      if (failedCount > 0) {
+        toast.error('Some interpretation generations failed', summary)
+      } else {
+        toast.success('Interpretation generation complete', summary)
+      }
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+    } catch (err) {
+      toast.error('Interpretation generation failed', errorMessage(err))
+    } finally {
+      setInterpreting(false)
+    }
+  }, [selectedQuotes])
 
   const handleExtractExcerpts = useCallback(async () => {
     const ids = selectedQuotes.map((quote) => quote.id)
@@ -258,9 +312,11 @@ export function QuotesPage() {
           eligibleCount={eligibleQuotes.length}
           skippedCount={skippedCount}
           extracting={extracting}
+          interpreting={interpreting}
           onToggleSelectAllVisible={toggleSelectAllVisible}
           onClearSelection={clearSelection}
           onExtractExcerpts={handleExtractExcerpts}
+          onGenerateInterpretations={handleGenerateInterpretations}
         />
       )}
 
@@ -277,7 +333,7 @@ export function QuotesPage() {
                   <Checkbox
                     checked={allVisibleSelected}
                     onCheckedChange={toggleSelectAllVisible}
-                    disabled={extracting}
+                    disabled={extracting || interpreting}
                     aria-label="Select all visible rows"
                   />
                 </label>
@@ -298,16 +354,30 @@ export function QuotesPage() {
                     <Checkbox
                       checked={selectedIds.has(quote.id)}
                       onCheckedChange={() => toggleSelect(quote.id)}
-                      disabled={extracting}
+                      disabled={extracting || interpreting}
                       aria-label={`Select quote ${quote.id}`}
                     />
                   </label>
                 </TableCell>
                 <TableCell className="align-top">{quote.id}</TableCell>
                 <TableCell className="max-w-[480px] align-top whitespace-normal">
+                  {quote.interpretations.length > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Lightbulb
+                          className="mr-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle text-primary"
+                          aria-label={`${quote.interpretations.length} interpretation${quote.interpretations.length === 1 ? '' : 's'}`}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Has {quote.interpretations.length} interpretation{quote.interpretations.length === 1 ? '' : 's'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <HighlightedQuoteText
                     text={quote.text}
                     excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
+                    interpretations={quote.interpretations}
                   />
                 </TableCell>
                 <TableCell className="align-top">{quote.authorName ?? '—'}</TableCell>

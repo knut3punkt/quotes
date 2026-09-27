@@ -3,18 +3,19 @@
     Starts the TV Quotes dev servers: the Ktor server and the admin Vite dev server.
 
 .DESCRIPTION
-    Launches the Ktor server (":server:run") and the admin frontend ("npm run dev") each in
-    their own PowerShell window, so their logs stay separate and either can be stopped
-    independently with Ctrl+C without killing the other.
+    Launches the Ktor server (":server:run", in Gradle continuous build mode so it rebuilds
+    and restarts on source changes) and the admin frontend ("npm run dev", with Vite's own
+    hot module reloading) each in their own PowerShell window, so their logs stay separate
+    and either can be stopped independently with Ctrl+C without killing the other.
 #>
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-Write-Host "Starting Ktor server (:server:run) on http://localhost:8080 ..."
+Write-Host "Starting Ktor server (:server:run, continuous build) on http://localhost:8080 ..."
 Start-Process powershell.exe -ArgumentList @(
     '-NoExit',
     '-Command',
-    "`$Host.UI.RawUI.WindowTitle = 'TV Quotes - server'; Set-Location '$repoRoot'; .\gradlew.bat :server:run"
+    "`$Host.UI.RawUI.WindowTitle = 'TV Quotes - server'; Set-Location '$repoRoot'; .\gradlew.bat :server:run --continuous"
 )
 
 Write-Host "Starting admin dev server (npm run dev) on http://localhost:5173 ..."

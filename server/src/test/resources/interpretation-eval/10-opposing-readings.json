@@ -1,0 +1,7 @@
+{
+  "id": "10-opposing-readings",
+  "description": "A quote that strongly supports genuinely opposing readings, testing whether the model preserves conflicting interpretations rather than collapsing them into one.",
+  "quoteText": "That which does not kill us makes us stronger.",
+  "authorName": "Friedrich Nietzsche",
+  "sourceTitle": "Twilight of the Idols"
+}

@@ -6,6 +6,7 @@ import type {
   BulkDeleteImportedQuotesRequest,
   BulkUpdateImportedQuoteStatusRequest,
   ExtractQuoteExcerptsResponse,
+  GenerateQuoteInterpretationsResponse,
   ImportedQuote,
   NewSourceRequest,
   PagedImportedQuotes,
@@ -145,6 +146,13 @@ export function enrichAuthorsFromWikidata(): Promise<AuthorEnrichmentResponse> {
 
 export function extractQuoteExcerpts(quoteIds: number[]): Promise<ExtractQuoteExcerptsResponse> {
   return request('/admin/quotes/extract-excerpts', {
+    method: 'POST',
+    body: JSON.stringify({ quoteIds }),
+  })
+}
+
+export function generateQuoteInterpretations(quoteIds: number[]): Promise<GenerateQuoteInterpretationsResponse> {
+  return request('/admin/quotes/generate-interpretations', {
     method: 'POST',
     body: JSON.stringify({ quoteIds }),
   })
