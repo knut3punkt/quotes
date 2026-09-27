@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { extractQuoteExcerpts, fetchAuthors, fetchQuotes, generateQuoteInterpretations } from '../api'
 import { useDebouncedValue } from '../hooks/use-debounced-value'
@@ -359,6 +361,19 @@ export function QuotesPage() {
                 </TableCell>
                 <TableCell className="align-top">{quote.id}</TableCell>
                 <TableCell className="max-w-[480px] align-top whitespace-normal">
+                  {quote.interpretations.length > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Lightbulb
+                          className="mr-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle text-primary"
+                          aria-label={`${quote.interpretations.length} interpretation${quote.interpretations.length === 1 ? '' : 's'}`}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Has {quote.interpretations.length} interpretation{quote.interpretations.length === 1 ? '' : 's'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <HighlightedQuoteText
                     text={quote.text}
                     excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
