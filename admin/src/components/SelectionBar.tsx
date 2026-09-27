@@ -17,11 +17,13 @@ interface SelectionBarProps {
   duplicateCount: number
   resetCount: number
   deleteCount: number
+  unapproveCount: number
   onBulkApprove: () => void
   onBulkReject: () => void
   onBulkMarkDuplicate: () => void
   onBulkResetToPending: () => void
   onBulkDelete: () => void
+  onBulkUnapprove: () => void
 }
 
 const bulkActionClassName =
@@ -41,11 +43,13 @@ function SelectionBarComponent({
   duplicateCount,
   resetCount,
   deleteCount,
+  unapproveCount,
   onBulkApprove,
   onBulkReject,
   onBulkMarkDuplicate,
   onBulkResetToPending,
   onBulkDelete,
+  onBulkUnapprove,
 }: SelectionBarProps) {
   return (
     <div className="mb-4 flex flex-col gap-2.5">
@@ -129,6 +133,11 @@ function SelectionBarComponent({
             {deleteCount > 0 && (
               <Button type="button" variant="destructive" size="sm" onClick={onBulkDelete} disabled={bulkBusy}>
                 Delete {deleteCount}
+              </Button>
+            )}
+            {unapproveCount > 0 && (
+              <Button type="button" variant="destructive" size="sm" onClick={onBulkUnapprove} disabled={bulkBusy}>
+                Unapprove {unapproveCount}
               </Button>
             )}
             {approveSkippedCount > 0 && (

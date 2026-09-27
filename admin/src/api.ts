@@ -4,6 +4,7 @@ import type {
   ApproveImportedQuoteRequest,
   BulkActionResponse,
   BulkDeleteImportedQuotesRequest,
+  BulkUnapproveQuotesRequest,
   BulkUpdateImportedQuoteStatusRequest,
   ExtractQuoteExcerptsResponse,
   GenerateQuoteInterpretationsResponse,
@@ -97,6 +98,13 @@ export function bulkUpdateImportedQuoteStatus(body: BulkUpdateImportedQuoteStatu
 
 export function bulkDeleteImportedQuotes(body: BulkDeleteImportedQuotesRequest): Promise<BulkActionResponse> {
   return request('/admin/imported-quotes/bulk/delete', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function bulkUnapproveQuotes(body: BulkUnapproveQuotesRequest): Promise<BulkActionResponse> {
+  return request('/admin/quotes/bulk/unapprove', {
     method: 'POST',
     body: JSON.stringify(body),
   })

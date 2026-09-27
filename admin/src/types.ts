@@ -180,6 +180,10 @@ export interface BulkDeleteImportedQuotesRequest {
   ids: number[]
 }
 
+export interface BulkUnapproveQuotesRequest {
+  quoteIds: number[]
+}
+
 export interface BulkActionResponse {
   succeededIds: number[]
   failedIds: number[]

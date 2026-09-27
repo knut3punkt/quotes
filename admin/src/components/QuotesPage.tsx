@@ -9,10 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { extractQuoteExcerpts, fetchAuthors, fetchQuotes, generateQuoteInterpretations } from '../api'
+import {
+  bulkUnapproveQuotes,
+  extractQuoteExcerpts,
+  fetchAuthors,
+  fetchQuotes,
+  generateQuoteInterpretations,
+} from '../api'
 import { useDebouncedValue } from '../hooks/use-debounced-value'
 import { toast } from '../hooks/use-toast'
 import type { Author, QuoteExtractionOutcome, QuoteInterpretationOutcome, QuoteListItem } from '../types'
+import { ConfirmDialog } from './ConfirmDialog'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
 import { QuotesSelectionBar } from './QuotesSelectionBar'
 
@@ -65,6 +72,10 @@ export function QuotesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [extracting, setExtracting] = useState(false)
   const [interpreting, setInterpreting] = useState(false)
+  const [unapproveRequest, setUnapproveRequest] = useState<number[] | null>(null)
+  const [unapproving, setUnapproving] = useState(false)
+  const [unapproveError, setUnapproveError] = useState<string | null>(null)
+  const busy = extracting || interpreting || unapproving
 
   useEffect(() => {
     fetchAuthors().then(setAuthors).catch(() => undefined)
@@ -214,6 +225,47 @@ export function QuotesPage() {
     }
   }, [selectedQuotes])
 
+  const requestUnapprove = useCallback(() => {
+    const ids = selectedQuotes.map((quote) => quote.id)
+    if (ids.length === 0) return
+    setUnapproveError(null)
+    setUnapproveRequest(ids)
+  }, [selectedQuotes])
+
+  const cancelUnapprove = useCallback(() => {
+    if (unapproving) return
+    setUnapproveRequest(null)
+    setUnapproveError(null)
+  }, [unapproving])
+
+  const confirmUnapprove = useCallback(async () => {
+    if (!unapproveRequest) return
+    setUnapproving(true)
+    setUnapproveError(null)
+    try {
+      const result = await bulkUnapproveQuotes({ quoteIds: unapproveRequest })
+      const unapproved = new Set(result.succeededIds)
+      setQuotes((prev) => prev.filter((quote) => !unapproved.has(quote.id)))
+      setTotal((prev) => Math.max(0, prev - unapproved.size))
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of unapproved) next.delete(id)
+        return next
+      })
+      if (result.failedIds.length > 0) {
+        setUnapproveError(`${result.failedIds.length} of ${unapproveRequest.length} unapprovals failed`)
+        setUnapproveRequest((prev) => prev?.filter((id) => !unapproved.has(id)) ?? null)
+      } else {
+        toast.success(`Unapproved ${unapproved.size} quote${unapproved.size === 1 ? '' : 's'}`)
+        setUnapproveRequest(null)
+      }
+    } catch (err) {
+      setUnapproveError(errorMessage(err))
+    } finally {
+      setUnapproving(false)
+    }
+  }, [unapproveRequest])
+
   return (
     <div>
       {loadError && (
@@ -313,10 +365,25 @@ export function QuotesPage() {
           skippedCount={skippedCount}
           extracting={extracting}
           interpreting={interpreting}
+          unapproving={unapproving}
           onToggleSelectAllVisible={toggleSelectAllVisible}
           onClearSelection={clearSelection}
           onExtractExcerpts={handleExtractExcerpts}
           onGenerateInterpretations={handleGenerateInterpretations}
+          onUnapprove={requestUnapprove}
+        />
+      )}
+
+      {unapproveRequest && (
+        <ConfirmDialog
+          title={unapproveRequest.length === 1 ? 'Unapprove quote' : `Unapprove ${unapproveRequest.length} quotes`}
+          description={`${unapproveRequest.length === 1 ? 'This quote' : `${unapproveRequest.length} quotes`} will be deleted from the library, along with excerpts and interpretations. Linked imports return to pending.`}
+          confirmLabel="Unapprove"
+          submittingLabel="Unapproving…"
+          submitting={unapproving}
+          error={unapproveError}
+          onCancel={cancelUnapprove}
+          onConfirm={confirmUnapprove}
         />
       )}
 
@@ -333,7 +400,7 @@ export function QuotesPage() {
                   <Checkbox
                     checked={allVisibleSelected}
                     onCheckedChange={toggleSelectAllVisible}
-                    disabled={extracting || interpreting}
+                    disabled={busy}
                     aria-label="Select all visible rows"
                   />
                 </label>
@@ -354,7 +421,7 @@ export function QuotesPage() {
                     <Checkbox
                       checked={selectedIds.has(quote.id)}
                       onCheckedChange={() => toggleSelect(quote.id)}
-                      disabled={extracting || interpreting}
+                      disabled={busy}
                       aria-label={`Select quote ${quote.id}`}
                     />
                   </label>

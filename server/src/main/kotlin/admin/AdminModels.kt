@@ -54,6 +54,9 @@ data class BulkUpdateImportedQuoteStatusRequest(
 data class BulkDeleteImportedQuotesRequest(val ids: List<Int>)
 
 @Serializable
+data class BulkUnapproveQuotesRequest(val quoteIds: List<Int>)
+
+@Serializable
 data class BulkActionResponse(val succeededIds: List<Int>, val failedIds: List<Int>)
 
 @Serializable
