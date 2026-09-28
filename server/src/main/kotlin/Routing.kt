@@ -13,6 +13,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.util.getOrFail
 import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
 import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
+import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
@@ -128,6 +129,10 @@ fun Application.configureRouting(
                 pageSize = params["pageSize"]?.toIntOrNull() ?: 50,
             )
             call.respond(quoteAdminService.listQuotes(filter))
+        }
+        post("/admin/quotes/bulk/unapprove") {
+            val request = call.receive<BulkUnapproveQuotesRequest>()
+            call.respond(quoteAdminService.bulkUnapprove(request.quoteIds))
         }
         get("/admin/authors") {
             call.respond(importedQuoteAdminService.listAuthors())

@@ -19,3 +19,7 @@ export function canResetToPending(status: ProcessingStatus): boolean {
 export function canDelete(status: ProcessingStatus): boolean {
   return status !== 'approved'
 }
+
+export function canUnapprove(status: ProcessingStatus): boolean {
+  return status === 'approved'
+}

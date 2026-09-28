@@ -3,6 +3,7 @@ package no.esotericgames.quotes.server.admin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.esotericgames.quotes.server.db.Authors
+import no.esotericgames.quotes.server.db.ImportedQuotes
 import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.QuoteInterpretations
 import no.esotericgames.quotes.server.db.Quotes
@@ -14,8 +15,11 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
+import java.time.OffsetDateTime
 
 data class QuoteFilter(
     val authorId: Int? = null,
@@ -72,6 +76,35 @@ class QuoteAdminService {
             }
 
             PagedQuotesResponse(items = items, total = total, page = page, pageSize = pageSize)
+        }
+    }
+
+    /**
+     * Deletes the given quotes and returns their linked imported quotes to `pending`, so they can be
+     * reviewed again. Excerpts, interpretations and tags are removed by `ON DELETE CASCADE`.
+     */
+    suspend fun bulkUnapprove(quoteIds: List<Int>): BulkActionResponse {
+        if (quoteIds.isEmpty()) return BulkActionResponse(succeededIds = emptyList(), failedIds = emptyList())
+        return withContext(Dispatchers.IO) {
+            suspendTransaction {
+                val existingIds = Quotes.selectAll().where { Quotes.id inList quoteIds }
+                    .map { it[Quotes.id] }
+                    .toSet()
+                if (existingIds.isNotEmpty()) {
+                    // imported_quotes.quote_id has no ON DELETE action, so unlink before deleting.
+                    ImportedQuotes.update({ ImportedQuotes.quoteId inList existingIds }) {
+                        it[quoteId] = null
+                        it[processingStatus] = "pending"
+                        it[reviewedBy] = null
+                        it[reviewedAt] = OffsetDateTime.now()
+                    }
+                    Quotes.deleteWhere { Quotes.id inList existingIds }
+                }
+                BulkActionResponse(
+                    succeededIds = quoteIds.filter { it in existingIds },
+                    failedIds = quoteIds.filterNot { it in existingIds },
+                )
+            }
         }
     }
 

@@ -10,10 +10,12 @@ interface QuotesSelectionBarProps {
   skippedCount: number
   extracting: boolean
   interpreting: boolean
+  unapproving: boolean
   onToggleSelectAllVisible: () => void
   onClearSelection: () => void
   onExtractExcerpts: () => void
   onGenerateInterpretations: () => void
+  onUnapprove: () => void
 }
 
 function QuotesSelectionBarComponent({
@@ -24,12 +26,14 @@ function QuotesSelectionBarComponent({
   skippedCount,
   extracting,
   interpreting,
+  unapproving,
   onToggleSelectAllVisible,
   onClearSelection,
   onExtractExcerpts,
   onGenerateInterpretations,
+  onUnapprove,
 }: QuotesSelectionBarProps) {
-  const busy = extracting || interpreting
+  const busy = extracting || interpreting || unapproving
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -85,6 +89,10 @@ function QuotesSelectionBarComponent({
           <span className="text-xs text-muted-foreground">
             Also generates interpretations for each quote's qualifying excerpts.
           </span>
+          <Button type="button" variant="destructive" size="sm" onClick={onUnapprove} disabled={busy}>
+            {unapproving && <Loader2 className="animate-spin" />}
+            Unapprove ({selectedCount})
+          </Button>
         </div>
       )}
     </div>

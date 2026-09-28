@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   approveImportedQuote,
   bulkDeleteImportedQuotes,
+  bulkUnapproveQuotes,
   bulkUpdateImportedQuoteStatus,
   fetchAuthors,
   fetchImportedQuotes,
@@ -22,7 +23,7 @@ import { SelectionBar } from './components/SelectionBar'
 import { Toaster } from './components/Toaster'
 import { useDebouncedValue } from './hooks/use-debounced-value'
 import { toast } from './hooks/use-toast'
-import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending } from './statusRules'
+import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending, canUnapprove } from './statusRules'
 import type {
   ApproveImportedQuoteRequest,
   Author,
@@ -83,6 +84,10 @@ function App() {
   const [deleteRequest, setDeleteRequest] = useState<ImportedQuote[] | null>(null)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const [unapproveRequest, setUnapproveRequest] = useState<ImportedQuote[] | null>(null)
+  const [unapproveSubmitting, setUnapproveSubmitting] = useState(false)
+  const [unapproveError, setUnapproveError] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -208,6 +213,10 @@ function App() {
   )
   const bulkDeleteTargets = useMemo(
     () => selectedQuotes.filter((quote) => canDelete(quote.processingStatus)),
+    [selectedQuotes],
+  )
+  const bulkUnapproveTargets = useMemo(
+    () => selectedQuotes.filter((quote) => canUnapprove(quote.processingStatus) && quote.quoteId !== null),
     [selectedQuotes],
   )
 
@@ -398,6 +407,58 @@ function App() {
     }
   }, [deleteRequest])
 
+  const requestBulkUnapprove = useCallback(() => {
+    if (bulkUnapproveTargets.length === 0) return
+    setUnapproveError(null)
+    setUnapproveRequest(bulkUnapproveTargets)
+  }, [bulkUnapproveTargets])
+
+  const cancelUnapprove = useCallback(() => {
+    if (unapproveSubmitting) return
+    setUnapproveRequest(null)
+    setUnapproveError(null)
+  }, [unapproveSubmitting])
+
+  const confirmUnapprove = useCallback(async () => {
+    if (!unapproveRequest) return
+    setUnapproveSubmitting(true)
+    setUnapproveError(null)
+    const quoteIds = unapproveRequest.flatMap((quote) => (quote.quoteId === null ? [] : [quote.quoteId]))
+    try {
+      const result = await bulkUnapproveQuotes({ quoteIds })
+      const unapprovedQuoteIds = new Set(result.succeededIds)
+      const unapprovedImportIds = new Set(
+        unapproveRequest
+          .filter((quote) => quote.quoteId !== null && unapprovedQuoteIds.has(quote.quoteId))
+          .map((quote) => quote.id),
+      )
+      const now = new Date().toISOString()
+      setImportedQuotes((prev) =>
+        prev.map((existing) =>
+          existing.quoteId !== null && unapprovedQuoteIds.has(existing.quoteId)
+            ? { ...existing, processingStatus: 'pending', quoteId: null, reviewedBy: null, reviewedAt: now }
+            : existing,
+        ),
+      )
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of unapprovedImportIds) next.delete(id)
+        return next
+      })
+      if (result.failedIds.length > 0) {
+        setUnapproveError(`${result.failedIds.length} of ${quoteIds.length} unapprovals failed`)
+        setUnapproveRequest((prev) => prev?.filter((quote) => !unapprovedImportIds.has(quote.id)) ?? null)
+      } else {
+        toast.success(`Unapproved ${quoteIds.length} quote${quoteIds.length === 1 ? '' : 's'}`)
+        setUnapproveRequest(null)
+      }
+    } catch (err) {
+      setUnapproveError(errorMessage(err))
+    } finally {
+      setUnapproveSubmitting(false)
+    }
+  }, [unapproveRequest])
+
   return (
     <TooltipProvider>
       <div className="mx-auto max-w-[1280px] px-8 pt-6 pb-16">
@@ -475,11 +536,13 @@ function App() {
                 duplicateCount={bulkDuplicateTargets.length}
                 resetCount={bulkResetTargets.length}
                 deleteCount={bulkDeleteTargets.length}
+                unapproveCount={bulkUnapproveTargets.length}
                 onBulkApprove={handleBulkApprove}
                 onBulkReject={handleBulkReject}
                 onBulkMarkDuplicate={handleBulkMarkDuplicate}
                 onBulkResetToPending={handleBulkResetToPending}
                 onBulkDelete={requestBulkDelete}
+                onBulkUnapprove={requestBulkUnapprove}
               />
             )}
 
@@ -533,6 +596,23 @@ function App() {
                 error={deleteError}
                 onCancel={cancelDelete}
                 onConfirm={confirmDelete}
+              />
+            )}
+
+            {unapproveRequest && (
+              <ConfirmDialog
+                title={unapproveRequest.length === 1 ? 'Unapprove quote' : `Unapprove ${unapproveRequest.length} quotes`}
+                description={
+                  unapproveRequest.length === 1
+                    ? `"${truncateForDialog(unapproveRequest[0].rawText)}" will be deleted from the library, along with its excerpts and interpretations. The import returns to pending.`
+                    : `${unapproveRequest.length} quotes will be deleted from the library, along with their excerpts and interpretations. The imports return to pending.`
+                }
+                confirmLabel="Unapprove"
+                submittingLabel="Unapproving…"
+                submitting={unapproveSubmitting}
+                error={unapproveError}
+                onCancel={cancelUnapprove}
+                onConfirm={confirmUnapprove}
               />
             )}
           </>
