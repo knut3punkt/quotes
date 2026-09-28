@@ -16,6 +16,17 @@ const EXCERPT_SCORE_FIELDS: { key: 'independence' | 'completeness' | 'quotabilit
   { key: 'contextualFidelity', label: 'Contextual fidelity' },
 ]
 
+/**
+ * Keeps the scrollable tooltip body within the space Radix reports as available on the chosen side
+ * (minus the content's padding and border), so on short or narrow windows it shrinks and scrolls
+ * instead of overflowing past the window edge.
+ */
+const TOOLTIP_BODY_CLASS =
+  'flex max-h-[min(20rem,calc(var(--radix-tooltip-content-available-height)_-_1.25rem))] w-[min(40rem,calc(100vw_-_3rem))] flex-col gap-2 overflow-y-auto'
+
+// Distance in px the tooltip keeps from the window edges.
+const TOOLTIP_COLLISION_PADDING = 8
+
 function InterpretationCards({ interpretations }: { interpretations: QuoteInterpretation[] }) {
   if (interpretations.length === 0) {
     return <p className="text-muted-foreground">No interpretations generated yet.</p>
@@ -40,7 +51,7 @@ function InterpretationCards({ interpretations }: { interpretations: QuoteInterp
 
 function ExcerptTooltipContent({ excerpt, interpretations }: { excerpt: QuoteExcerpt; interpretations: QuoteInterpretation[] }) {
   return (
-    <div className="flex max-h-80 w-[40rem] flex-col gap-2 overflow-y-auto">
+    <div className={TOOLTIP_BODY_CLASS}>
       <div className="flex flex-wrap gap-1">
         {EXCERPT_SCORE_FIELDS.map(({ key, label }) => (
           <Badge key={key} variant="outline">
@@ -56,7 +67,7 @@ function ExcerptTooltipContent({ excerpt, interpretations }: { excerpt: QuoteExc
 
 function WholeQuoteTooltipContent({ interpretations }: { interpretations: QuoteInterpretation[] }) {
   return (
-    <div className="flex max-h-80 w-[40rem] flex-col gap-2 overflow-y-auto">
+    <div className={TOOLTIP_BODY_CLASS}>
       <span className="text-xs font-medium text-muted-foreground">Whole-quote interpretations</span>
       <InterpretationCards interpretations={interpretations} />
     </div>
@@ -89,7 +100,7 @@ export function HighlightedQuoteText({ text, excerpts, interpretations }: Highli
         <TooltipTrigger asChild>
           <span>{segment}</span>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent collisionPadding={TOOLTIP_COLLISION_PADDING}>
           <WholeQuoteTooltipContent interpretations={wholeQuoteInterpretations} />
         </TooltipContent>
       </Tooltip>
@@ -115,7 +126,7 @@ export function HighlightedQuoteText({ text, excerpts, interpretations }: Highli
             {text.slice(excerpt.startOffset, excerpt.endOffset)}
           </mark>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent collisionPadding={TOOLTIP_COLLISION_PADDING}>
           <ExcerptTooltipContent excerpt={excerpt} interpretations={interpretationsByExcerptId.get(excerpt.id) ?? []} />
         </TooltipContent>
       </Tooltip>,
