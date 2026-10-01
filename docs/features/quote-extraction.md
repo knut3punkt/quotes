@@ -139,6 +139,17 @@ A technically independent sentence is not necessarily a useful quotation.
 
 Prefer excerpts that contain a substantive observation, claim, insight, image, argument, principle, or memorable formulation.
 
+The working standard: a strong quote expresses a substantial idea in language that can reasonably stand on its own
+and is distinctive enough that a reader might deliberately save it, share it, return to it, or reflect on it. The
+qualities that point that way are meaning, standalone value, conceptual density (a substantial idea in little
+language), distinctive wording, reflective value, relevance beyond the immediate situation, and, as a bonus,
+interpretive depth.
+
+A quote does not have to be true, agreeable, inspirational, or morally admirable. Pessimistic, humorous,
+controversial, or ambiguous lines can be excellent. Positive-sounding or motivational lines get no credit for tone
+alone, and ambiguity counts as depth only when the readings arise naturally from the wording. Judge the words, not
+the author's reputation.
+
 Avoid selecting:
 
 * housekeeping prose,
@@ -147,7 +158,11 @@ Avoid selecting:
 * transitional statements,
 * repetitions,
 * generic filler,
-* sentences whose only purpose is to connect other sentences.
+* sentences whose only purpose is to connect other sentences,
+* clichés, generic advice, and motivational language that merely sounds profound,
+* ordinary facts phrased dramatically,
+* context-dependent dialogue and punchlines that only work in their original scene,
+* vague lines onto which almost any meaning could be projected.
 
 ### 7. Evaluate contextual fidelity
 
@@ -392,6 +407,32 @@ Judge v1 → v2 fixed over-strictness seen in the eval on Ministral 3 8B:
   is not a fidelity problem; only a reversed, distorted, or overstated claim is.
 
 On the eval corpus, v2 raised good ranges accepted from 5 to 6 of 6. Bad ranges accepted stayed at 0.
+
+## Runtime system prompt — selector version 5 and judge prompts v3
+
+These versions spell out what makes a good quote, using the standard in "Evaluate quotability". The mechanics stay
+the same.
+
+Selector v5 replaces the short "promising candidate" list with:
+
+* the qualities to prefer,
+* the passages to avoid,
+* an explicit note that a quote need not be true, agreeable, or inspirational.
+
+It keeps the recall bias ("when uncertain, err slightly toward inclusion"). Units, references, range variants,
+`coreIdea`, and the worked example are unchanged.
+
+In judge v3, only the standalone prompt changed. The fidelity prompt is still `excerpt-judge-fidelity-v2.md`. The
+standalone prompt adds:
+
+* the core standard and the dimensions to weigh;
+* what not to require and what to be skeptical of;
+* the test "would I keep this if I didn't know who wrote it?" for quotability;
+* "prefer false negatives" and a tie-break toward the lower level;
+* calibration examples for a motivational cliché (level 3) and a cynical but sharp line (level 4-5).
+
+The steps, the anchored levels, and the hard rules in code are unchanged, so acceptance thresholds still apply as
+before.
 
 ---
 

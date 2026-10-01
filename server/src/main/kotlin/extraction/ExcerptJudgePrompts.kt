@@ -1,15 +1,23 @@
 package no.esotericgames.quotes.server.extraction
 
-private const val STANDALONE_RESOURCE_PATH = "/prompts/excerpt-judge-standalone-v2.md"
+private const val STANDALONE_RESOURCE_PATH = "/prompts/excerpt-judge-standalone-v3.md"
 private const val FIDELITY_RESOURCE_PATH = "/prompts/excerpt-judge-fidelity-v2.md"
 
 /**
  * Loads the judge pass's two versioned system prompts, same resource convention as
  * [ExtractionPrompts]. Both prompts share one version label, since they are designed and tuned as a
  * pair; bump it (and add new resource files, keeping the old ones) whenever either prompt changes.
+ *
+ * v2 -> v3: only the standalone prompt changed, so the fidelity prompt is still its v2 file. The
+ * standalone prompt now states a core standard for a strong quote, the dimensions to weigh (meaning,
+ * standalone value, conceptual density, distinctiveness, reflective value, relevance, interpretive
+ * depth), what not to require (truth, agreeableness, inspiration), and what to be skeptical of
+ * (clichés, motivational language, vague lines, context-dependent dialogue). It adds a "would I keep
+ * this without knowing the author?" test, a tie-break toward the lower level, and calibration examples
+ * for a motivational cliché and a cynical but sharp line. Steps, levels, and hard rules are unchanged.
  */
 object ExcerptJudgePrompts {
-    const val PROMPT_VERSION = "excerpt-judge-v2"
+    const val PROMPT_VERSION = "excerpt-judge-v3"
 
     private val cachedStandalonePrompt: String by lazy { loadResource(STANDALONE_RESOURCE_PATH) }
     private val cachedFidelityPrompt: String by lazy { loadResource(FIDELITY_RESOURCE_PATH) }
