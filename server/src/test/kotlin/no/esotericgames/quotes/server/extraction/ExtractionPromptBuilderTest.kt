@@ -16,7 +16,7 @@ class ExtractionPromptBuilderTest {
         val content = ExtractionPromptBuilder.buildUserContent(units)
 
         assertEquals(
-            "SOURCE UNITS\n\n[1] Alpha\n[2] Beta.\n\nSelect zero or more quotable standalone excerpts according to the extraction rules.",
+            "SOURCE UNITS\n\n[1] Alpha\n[2] Beta.\n\nPropose zero or more candidate excerpts according to the extraction rules.",
             content,
         )
     }
@@ -30,7 +30,13 @@ class ExtractionPromptBuilderTest {
     }
 
     @Test
+    fun `judge prompt resources load and are non-blank`() {
+        assertTrue(ExcerptJudgePrompts.standaloneSystemPrompt().contains("unresolvedReferences"))
+        assertTrue(ExcerptJudgePrompts.fidelitySystemPrompt().contains("fidelity"))
+    }
+
+    @Test
     fun `prompt version matches the resource filename stem`() {
-        assertEquals("quote-extraction-v3", ExtractionPrompts.PROMPT_VERSION)
+        assertEquals("quote-extraction-v4", ExtractionPrompts.PROMPT_VERSION)
     }
 }

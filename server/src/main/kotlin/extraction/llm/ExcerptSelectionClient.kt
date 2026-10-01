@@ -27,13 +27,14 @@ data class ExcerptSelectionRequest(
     val generation: GenerationSettings,
 )
 
+/** A referring phrase inside a candidate and the unit the selector says its referent is stated in. */
+data class UnitReference(val phrase: String, val referentUnit: Int)
+
 data class RawExcerptCandidate(
     val startUnit: Int,
     val endUnit: Int,
-    val independence: Int,
-    val completeness: Int,
-    val quotability: Int,
-    val contextualFidelity: Int,
+    val references: List<UnitReference>,
+    val coreIdea: String,
     val reason: String,
 )
 

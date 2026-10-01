@@ -8,6 +8,7 @@ import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.QuoteInterpretations
 import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.db.Sources
+import no.esotericgames.quotes.server.extraction.CONTEXT_SIGNAL_SEPARATOR
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
@@ -138,6 +139,8 @@ private fun ResultRow.toQuoteExcerptResponse() = QuoteExcerptResponse(
     quotability = this[QuoteExcerpts.quotabilityScore],
     contextualFidelity = this[QuoteExcerpts.contextFidelityScore],
     reason = this[QuoteExcerpts.reason].orEmpty(),
+    contextSignals = this[QuoteExcerpts.contextSignals]?.split(CONTEXT_SIGNAL_SEPARATOR).orEmpty(),
+    judgeNotes = this[QuoteExcerpts.judgeNotes].orEmpty(),
     meetsThresholds = this[QuoteExcerpts.meetsThresholds],
 )
 

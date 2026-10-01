@@ -11,8 +11,10 @@ data class ExtractionLlmConfig(
     val reasoningEffort: String? = null,
 )
 
+/** [llm] configures the broad selection pass, [judge] the strict judge pass that decides acceptance. */
 data class ExtractionConfig(
     val llm: ExtractionLlmConfig,
+    val judge: ExtractionLlmConfig,
     val policy: ExtractionPolicy,
 )
 
@@ -24,6 +26,7 @@ private val DEFAULT_LLM_CONFIG = ExtractionLlmConfig(
     requestTimeoutMillis = 30_000,
     reasoningEffort = null,
 )
+private val DEFAULT_JUDGE_CONFIG = DEFAULT_LLM_CONFIG.copy(maxOutputTokens = 500, requestTimeoutMillis = 60_000)
 private val DEFAULT_POLICY = ExtractionPolicy()
 
 /**
@@ -37,17 +40,16 @@ private val DEFAULT_POLICY = ExtractionPolicy()
  * `application.conf`'s own literal defaults, which take over as soon as that file is loaded.
  */
 fun loadExtractionConfig(rootConfig: ApplicationConfig): ExtractionConfig {
-    val llm = rootConfig.config("extraction.llm")
     val policy = rootConfig.config("extraction.policy")
+    val selector = loadLlmConfig(rootConfig.config("extraction.llm"), DEFAULT_LLM_CONFIG)
     return ExtractionConfig(
-        llm = ExtractionLlmConfig(
-            baseUrl = llm.propertyOrNull("baseUrl")?.getString() ?: DEFAULT_LLM_CONFIG.baseUrl,
-            model = llm.propertyOrNull("model")?.getString() ?: DEFAULT_LLM_CONFIG.model,
-            temperature = llm.propertyOrNull("temperature")?.getString()?.toDouble() ?: DEFAULT_LLM_CONFIG.temperature,
-            maxOutputTokens = llm.propertyOrNull("maxOutputTokens")?.getString()?.toInt() ?: DEFAULT_LLM_CONFIG.maxOutputTokens,
-            requestTimeoutMillis = llm.propertyOrNull("requestTimeoutMillis")?.getString()?.toLong()
-                ?: DEFAULT_LLM_CONFIG.requestTimeoutMillis,
-            reasoningEffort = llm.propertyOrNull("reasoningEffort")?.getString(),
+        llm = selector,
+        // Endpoint and model fall back to the selector's resolved values, not a hard-coded default, so
+        // pointing the selector at a remote llama-server also points the judge there unless the judge
+        // block explicitly overrides it.
+        judge = loadLlmConfig(
+            rootConfig.config("extraction.judge"),
+            DEFAULT_JUDGE_CONFIG.copy(baseUrl = selector.baseUrl, model = selector.model),
         ),
         policy = ExtractionPolicy(
             minSourceWords = policy.propertyOrNull("minSourceWords")?.getString()?.toInt() ?: DEFAULT_POLICY.minSourceWords,
@@ -63,3 +65,12 @@ fun loadExtractionConfig(rootConfig: ApplicationConfig): ExtractionConfig {
         ),
     )
 }
+
+private fun loadLlmConfig(llm: ApplicationConfig, defaults: ExtractionLlmConfig) = ExtractionLlmConfig(
+    baseUrl = llm.propertyOrNull("baseUrl")?.getString() ?: defaults.baseUrl,
+    model = llm.propertyOrNull("model")?.getString() ?: defaults.model,
+    temperature = llm.propertyOrNull("temperature")?.getString()?.toDouble() ?: defaults.temperature,
+    maxOutputTokens = llm.propertyOrNull("maxOutputTokens")?.getString()?.toInt() ?: defaults.maxOutputTokens,
+    requestTimeoutMillis = llm.propertyOrNull("requestTimeoutMillis")?.getString()?.toLong() ?: defaults.requestTimeoutMillis,
+    reasoningEffort = llm.propertyOrNull("reasoningEffort")?.getString(),
+)

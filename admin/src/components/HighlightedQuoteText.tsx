@@ -55,11 +55,15 @@ function ExcerptTooltipContent({ excerpt, interpretations }: { excerpt: QuoteExc
       <div className="flex flex-wrap gap-1">
         {EXCERPT_SCORE_FIELDS.map(({ key, label }) => (
           <Badge key={key} variant="outline">
-            {label}: {excerpt[key]}
+            {label}: {excerpt[key] ?? '–'}
           </Badge>
         ))}
       </div>
       {excerpt.reason && <p className="text-muted-foreground">{excerpt.reason}</p>}
+      {excerpt.judgeNotes && <p className="whitespace-pre-line text-muted-foreground">{excerpt.judgeNotes}</p>}
+      {excerpt.contextSignals.length > 0 && (
+        <p className="text-xs text-muted-foreground">Checked references: {excerpt.contextSignals.join(', ')}</p>
+      )}
       <InterpretationCards interpretations={interpretations} />
     </div>
   )
@@ -77,10 +81,10 @@ function WholeQuoteTooltipContent({ interpretations }: { interpretations: QuoteI
 /**
  * Renders `text` with each excerpt's [startOffset, endOffset) range highlighted inline. Ranges are
  * guaranteed non-overlapping by the backend's deterministic dedup logic, so a single left-to-right
- * pass is enough. Hovering a highlighted excerpt shows its scores, its scoring reason, and its own
- * interpretations (if any); hovering any other part of the quote text shows the whole-quote's
- * interpretations. A span with nothing to show (no excerpt data, no interpretations) is rendered as
- * plain text with no tooltip trigger.
+ * pass is enough. Hovering a highlighted excerpt shows its judge scores, the selector's reason, the
+ * judge's notes, and its own interpretations (if any); hovering any other part of the quote text
+ * shows the whole-quote's interpretations. A span with nothing to show (no excerpt data, no
+ * interpretations) is rendered as plain text with no tooltip trigger.
  */
 export function HighlightedQuoteText({ text, excerpts, interpretations }: HighlightedQuoteTextProps) {
   const wholeQuoteInterpretations = interpretations.filter((interpretation) => interpretation.excerptId === null)

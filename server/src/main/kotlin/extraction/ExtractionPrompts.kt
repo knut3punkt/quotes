@@ -1,6 +1,6 @@
 package no.esotericgames.quotes.server.extraction
 
-private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v3.md"
+private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v4.md"
 
 /**
  * Loads the versioned runtime system prompt as a classpath resource (never an inline Kotlin
@@ -17,10 +17,17 @@ private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v3.md"
  * model had been scoring emotional personal outbursts (e.g. an angry rebuke) highly on quotability
  * purely because they were vivid and complete, with no idea beyond their original dispute.
  *
+ * v3 -> v4: the selector became a broad, recall-oriented candidate generator and stopped
+ * self-scoring. Self-scores clustered at 85-95 regardless of quality — the model scored its own
+ * picks after committing to them — so excerpts with dangling references or no real insight passed
+ * the thresholds. Acceptance now comes from the separate judge pass ([ExcerptJudgePrompts]); v4
+ * instead asks the selector to list the references each candidate relies on and to propose
+ * range variants extended back to an antecedent, so the judge has a self-contained option to pick.
+ *
  * Earlier prompt versions are kept for historical reference/provenance, not deleted.
  */
 object ExtractionPrompts {
-    const val PROMPT_VERSION = "quote-extraction-v3"
+    const val PROMPT_VERSION = "quote-extraction-v4"
 
     private val cachedPrompt: String by lazy { loadResource() }
 

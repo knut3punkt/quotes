@@ -53,8 +53,10 @@ export interface QuoteExcerpt {
   independence: number
   completeness: number
   quotability: number
-  contextualFidelity: number
+  contextualFidelity: number | null // null when the fidelity check was skipped (failed the blind review)
   reason: string
+  contextSignals: string[]
+  judgeNotes: string
   meetsThresholds: boolean
 }
 
