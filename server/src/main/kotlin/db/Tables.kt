@@ -109,6 +109,8 @@ object QuoteExtractionAttempts : Table("quote_extraction_attempts") {
     val status = text("status")
     val excerptCount = integer("excerpt_count").default(0)
     val errorMessage = text("error_message").nullable()
+    val judgePromptVersion = text("judge_prompt_version").nullable()
+    val judgeModelId = text("judge_model_id").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -126,8 +128,10 @@ object QuoteExcerpts : Table("quote_excerpts") {
     val independenceScore = integer("independence_score")
     val completenessScore = integer("completeness_score")
     val quotabilityScore = integer("quotability_score")
-    val contextFidelityScore = integer("context_fidelity_score")
+    val contextFidelityScore = integer("context_fidelity_score").nullable()
     val reason = text("reason").nullable()
+    val contextSignals = text("context_signals").nullable()
+    val judgeNotes = text("judge_notes").nullable()
     val meetsThresholds = bool("meets_thresholds")
 
     override val primaryKey = PrimaryKey(id)

@@ -139,6 +139,17 @@ A technically independent sentence is not necessarily a useful quotation.
 
 Prefer excerpts that contain a substantive observation, claim, insight, image, argument, principle, or memorable formulation.
 
+The working standard: a strong quote expresses a substantial idea in language that can reasonably stand on its own
+and is distinctive enough that a reader might deliberately save it, share it, return to it, or reflect on it. The
+qualities that point that way are meaning, standalone value, conceptual density (a substantial idea in little
+language), distinctive wording, reflective value, relevance beyond the immediate situation, and, as a bonus,
+interpretive depth.
+
+A quote does not have to be true, agreeable, inspirational, or morally admirable. Pessimistic, humorous,
+controversial, or ambiguous lines can be excellent. Positive-sounding or motivational lines get no credit for tone
+alone, and ambiguity counts as depth only when the readings arise naturally from the wording. Judge the words, not
+the author's reputation.
+
 Avoid selecting:
 
 * housekeeping prose,
@@ -147,7 +158,11 @@ Avoid selecting:
 * transitional statements,
 * repetitions,
 * generic filler,
-* sentences whose only purpose is to connect other sentences.
+* sentences whose only purpose is to connect other sentences,
+* clichés, generic advice, and motivational language that merely sounds profound,
+* ordinary facts phrased dramatically,
+* context-dependent dialogue and punchlines that only work in their original scene,
+* vague lines onto which almost any meaning could be projected.
 
 ### 7. Evaluate contextual fidelity
 
@@ -177,7 +192,71 @@ Never manufacture an excerpt simply because extraction was requested.
 
 ---
 
+## Selector and judge
+
+Extraction runs as two LLM stages with different goals:
+
+1. **Selector (recall).** One call over the numbered units proposes every range that could plausibly work as a
+   standalone quotation, including range variants (a short range and the same range extended back to the unit that
+   states a referent). It does not score its candidates.
+2. **Judge (precision).** Every structurally valid candidate is reviewed separately, and the judge's verdict alone
+   decides acceptance.
+
+Why the split: in the original single-call design the model chose a range and then scored it in the same
+generation. The schema put the scores after the range and the `reason` last, so the model committed to a choice
+before evaluating it and then rationalized it. The self-scores clustered at 85-95 regardless of quality. It also
+judged independence with the whole passage in view, so a dangling "this" always *felt* resolved to it (curse of
+knowledge). In practice, excerpts that referred back to earlier concepts, or were grammatical but flat, passed the
+thresholds.
+
+### Judge pass
+
+For each candidate:
+
+* **Blind call.** The judge sees only the excerpt text, never the source, and reads it as a first-time viewer would.
+  It returns, in this order: what the quotation is about, the references it cannot resolve, the general insight
+  (empty if none), and then anchored 1-5 levels for `standsAlone`, `completeness`, and `quotability`. Phrases
+  flagged by the deterministic context check (below) are included as targeted questions.
+* **Fidelity call.** This runs only if the blind call passed. The judge sees the full source, the excerpt, and the
+  blind reading, and rates on a 1-5 level whether the standalone reading preserves the excerpt's meaning in the
+  source.
+
+Hard rules applied in code, regardless of the levels: any unresolved reference fails independence, and an empty
+insight fails quotability.
+
+A malformed judge response drops only that candidate, and this is recorded in the attempt's error message. An
+unreachable judge fails the whole attempt.
+
+The judge has its own `extraction.judge` configuration block, so it can run on a different (typically stronger,
+slower) model than the selector.
+
+### Deterministic context signals
+
+Before judging, application code flags phrases that suggest a candidate depends on omitted context:
+
+* a backward-pointing first word (a connective such as "But" or "Thus", or a pronoun or demonstrative such as "This"
+  or "It") when the excerpt does not start the source,
+* phrases such as "the latter" or "as mentioned",
+* and any reference whose referent unit the selector itself placed outside the range.
+
+These are hints, not verdicts: per "Evaluate semantic independence" above, a pronoun is not automatically
+disqualifying. They are passed to the blind judge and stored for review.
+
+### Overlap resolution
+
+Overlapping range variants are kept until after judging. They are then resolved by ranking passing excerpts first,
+then by summed judge score, then shorter range, then lower start unit.
+
+---
+
 ## LLM scoring
+
+Scores now come from the judge (see "Selector and judge"). The judge answers in anchored 1-5 levels rather than 0-100,
+because small local models used the 0-100 scale inconsistently. Levels are stored as 0/25/50/75/100 in the four
+existing score columns, and the default thresholds of 75 mean "level 4 or better" on every dimension.
+`contextualFidelity` is null when the fidelity call was skipped.
+
+The original 0-100 definitions below still describe what each dimension measures.
 
 For each proposed excerpt, return integer scores from 0 to 100 for:
 
@@ -199,7 +278,8 @@ How safely it preserves the meaning conveyed by the original passage.
 
 Scores are useful metadata and diagnostics, not ground truth.
 
-Initial application-side acceptance thresholds may be approximately:
+Initial application-side acceptance thresholds were approximately the following (superseded by the judge's
+level-4-or-better defaults, 75 on each dimension):
 
 * independence >= 80
 * completeness >= 80
@@ -297,9 +377,72 @@ it was vivid and dramatic. Version 3 adds:
 All prompt versions remain available as classpath resources for provenance; extracted excerpts record which prompt
 version produced them.
 
+## Runtime system prompt — version 4 (selector) and judge prompts v1
+
+Version 4 turns the selection prompt into a recall-oriented candidate generator for the split described in "Selector
+and judge". It:
+
+* tells the model that a strict reviewer filters afterwards, so it should include borderline candidates rather than
+  omit them;
+* drops self-scoring entirely;
+* asks for the references each candidate relies on, with the unit where each referent is stated;
+* asks for range variants extended back to an antecedent;
+* includes one worked example with its exact JSON.
+
+The judge prompts are `excerpt-judge-standalone-vN.md` (blind) and `excerpt-judge-fidelity-vN.md`, versioned
+together as `excerpt-judge-vN`. The standalone prompt carries the strict quotability bar:
+
+* a quote-card test;
+* anchored level descriptions in which "sensible but flat" is explicitly level 3, which fails;
+* calibration examples for flat prose, dangling references, and angry outbursts.
+
+Attempts record both the selector prompt version and the judge prompt version.
+
+Judge v1 → v2 fixed over-strictness seen in the eval on Ministral 3 8B:
+
+* The blind judge listed ordinary general concepts ("good fortune", "ambition", "a community of interpreters") as
+  unresolved references, which the hard rule then rejected. v2 limits `unresolvedReferences` to phrases that point
+  back to one specific thing the reader was not shown, using a "which one?" test and explicit counter-examples.
+* The fidelity judge treated "leaves out the author's wider argument" as unfaithful. v2 states that omission alone
+  is not a fidelity problem; only a reversed, distorted, or overstated claim is.
+
+On the eval corpus, v2 raised good ranges accepted from 5 to 6 of 6. Bad ranges accepted stayed at 0.
+
+## Runtime system prompt — selector version 5 and judge prompts v3
+
+These versions spell out what makes a good quote, using the standard in "Evaluate quotability". The mechanics stay
+the same.
+
+Selector v5 replaces the short "promising candidate" list with:
+
+* the qualities to prefer,
+* the passages to avoid,
+* an explicit note that a quote need not be true, agreeable, or inspirational.
+
+It keeps the recall bias ("when uncertain, err slightly toward inclusion"). Units, references, range variants,
+`coreIdea`, and the worked example are unchanged.
+
+In judge v3, only the standalone prompt changed. The fidelity prompt is still `excerpt-judge-fidelity-v2.md`. The
+standalone prompt adds:
+
+* the core standard and the dimensions to weigh;
+* what not to require and what to be skeptical of;
+* the test "would I keep this if I didn't know who wrote it?" for quotability;
+* "prefer false negatives" and a tie-break toward the lower level;
+* calibration examples for a motivational cliché (level 3) and a cynical but sharp line (level 4-5).
+
+The steps, the anchored levels, and the hard rules in code are unchanged, so acceptance thresholds still apply as
+before.
+
 ---
 
 ## Structured model response
+
+The response shape below is the original (v1-v3) single-call contract. From v4 the selector returns, per candidate,
+in this order: `startUnit`, `endUnit`, `references` (`[{phrase, referentUnit}]`), `coreIdea` (at most ~15 words), and
+`reason`, with no scores. The judge's two response shapes are defined in `ExcerptJudgeResponseSchema.kt`. In every
+schema, free-text observations come before the levels, so the levels are generated after the model's own reading
+rather than before it.
 
 Conceptual response:
 
@@ -465,15 +608,23 @@ Deterministic automated tests should cover segmentation, offsets, reconstruction
 
 Model-quality evaluation should preserve representative inputs and allow outputs to be reviewed using the independence, completeness, quotability, and contextual-fidelity rubric.
 
+Eval fixtures (`server/src/test/resources/extraction-eval/*.json`) may carry optional gold labels, which use the unit
+ids the runner prints:
+
+* `goodRanges`: ranges that should be accepted.
+* `badRanges`: tempting ranges that must be rejected, each with a `why`.
+* `expectEmpty`: accepting anything from this source is wrong.
+
+`ExtractionEvalRunner` runs the full selector-and-judge pipeline, prints every candidate with the judge's reading,
+and ends with a summary (accepted good, accepted bad, accepted unlabeled, missed good, and expected-empty but
+accepted) so prompt and model changes can be compared run to run. Real problem excerpts found in the admin should be
+added as fixtures with `badRanges`.
+
 ---
 
 ## Possible second-pass validation
 
-Do not require this for the initial implementation unless testing shows it is necessary.
-
-A later quality mode may make a second LLM request for each proposed excerpt and ask whether the excerpt remains faithful and independent when compared with its full surrounding source.
-
-Design the first implementation so this can be added without rewriting the extraction domain model.
+Implemented as the judge pass. See "Selector and judge".
 
 ---
 

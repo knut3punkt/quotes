@@ -16,6 +16,7 @@ import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
+import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptJudgeClient
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptSelectionClient
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.interpretation.loadInterpretationConfig
@@ -76,7 +77,11 @@ fun Application.module() {
         authorEnrichmentService = AuthorEnrichmentService(WikidataClient()),
         bibleImportService = BibleImportService(BibleClient()),
         quranImportService = QuranImportService(QuranClient()),
-        quoteExtractionService = QuoteExtractionService(LlamaCppExcerptSelectionClient(extractionConfig.llm), extractionConfig),
+        quoteExtractionService = QuoteExtractionService(
+            LlamaCppExcerptSelectionClient(extractionConfig.llm),
+            LlamaCppExcerptJudgeClient(extractionConfig.judge),
+            extractionConfig,
+        ),
         quoteInterpretationService = QuoteInterpretationService(
             LlamaCppInterpretationClient(interpretationLlmConfig),
             interpretationLlmConfig,

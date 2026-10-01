@@ -15,8 +15,10 @@ data class QuoteExcerptResponse(
     val independence: Int,
     val completeness: Int,
     val quotability: Int,
-    val contextualFidelity: Int,
+    val contextualFidelity: Int?, // null when the fidelity check was skipped (candidate failed the blind review)
     val reason: String,
+    val contextSignals: List<String>,
+    val judgeNotes: String,
     val meetsThresholds: Boolean,
 )
 

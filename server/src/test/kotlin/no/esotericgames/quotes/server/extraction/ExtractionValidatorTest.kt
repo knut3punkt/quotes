@@ -1,6 +1,7 @@
 package no.esotericgames.quotes.server.extraction
 
 import no.esotericgames.quotes.server.extraction.llm.RawExcerptCandidate
+import no.esotericgames.quotes.server.extraction.llm.UnitReference
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -10,12 +11,32 @@ private val POLICY = ExtractionPolicy()
 private fun candidate(
     startUnit: Int,
     endUnit: Int,
-    independence: Int = 90,
-    completeness: Int = 90,
-    quotability: Int = 90,
-    contextualFidelity: Int = 90,
+    references: List<UnitReference> = emptyList(),
+    coreIdea: String = "idea",
     reason: String = "reason",
-) = RawExcerptCandidate(startUnit, endUnit, independence, completeness, quotability, contextualFidelity, reason)
+) = RawExcerptCandidate(startUnit, endUnit, references, coreIdea, reason)
+
+private fun judged(
+    startUnit: Int,
+    endUnit: Int,
+    score: Int = 75,
+    meetsThresholds: Boolean = true,
+) = ValidatedExcerpt(
+    startUnit = startUnit,
+    endUnit = endUnit,
+    startOffset = 0,
+    endOffset = 0,
+    text = "",
+    wordCount = 10,
+    independence = score,
+    completeness = score,
+    quotability = score,
+    contextualFidelity = score,
+    reason = "",
+    contextSignals = emptyList(),
+    judgeNotes = "",
+    meetsThresholds = meetsThresholds,
+)
 
 class ExtractionValidatorTest {
 
@@ -66,38 +87,54 @@ class ExtractionValidatorTest {
     }
 
     @Test
-    fun `resolves overlapping ranges by keeping the higher-scoring candidate`() {
-        val weak = candidate(1, 2, independence = 60, completeness = 60, quotability = 60, contextualFidelity = 60)
-        val strong = candidate(1, 1, independence = 95, completeness = 95, quotability = 95, contextualFidelity = 95)
+    fun `keeps overlapping range variants so the judge can choose between them`() {
+        val result = ExtractionValidator.validate(source, units, listOf(candidate(2, 2), candidate(1, 2)), POLICY)
 
-        val result = ExtractionValidator.validate(source, units, listOf(weak, strong), POLICY)
+        assertEquals(listOf(2 to 2, 1 to 2), result.map { it.startUnit to it.endUnit })
+    }
+
+    @Test
+    fun `combines core idea and reason into the stored reason`() {
+        val result = ExtractionValidator.validate(source, units, listOf(candidate(1, 1, coreIdea = "Patience teaches", reason = "clear")), POLICY)
+
+        assertEquals("Core idea: Patience teaches — clear", result.single().reason)
+    }
+
+    @Test
+    fun `carries selector references pointing outside the range as context signals`() {
+        val withReference = candidate(2, 2, references = listOf(UnitReference("that remark", 1), UnitReference("inside", 2)))
+
+        val result = ExtractionValidator.validate(source, units, listOf(withReference), POLICY)
+
+        assertEquals(listOf("that remark"), result.single().contextSignals)
+    }
+
+    @Test
+    fun `resolveOverlaps prefers a passing excerpt over a higher-scoring failing one`() {
+        val failing = judged(1, 2, score = 100, meetsThresholds = false)
+        val passing = judged(2, 2, score = 75, meetsThresholds = true)
+
+        val result = ExtractionValidator.resolveOverlaps(listOf(failing, passing))
+
+        assertEquals(listOf(2 to 2), result.map { it.startUnit to it.endUnit })
+    }
+
+    @Test
+    fun `resolveOverlaps keeps the higher-scoring of two passing overlaps`() {
+        val weaker = judged(1, 2, score = 75)
+        val stronger = judged(1, 1, score = 100)
+
+        val result = ExtractionValidator.resolveOverlaps(listOf(weaker, stronger))
 
         assertEquals(listOf(1 to 1), result.map { it.startUnit to it.endUnit })
     }
 
     @Test
-    fun `keeps non-overlapping candidates with no maximum count`() {
-        val candidates = units.indices.map { index -> candidate(index + 1, index + 1) }
+    fun `resolveOverlaps keeps non-overlapping excerpts with no maximum count`() {
+        val excerpts = (1..5).map { judged(it, it) }
 
-        val result = ExtractionValidator.validate(source, units, candidates, POLICY)
+        val result = ExtractionValidator.resolveOverlaps(excerpts)
 
-        assertEquals(units.size, result.size)
-    }
-
-    @Test
-    fun `meetsThresholds is false when a score falls below the policy minimum`() {
-        val belowThreshold = candidate(1, 1, independence = 50)
-
-        val result = ExtractionValidator.validate(source, units, listOf(belowThreshold), POLICY)
-
-        assertEquals(1, result.size)
-        assertEquals(false, result[0].meetsThresholds)
-    }
-
-    @Test
-    fun `meetsThresholds is true when every score clears the policy minimum`() {
-        val result = ExtractionValidator.validate(source, units, listOf(candidate(1, 1)), POLICY)
-
-        assertEquals(true, result[0].meetsThresholds)
+        assertEquals(5, result.size)
     }
 }

@@ -8,6 +8,6 @@ package no.esotericgames.quotes.server.extraction
 object ExtractionPromptBuilder {
     fun buildUserContent(units: List<SourceUnit>): String {
         val unitLines = units.joinToString("\n") { "[${it.id}] ${it.text}" }
-        return "SOURCE UNITS\n\n$unitLines\n\nSelect zero or more quotable standalone excerpts according to the extraction rules."
+        return "SOURCE UNITS\n\n$unitLines\n\nPropose zero or more candidate excerpts according to the extraction rules."
     }
 }

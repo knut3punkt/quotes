@@ -37,7 +37,7 @@ class LlamaCppExcerptSelectionClientTest {
             {
               "model": "test-model",
               "choices": [
-                { "message": { "role": "assistant", "content": "{\"excerpts\":[{\"startUnit\":1,\"endUnit\":2,\"independence\":90,\"completeness\":90,\"quotability\":80,\"contextualFidelity\":95,\"reason\":\"clear\"}]}" } }
+                { "message": { "role": "assistant", "content": "{\"excerpts\":[{\"startUnit\":1,\"endUnit\":2,\"references\":[{\"phrase\":\"it\",\"referentUnit\":1}],\"coreIdea\":\"idea\",\"reason\":\"clear\"}]}" } }
               ]
             }
             """.trimIndent()
@@ -50,6 +50,8 @@ class LlamaCppExcerptSelectionClientTest {
         assertEquals(1, success.candidates.size)
         assertEquals(1, success.candidates[0].startUnit)
         assertEquals(2, success.candidates[0].endUnit)
+        assertEquals(listOf(UnitReference("it", 1)), success.candidates[0].references)
+        assertEquals("idea", success.candidates[0].coreIdea)
     }
 
     @Test

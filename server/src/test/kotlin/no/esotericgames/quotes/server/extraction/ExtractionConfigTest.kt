@@ -14,6 +14,41 @@ class ExtractionConfigTest {
         assertEquals("http://localhost:8888", config.llm.baseUrl)
         assertEquals(55, config.policy.minSourceWords)
         assertNull(config.llm.reasoningEffort)
+        assertEquals("http://localhost:8888", config.judge.baseUrl)
+        assertEquals(60_000L, config.judge.requestTimeoutMillis)
+        assertEquals(75, config.policy.minQuotability)
+    }
+
+    @Test
+    fun `the judge inherits the selector's endpoint and model when not configured itself`() {
+        val rootConfig = MapApplicationConfig(
+            "extraction.llm.baseUrl" to "http://192.168.1.50:8888",
+            "extraction.llm.model" to "selector-model",
+        )
+
+        val config = loadExtractionConfig(rootConfig)
+
+        assertEquals("http://192.168.1.50:8888", config.judge.baseUrl)
+        assertEquals("selector-model", config.judge.model)
+        assertEquals(500, config.judge.maxOutputTokens)
+    }
+
+    @Test
+    fun `reads the judge block independently of the selector block`() {
+        val rootConfig = MapApplicationConfig(
+            "extraction.llm.model" to "fast-selector",
+            "extraction.judge.baseUrl" to "http://judge.local:9999",
+            "extraction.judge.model" to "strong-judge",
+            "extraction.judge.reasoningEffort" to "high",
+        )
+
+        val config = loadExtractionConfig(rootConfig)
+
+        assertEquals("fast-selector", config.llm.model)
+        assertEquals("http://localhost:8888", config.llm.baseUrl)
+        assertEquals("http://judge.local:9999", config.judge.baseUrl)
+        assertEquals("strong-judge", config.judge.model)
+        assertEquals("high", config.judge.reasoningEffort)
     }
 
     @Test
