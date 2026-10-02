@@ -1,4 +1,5 @@
 import type {
+  AddQuoteTagRequest,
   Author,
   AuthorEnrichmentResponse,
   ApproveImportedQuoteRequest,
@@ -8,6 +9,7 @@ import type {
   BulkUpdateImportedQuoteStatusRequest,
   ExtractQuoteExcerptsResponse,
   GenerateQuoteInterpretationsResponse,
+  GenerateQuoteTagsResponse,
   ImportedQuote,
   NewSourceRequest,
   PagedImportedQuotes,
@@ -15,9 +17,13 @@ import type {
   ProcessingStatus,
   Quote,
   QuoteFilter,
+  QuoteTag,
   ScriptureImportResult,
   Source,
   SourceType,
+  TagFacet,
+  TagSummary,
+  UpdateTagRequest,
   WikiquoteAuthorSearchResponse,
   WikiquoteImportRequest,
   WikiquoteImportResponse,
@@ -164,4 +170,35 @@ export function generateQuoteInterpretations(quoteIds: number[]): Promise<Genera
     method: 'POST',
     body: JSON.stringify({ quoteIds }),
   })
+}
+
+export function generateQuoteTags(quoteIds: number[]): Promise<GenerateQuoteTagsResponse> {
+  return request('/admin/quotes/generate-tags', {
+    method: 'POST',
+    body: JSON.stringify({ quoteIds }),
+  })
+}
+
+export function addQuoteTag(quoteId: number, body: AddQuoteTagRequest): Promise<QuoteTag> {
+  return request(`/admin/quotes/${quoteId}/tags`, { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function rejectQuoteTag(assignmentId: number): Promise<void> {
+  return request(`/admin/tag-assignments/${assignmentId}/reject`, { method: 'POST' })
+}
+
+export function fetchTags(params: { facet?: TagFacet; search?: string; limit?: number } = {}): Promise<TagSummary[]> {
+  const query = new URLSearchParams()
+  if (params.facet) query.set('facet', params.facet)
+  if (params.search) query.set('search', params.search)
+  query.set('limit', String(params.limit ?? DEFAULT_PAGE_SIZE))
+  return request(`/admin/tags?${query.toString()}`)
+}
+
+export function updateTag(tagId: number, body: UpdateTagRequest): Promise<TagSummary> {
+  return request(`/admin/tags/${tagId}`, { method: 'PATCH', body: JSON.stringify(body) })
+}
+
+export function mergeTag(tagId: number, intoTagId: number): Promise<TagSummary> {
+  return request(`/admin/tags/${tagId}/merge`, { method: 'POST', body: JSON.stringify({ intoTagId }) })
 }

@@ -15,13 +15,18 @@ import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
 import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
+import no.esotericgames.quotes.server.admin.AddQuoteTagRequest
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
+import no.esotericgames.quotes.server.admin.GenerateQuoteTagsRequest
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
+import no.esotericgames.quotes.server.admin.MergeTagRequest
 import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteFilter
+import no.esotericgames.quotes.server.admin.TagAdminService
+import no.esotericgames.quotes.server.admin.UpdateTagRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
@@ -31,6 +36,7 @@ import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaImportService
 import no.esotericgames.quotes.server.sources.quran.QuranImportService
 import no.esotericgames.quotes.server.sources.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteImportService
+import no.esotericgames.quotes.server.tagging.QuoteTaggingService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 
 fun Application.configureRouting(
@@ -46,6 +52,8 @@ fun Application.configureRouting(
     quranImportService: QuranImportService,
     quoteExtractionService: QuoteExtractionService,
     quoteInterpretationService: QuoteInterpretationService,
+    quoteTaggingService: QuoteTaggingService,
+    tagAdminService: TagAdminService,
 ) {
     routing {
         get("/health") {
@@ -157,6 +165,32 @@ fun Application.configureRouting(
         post("/admin/quotes/generate-interpretations") {
             val request = call.receive<GenerateQuoteInterpretationsRequest>()
             call.respond(quoteInterpretationService.generateForQuotes(request.quoteIds))
+        }
+        post("/admin/quotes/generate-tags") {
+            val request = call.receive<GenerateQuoteTagsRequest>()
+            call.respond(quoteTaggingService.generateForQuotes(request.quoteIds))
+        }
+        post("/admin/quotes/{id}/tags") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val request = call.receive<AddQuoteTagRequest>()
+            call.respond(HttpStatusCode.Created, tagAdminService.addTagToQuote(id, request))
+        }
+        post("/admin/tag-assignments/{id}/reject") {
+            val id = call.parameters.getOrFail("id").toInt()
+            tagAdminService.rejectAssignment(id)
+            call.respond(HttpStatusCode.NoContent)
+        }
+        get("/admin/tags") {
+            val params = call.request.queryParameters
+            call.respond(tagAdminService.listTags(params["facet"], params["search"], params["limit"]?.toIntOrNull() ?: 500))
+        }
+        patch("/admin/tags/{id}") {
+            val id = call.parameters.getOrFail("id").toInt()
+            call.respond(tagAdminService.updateTag(id, call.receive<UpdateTagRequest>()))
+        }
+        post("/admin/tags/{id}/merge") {
+            val id = call.parameters.getOrFail("id").toInt()
+            call.respond(tagAdminService.mergeTag(id, call.receive<MergeTagRequest>()))
         }
     }
 }

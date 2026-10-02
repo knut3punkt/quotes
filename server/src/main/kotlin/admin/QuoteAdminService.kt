@@ -69,10 +69,12 @@ class QuoteAdminService {
                     .map { it.toQuoteInterpretationResponse() }
                     .groupBy { it.quoteId }
             }
+            val tagsByQuoteId = selectActiveQuoteTags(quoteIds).groupBy { it.quoteId }
             val items = rows.map {
                 it.toQuoteListItemResponse(
                     excerptsByQuoteId[it[Quotes.id]].orEmpty(),
                     interpretationsByQuoteId[it[Quotes.id]].orEmpty(),
+                    tagsByQuoteId[it[Quotes.id]].orEmpty(),
                 )
             }
 
@@ -114,6 +116,7 @@ class QuoteAdminService {
 private fun ResultRow.toQuoteListItemResponse(
     excerpts: List<QuoteExcerptResponse>,
     interpretations: List<QuoteInterpretationResponse>,
+    tags: List<QuoteTagResponse>,
 ) = QuoteListItemResponse(
     id = this[Quotes.id],
     text = this[Quotes.text],
@@ -126,6 +129,7 @@ private fun ResultRow.toQuoteListItemResponse(
     language = this[Quotes.language],
     excerpts = excerpts,
     interpretations = interpretations,
+    tags = tags,
 )
 
 private fun ResultRow.toQuoteExcerptResponse() = QuoteExcerptResponse(

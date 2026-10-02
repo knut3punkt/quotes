@@ -52,3 +52,11 @@ tasks.register<JavaExec>("runExtractionEval") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("no.esotericgames.quotes.server.extraction.eval.ExtractionEvalRunnerKt")
 }
+
+tasks.register<JavaExec>("runTaggingEval") {
+    group = "verification"
+    description = "Manually runs the quote-tagging model-quality corpus against a local llama-server (not part of `test`)."
+    dependsOn("testClasses")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("no.esotericgames.quotes.server.tagging.eval.TaggingEvalRunnerKt")
+}

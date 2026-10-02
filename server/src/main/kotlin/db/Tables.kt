@@ -53,20 +53,6 @@ object Quotes : Table("quotes") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object Tags : Table("tags") {
-    val id = integer("id").autoIncrement()
-    val name = text("name").uniqueIndex()
-
-    override val primaryKey = PrimaryKey(id)
-}
-
-object QuoteTags : Table("quote_tags") {
-    val quoteId = integer("quote_id").references(Quotes.id)
-    val tagId = integer("tag_id").references(Tags.id)
-
-    override val primaryKey = PrimaryKey(quoteId, tagId)
-}
-
 object ImportedQuotes : Table("imported_quotes") {
     val id = integer("id").autoIncrement()
     val provider = text("provider")
@@ -162,6 +148,53 @@ object QuoteInterpretations : Table("quote_interpretations") {
     val interpretation = text("interpretation")
     val textualSupport = integer("textual_support")
     val speculativeness = integer("speculativeness")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object Tags : Table("tags") {
+    val id = integer("id").autoIncrement()
+    val facet = text("facet")
+    val name = text("name")
+    val normalizedName = text("normalized_name")
+    val breadth = text("breadth").nullable()
+    val mergedIntoId = integer("merged_into_id").references(id, onDelete = ReferenceOption.SET_NULL).nullable()
+    val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val createdBy = text("created_by")
+
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        uniqueIndex(facet, normalizedName)
+    }
+}
+
+object QuoteTaggingAttempts : Table("quote_tagging_attempts") {
+    val id = integer("id").autoIncrement()
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val excerptId = integer("excerpt_id").references(QuoteExcerpts.id, onDelete = ReferenceOption.CASCADE).nullable()
+    val taggingMethod = text("tagging_method").default("llm-open-vocabulary")
+    val taggingMethodVersion = text("tagging_method_version")
+    val promptVersion = text("prompt_version")
+    val modelId = text("model_id").nullable()
+    val attemptedAt = timestampWithTimeZone("attempted_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val status = text("status")
+    val tagCount = integer("tag_count").default(0)
+    val errorMessage = text("error_message").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object QuoteTagAssignments : Table("quote_tag_assignments") {
+    val id = integer("id").autoIncrement()
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)
+    val excerptId = integer("excerpt_id").references(QuoteExcerpts.id, onDelete = ReferenceOption.CASCADE).nullable()
+    val tagId = integer("tag_id").references(Tags.id, onDelete = ReferenceOption.CASCADE)
+    val attemptId = integer("attempt_id").references(QuoteTaggingAttempts.id, onDelete = ReferenceOption.SET_NULL).nullable()
+    val origin = text("origin")
+    val relevance = integer("relevance")
+    val basis = text("basis")
+    val rejected = bool("rejected").default(false)
 
     override val primaryKey = PrimaryKey(id)
 }

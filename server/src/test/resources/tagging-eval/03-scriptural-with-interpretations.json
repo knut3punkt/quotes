@@ -1,0 +1,20 @@
+{
+  "id": "03-scriptural-with-interpretations",
+  "description": "Scripture with conventional and psychological readings: expect interpretation-basis concepts, none of them central.",
+  "quoteText": "Except a man be born again, he cannot see the kingdom of God.",
+  "sourceTitle": "Bible",
+  "interpretations": [
+    {
+      "lens": "Christian / Exoteric",
+      "interpretation": "Being born again is a spiritual rebirth into Christian faith, which the saying makes necessary for perceiving or entering the kingdom of God.",
+      "textualSupport": 94,
+      "speculativeness": 10
+    },
+    {
+      "lens": "Spiritual / Psychological",
+      "interpretation": "A person must become aware of the biases and habits through which they see the world before they can perceive what that way of seeing hides.",
+      "textualSupport": 67,
+      "speculativeness": 58
+    }
+  ]
+}

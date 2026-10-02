@@ -107,6 +107,7 @@ data class QuoteListItemResponse(
     val language: String,
     val excerpts: List<QuoteExcerptResponse> = emptyList(),
     val interpretations: List<QuoteInterpretationResponse> = emptyList(),
+    val tags: List<QuoteTagResponse> = emptyList(),
 )
 
 @Serializable

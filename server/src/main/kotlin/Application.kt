@@ -13,6 +13,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteAdminService
+import no.esotericgames.quotes.server.admin.TagAdminService
 import no.esotericgames.quotes.server.db.configureDatabase
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
@@ -32,6 +33,9 @@ import no.esotericgames.quotes.server.sources.quran.QuranImportService
 import no.esotericgames.quotes.server.sources.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteClient
 import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteImportService
+import no.esotericgames.quotes.server.tagging.QuoteTaggingService
+import no.esotericgames.quotes.server.tagging.llm.LlamaCppTaggingClient
+import no.esotericgames.quotes.server.tagging.loadTaggingConfig
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 import no.esotericgames.quotes.server.wikidata.WikidataClient
 
@@ -66,6 +70,7 @@ fun Application.module() {
     configureDatabase()
     val extractionConfig = loadExtractionConfig(environment.config)
     val interpretationLlmConfig = loadInterpretationConfig(environment.config)
+    val taggingConfig = loadTaggingConfig(environment.config)
     configureRouting(
         publicQuoteService = PublicQuoteService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
@@ -86,5 +91,7 @@ fun Application.module() {
             LlamaCppInterpretationClient(interpretationLlmConfig),
             interpretationLlmConfig,
         ),
+        quoteTaggingService = QuoteTaggingService(LlamaCppTaggingClient(taggingConfig.llm), taggingConfig),
+        tagAdminService = TagAdminService(),
     )
 }
