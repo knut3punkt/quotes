@@ -106,6 +106,58 @@ export interface QuoteListItem {
   language: string
   excerpts: QuoteExcerpt[]
   interpretations: QuoteInterpretation[]
+  tags: QuoteTag[]
+}
+
+export type TagFacet = 'concept' | 'mood' | 'motif'
+
+export type TagBreadth = 'broad' | 'specific'
+
+export interface QuoteTag {
+  assignmentId: number
+  quoteId: number
+  excerptId: number | null // null when the tag is on the whole quote
+  tagId: number
+  facet: TagFacet
+  name: string
+  breadth: TagBreadth | null // concepts only
+  relevance: number // 1 = peripheral, 2 = significant, 3 = central
+  basis: 'text' | 'interpretation'
+  origin: 'llm' | 'admin'
+}
+
+export type QuoteTaggingOutcome = 'tagged' | 'noTagsFound' | 'failed' | 'notFound'
+
+export interface QuoteTaggingResult {
+  quoteId: number
+  outcome: QuoteTaggingOutcome
+  tags: QuoteTag[]
+}
+
+export interface GenerateQuoteTagsResponse {
+  results: QuoteTaggingResult[]
+}
+
+export interface TagSummary {
+  id: number
+  facet: TagFacet
+  name: string
+  breadth: TagBreadth | null
+  usageCount: number
+  aliases: string[]
+}
+
+export interface AddQuoteTagRequest {
+  facet: TagFacet
+  name: string
+  excerptId?: number
+  breadth?: TagBreadth
+  relevance?: number
+}
+
+export interface UpdateTagRequest {
+  name?: string
+  breadth?: TagBreadth
 }
 
 export interface PagedQuotes {

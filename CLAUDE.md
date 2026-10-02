@@ -43,7 +43,9 @@ speculatively — only when a specific platform is explicitly requested.
   `GET /api/quotes/random` endpoint (random verified quotes with author/source, for TV frontends).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
   `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
-  stages results in `imported_quotes`. `admin/` (package, not to be confused with the top-level
+  stages results in `imported_quotes`. `extraction/`, `interpretation/` and `tagging/` are the
+  LLM-backed enrichment pipelines (excerpts, interpretations, and faceted tags respectively), each
+  triggered from the admin. `admin/` (package, not to be confused with the top-level
   `admin` frontend project) holds the admin API — DTOs and the service backing the
   `/admin/imported-quotes` routes used to review and approve staged imports into real `quotes`
   rows.
@@ -116,6 +118,21 @@ Important principles:
 * Treat LLM output as untrusted and validate all structured responses.
 * Reuse the existing local LLM infrastructure used by quote extraction unless there is a concrete reason not to.
 * Runtime prompts must remain version-controlled resources.
+
+### Quote tagging
+
+When implementing or modifying quote tagging, or anything that consumes tags (search, adaptive visuals), first read:
+
+`docs/features/quote-tagging.md`
+
+Important principles:
+
+* Tags serve two future consumers: TV search at several levels of abstraction, and adaptive visuals built from
+  pre-made per-tag assets. Keep both in mind when changing facets or vocabulary rules.
+* Three facets: `concept` (with `broad`/`specific` breadth), `mood`, and `motif` (concrete, drawable imagery only).
+* The vocabulary is open, kept coherent by the existing-vocabulary hint in the prompt, deterministic
+  normalization, and admin merges (merged tags stay as aliases). Don't bypass `TagVocabulary` when creating tags.
+* Admin edits are durable: a re-run never removes admin-added tags or re-adds admin-rejected ones.
 
 
 ## Build commands

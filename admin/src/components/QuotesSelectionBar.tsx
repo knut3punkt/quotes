@@ -10,11 +10,13 @@ interface QuotesSelectionBarProps {
   skippedCount: number
   extracting: boolean
   interpreting: boolean
+  tagging: boolean
   unapproving: boolean
   onToggleSelectAllVisible: () => void
   onClearSelection: () => void
   onExtractExcerpts: () => void
   onGenerateInterpretations: () => void
+  onGenerateTags: () => void
   onUnapprove: () => void
 }
 
@@ -26,14 +28,16 @@ function QuotesSelectionBarComponent({
   skippedCount,
   extracting,
   interpreting,
+  tagging,
   unapproving,
   onToggleSelectAllVisible,
   onClearSelection,
   onExtractExcerpts,
   onGenerateInterpretations,
+  onGenerateTags,
   onUnapprove,
 }: QuotesSelectionBarProps) {
-  const busy = extracting || interpreting || unapproving
+  const busy = extracting || interpreting || tagging || unapproving
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -88,6 +92,20 @@ function QuotesSelectionBarComponent({
           </Button>
           <span className="text-xs text-muted-foreground">
             Also generates interpretations for each quote's qualifying excerpts.
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-primary bg-brand-tint text-primary hover:bg-brand-tint hover:text-primary"
+            onClick={onGenerateTags}
+            disabled={busy || selectedCount === 0}
+          >
+            {tagging && <Loader2 className="animate-spin" />}
+            Generate tags ({selectedCount})
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Quotes with excerpts are tagged through their excerpts only; tags you added or removed by hand are kept.
           </span>
           <Button type="button" variant="destructive" size="sm" onClick={onUnapprove} disabled={busy}>
             {unapproving && <Loader2 className="animate-spin" />}

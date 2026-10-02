@@ -20,6 +20,7 @@ import { ImportedQuotesTable } from './components/ImportedQuotesTable'
 import { ImportPage } from './components/ImportPage'
 import { QuotesPage } from './components/QuotesPage'
 import { SelectionBar } from './components/SelectionBar'
+import { TagsPage } from './components/TagsPage'
 import { Toaster } from './components/Toaster'
 import { useDebouncedValue } from './hooks/use-debounced-value'
 import { toast } from './hooks/use-toast'
@@ -52,8 +53,24 @@ const STATUS_LABELS: Record<ProcessingStatus, string> = {
   duplicate: 'Marked duplicate',
 }
 
+type AdminPage = 'review' | 'import' | 'quotes' | 'tags'
+
+const PAGE_TITLES: Record<AdminPage, string> = {
+  review: 'Imported quotes',
+  import: 'Import quotes',
+  quotes: 'Approved quotes',
+  tags: 'Tags',
+}
+
+const PAGE_DESCRIPTIONS: Record<AdminPage, string> = {
+  review: 'Review staged imports and promote them into the quote library.',
+  import: 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.',
+  quotes: 'Browse the curated quotes that have been approved into the library.',
+  tags: 'Rename, reclassify, and merge the tags generated for quotes.',
+}
+
 function App() {
-  const [page, setPage] = useState<'review' | 'import' | 'quotes'>('review')
+  const [page, setPage] = useState<AdminPage>('review')
 
   const [importedQuotes, setImportedQuotes] = useState<ImportedQuote[]>([])
   const [authors, setAuthors] = useState<Author[]>([])
@@ -465,16 +482,8 @@ function App() {
         <Toaster />
         <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="mb-1 text-[28px]">
-              {page === 'review' ? 'Imported quotes' : page === 'import' ? 'Import quotes' : 'Approved quotes'}
-            </h1>
-            <p className="text-muted-foreground">
-              {page === 'review'
-                ? 'Review staged imports and promote them into the quote library.'
-                : page === 'import'
-                  ? 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.'
-                  : 'Browse the curated quotes that have been approved into the library.'}
-            </p>
+            <h1 className="mb-1 text-[28px]">{PAGE_TITLES[page]}</h1>
+            <p className="text-muted-foreground">{PAGE_DESCRIPTIONS[page]}</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -492,6 +501,9 @@ function App() {
             </Button>
             <Button type="button" variant={page === 'quotes' ? 'default' : 'outline'} onClick={() => setPage('quotes')}>
               Approved quotes
+            </Button>
+            <Button type="button" variant={page === 'tags' ? 'default' : 'outline'} onClick={() => setPage('tags')}>
+              Tags
             </Button>
           </div>
         </header>
@@ -621,6 +633,8 @@ function App() {
         {page === 'import' && <ImportPage />}
 
         {page === 'quotes' && <QuotesPage />}
+
+        {page === 'tags' && <TagsPage />}
       </div>
     </TooltipProvider>
   )

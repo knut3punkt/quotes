@@ -14,14 +14,25 @@ import {
   extractQuoteExcerpts,
   fetchAuthors,
   fetchQuotes,
+  fetchTags,
   generateQuoteInterpretations,
+  generateQuoteTags,
 } from '../api'
 import { useDebouncedValue } from '../hooks/use-debounced-value'
 import { toast } from '../hooks/use-toast'
-import type { Author, QuoteExtractionOutcome, QuoteInterpretationOutcome, QuoteListItem } from '../types'
+import type {
+  Author,
+  QuoteExtractionOutcome,
+  QuoteInterpretationOutcome,
+  QuoteListItem,
+  QuoteTag,
+  QuoteTaggingOutcome,
+  TagFacet,
+} from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
 import { QuotesSelectionBar } from './QuotesSelectionBar'
+import { QuoteTagsCell } from './QuoteTagsCell'
 
 const PAGE_SIZE = 50
 const FILTER_DEBOUNCE_MILLIS = 250
@@ -37,6 +48,15 @@ const OUTCOME_LABELS: Record<QuoteExtractionOutcome, string> = {
   failed: 'failed',
   notFound: 'not found',
 }
+
+const TAGGING_OUTCOME_LABELS: Record<QuoteTaggingOutcome, string> = {
+  tagged: 'tagged',
+  noTagsFound: 'no tags found',
+  failed: 'failed',
+  notFound: 'not found',
+}
+
+const EMPTY_VOCABULARY: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
 
 const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> = {
   generated: 'generated',
@@ -72,14 +92,31 @@ export function QuotesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [extracting, setExtracting] = useState(false)
   const [interpreting, setInterpreting] = useState(false)
+  const [tagging, setTagging] = useState(false)
+  const [vocabulary, setVocabulary] = useState<Record<TagFacet, string[]>>(EMPTY_VOCABULARY)
   const [unapproveRequest, setUnapproveRequest] = useState<number[] | null>(null)
   const [unapproving, setUnapproving] = useState(false)
   const [unapproveError, setUnapproveError] = useState<string | null>(null)
-  const busy = extracting || interpreting || unapproving
+  const busy = extracting || interpreting || tagging || unapproving
 
   useEffect(() => {
     fetchAuthors().then(setAuthors).catch(() => undefined)
   }, [])
+
+  // Autocomplete suggestions for the add-tag input; refreshed after each generation run.
+  const loadVocabulary = useCallback(() => {
+    fetchTags()
+      .then((tags) => {
+        const byFacet: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
+        for (const tag of tags) byFacet[tag.facet].push(tag.name)
+        setVocabulary(byFacet)
+      })
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    loadVocabulary()
+  }, [loadVocabulary])
 
   useEffect(() => {
     setLoading(true)
@@ -180,6 +217,53 @@ export function QuotesPage() {
       setInterpreting(false)
     }
   }, [selectedQuotes])
+
+  const handleGenerateTags = useCallback(async () => {
+    const ids = selectedQuotes.map((quote) => quote.id)
+    if (ids.length === 0) return
+    setTagging(true)
+    try {
+      const response = await generateQuoteTags(ids)
+      const resultsById = new Map(response.results.map((result) => [result.quoteId, result]))
+
+      setQuotes((prev) =>
+        prev.map((quote) => {
+          const result = resultsById.get(quote.id)
+          if (!result || result.outcome === 'notFound') return quote
+          // The server returns every active tag on the quote, including admin-added ones.
+          return { ...quote, tags: result.tags }
+        }),
+      )
+
+      const counts = response.results.reduce<Record<string, number>>((acc, result) => {
+        acc[result.outcome] = (acc[result.outcome] ?? 0) + 1
+        return acc
+      }, {})
+      const summary = Object.entries(counts)
+        .map(([outcome, count]) => `${count} ${TAGGING_OUTCOME_LABELS[outcome as QuoteTaggingOutcome]}`)
+        .join(', ')
+      if ((counts.failed ?? 0) > 0) {
+        toast.error('Some tagging runs failed', summary)
+      } else {
+        toast.success('Tagging complete', summary)
+      }
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+      loadVocabulary()
+    } catch (err) {
+      toast.error('Tagging failed', errorMessage(err))
+    } finally {
+      setTagging(false)
+    }
+  }, [selectedQuotes, loadVocabulary])
+
+  const handleTagsChange = useCallback((quoteId: number, tags: QuoteTag[]) => {
+    setQuotes((prev) => prev.map((quote) => (quote.id === quoteId ? { ...quote, tags } : quote)))
+  }, [])
 
   const handleExtractExcerpts = useCallback(async () => {
     const ids = selectedQuotes.map((quote) => quote.id)
@@ -365,11 +449,13 @@ export function QuotesPage() {
           skippedCount={skippedCount}
           extracting={extracting}
           interpreting={interpreting}
+          tagging={tagging}
           unapproving={unapproving}
           onToggleSelectAllVisible={toggleSelectAllVisible}
           onClearSelection={clearSelection}
           onExtractExcerpts={handleExtractExcerpts}
           onGenerateInterpretations={handleGenerateInterpretations}
+          onGenerateTags={handleGenerateTags}
           onUnapprove={requestUnapprove}
         />
       )}
@@ -377,7 +463,7 @@ export function QuotesPage() {
       {unapproveRequest && (
         <ConfirmDialog
           title={unapproveRequest.length === 1 ? 'Unapprove quote' : `Unapprove ${unapproveRequest.length} quotes`}
-          description={`${unapproveRequest.length === 1 ? 'This quote' : `${unapproveRequest.length} quotes`} will be deleted from the library, along with excerpts and interpretations. Linked imports return to pending.`}
+          description={`${unapproveRequest.length === 1 ? 'This quote' : `${unapproveRequest.length} quotes`} will be deleted from the library, along with excerpts, interpretations and tags. Linked imports return to pending.`}
           confirmLabel="Unapprove"
           submittingLabel="Unapproving…"
           submitting={unapproving}
@@ -407,6 +493,7 @@ export function QuotesPage() {
               </TableHead>
               <TableHead>ID</TableHead>
               <TableHead>Text</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead>Author</TableHead>
               <TableHead>Source</TableHead>
               <TableHead>Verified</TableHead>
@@ -445,6 +532,16 @@ export function QuotesPage() {
                     text={quote.text}
                     excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
                     interpretations={quote.interpretations}
+                  />
+                </TableCell>
+                <TableCell className="max-w-[320px] align-top whitespace-normal">
+                  <QuoteTagsCell
+                    quoteId={quote.id}
+                    tags={quote.tags}
+                    excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
+                    vocabulary={vocabulary}
+                    disabled={busy}
+                    onTagsChange={handleTagsChange}
                   />
                 </TableCell>
                 <TableCell className="align-top">{quote.authorName ?? '—'}</TableCell>

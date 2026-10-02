@@ -1,0 +1,6 @@
+{
+  "id": "06-vocabulary-reuse",
+  "description": "Overlaps earlier fixtures (luck, judgment, overconfidence): check that the model reuses the vocabulary built up by the run instead of coining synonyms.",
+  "quoteText": "Success is a lousy teacher. It seduces smart people into thinking they can't lose.",
+  "authorName": "Bill Gates"
+}
