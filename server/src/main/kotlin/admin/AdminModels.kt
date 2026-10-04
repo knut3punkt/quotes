@@ -118,6 +118,13 @@ data class PagedQuotesResponse(
     val pageSize: Int,
 )
 
+/** Values present in the library, offered as choices by the approved-quotes filters. */
+@Serializable
+data class QuoteFilterOptionsResponse(
+    val providers: List<String>,
+    val languages: List<String>,
+)
+
 @Serializable
 data class AuthorResponse(val id: Int, val name: String, val birthYear: Int?, val deathYear: Int?, val wikidataQid: String?)
 

@@ -2,9 +2,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Lightbulb } from 'lucide-react'
@@ -13,7 +10,9 @@ import {
   bulkUnapproveQuotes,
   extractQuoteExcerpts,
   fetchAuthors,
+  fetchQuoteFilterOptions,
   fetchQuotes,
+  fetchSources,
   fetchTags,
   generateQuoteInterpretations,
   generateQuoteTags,
@@ -23,14 +22,17 @@ import { toast } from '../hooks/use-toast'
 import type {
   Author,
   QuoteExtractionOutcome,
+  QuoteFilterOptions,
   QuoteInterpretationOutcome,
   QuoteListItem,
   QuoteTag,
   QuoteTaggingOutcome,
+  Source,
   TagFacet,
 } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
+import { DEFAULT_QUOTE_FILTERS, QuotesFilterBar, type QuoteFilterState } from './QuotesFilterBar'
 import { QuotesSelectionBar } from './QuotesSelectionBar'
 import { QuoteTagsCell } from './QuoteTagsCell'
 
@@ -58,6 +60,8 @@ const TAGGING_OUTCOME_LABELS: Record<QuoteTaggingOutcome, string> = {
 
 const EMPTY_VOCABULARY: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
 
+const EMPTY_FILTER_OPTIONS: QuoteFilterOptions = { providers: [], languages: [] }
+
 const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> = {
   generated: 'generated',
   noInterpretationsFound: 'no interpretation found',
@@ -81,13 +85,13 @@ export function QuotesPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [search, setSearch] = useState('')
-  const [verified, setVerified] = useState<'all' | 'true' | 'false'>('all')
-  const [language, setLanguage] = useState('')
-  const [authorId, setAuthorId] = useState<'all' | string>('all')
+  const [sources, setSources] = useState<Source[]>([])
+  const [filterOptions, setFilterOptions] = useState<QuoteFilterOptions>(EMPTY_FILTER_OPTIONS)
+  const [filters, setFilters] = useState<QuoteFilterState>(DEFAULT_QUOTE_FILTERS)
 
-  const debouncedSearch = useDebouncedValue(search, FILTER_DEBOUNCE_MILLIS)
-  const debouncedLanguage = useDebouncedValue(language, FILTER_DEBOUNCE_MILLIS)
+  const debouncedSearch = useDebouncedValue(filters.search, FILTER_DEBOUNCE_MILLIS)
+  const debouncedLengthValue = useDebouncedValue(filters.lengthValue, FILTER_DEBOUNCE_MILLIS)
+  const debouncedTag = useDebouncedValue(filters.tag, FILTER_DEBOUNCE_MILLIS)
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [extracting, setExtracting] = useState(false)
@@ -101,6 +105,23 @@ export function QuotesPage() {
 
   useEffect(() => {
     fetchAuthors().then(setAuthors).catch(() => undefined)
+    fetchSources().then(setSources).catch(() => undefined)
+    fetchQuoteFilterOptions().then(setFilterOptions).catch(() => undefined)
+  }, [])
+
+  const tagNames = useMemo(
+    () => Array.from(new Set([...vocabulary.concept, ...vocabulary.mood, ...vocabulary.motif])).sort(),
+    [vocabulary],
+  )
+
+  const handleFiltersChange = useCallback((patch: Partial<QuoteFilterState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }))
+    setPage(1)
+  }, [])
+
+  const resetFilters = useCallback(() => {
+    setFilters(DEFAULT_QUOTE_FILTERS)
+    setPage(1)
   }, [])
 
   // Autocomplete suggestions for the add-tag input; refreshed after each generation run.
@@ -121,11 +142,22 @@ export function QuotesPage() {
   useEffect(() => {
     setLoading(true)
     setLoadError(null)
+    const lengthThreshold = debouncedLengthValue.trim() === '' ? undefined : Number(debouncedLengthValue)
+    const validLength = lengthThreshold !== undefined && Number.isFinite(lengthThreshold) ? lengthThreshold : undefined
     fetchQuotes({
-      authorId: authorId === 'all' ? undefined : Number(authorId),
-      verified: verified === 'all' ? undefined : verified === 'true',
-      language: debouncedLanguage.trim() || undefined,
+      authorId: filters.authorId === 'all' ? undefined : Number(filters.authorId),
+      sourceId: filters.sourceId === 'all' ? undefined : Number(filters.sourceId),
+      verified: filters.verified === 'all' ? undefined : filters.verified === 'true',
+      language: filters.language === 'all' ? undefined : filters.language,
       search: debouncedSearch.trim() || undefined,
+      provider: filters.provider === 'all' ? undefined : filters.provider,
+      sourceConfidence: filters.confidence === 'all' ? undefined : filters.confidence,
+      minLength: filters.lengthOp === 'above' ? validLength : undefined,
+      maxLength: filters.lengthOp === 'below' ? validLength : undefined,
+      tag: debouncedTag.trim() || undefined,
+      excerpts: filters.excerpts === 'all' ? undefined : filters.excerpts,
+      interpretations: filters.interpretations === 'all' ? undefined : filters.interpretations,
+      tags: filters.tags === 'all' ? undefined : filters.tags,
       page,
       pageSize: PAGE_SIZE,
     })
@@ -135,7 +167,22 @@ export function QuotesPage() {
       })
       .catch((err) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false))
-  }, [page, debouncedSearch, verified, debouncedLanguage, authorId])
+  }, [
+    page,
+    debouncedSearch,
+    debouncedLengthValue,
+    debouncedTag,
+    filters.authorId,
+    filters.sourceId,
+    filters.verified,
+    filters.language,
+    filters.provider,
+    filters.confidence,
+    filters.lengthOp,
+    filters.excerpts,
+    filters.interpretations,
+    filters.tags,
+  ])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -358,87 +405,15 @@ export function QuotesPage() {
         </Alert>
       )}
 
-      <div className="mb-5 flex flex-wrap gap-4 border-b border-border pb-4">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="quotes-search" className="text-xs font-normal text-muted-foreground">
-            Search
-          </Label>
-          <Input
-            id="quotes-search"
-            type="search"
-            value={search}
-            placeholder="Quote text…"
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setPage(1)
-            }}
-            className="min-w-[220px]"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="quotes-verified" className="text-xs font-normal text-muted-foreground">
-            Verified
-          </Label>
-          <Select
-            value={verified}
-            onValueChange={(value) => {
-              setVerified(value as 'all' | 'true' | 'false')
-              setPage(1)
-            }}
-          >
-            <SelectTrigger id="quotes-verified" size="sm" className="min-w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="true">Verified</SelectItem>
-              <SelectItem value="false">Unverified</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="quotes-language" className="text-xs font-normal text-muted-foreground">
-            Language
-          </Label>
-          <Input
-            id="quotes-language"
-            value={language}
-            placeholder="e.g. en"
-            onChange={(event) => {
-              setLanguage(event.target.value)
-              setPage(1)
-            }}
-            className="w-24"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="quotes-author" className="text-xs font-normal text-muted-foreground">
-            Author
-          </Label>
-          <Select
-            value={authorId}
-            onValueChange={(value) => {
-              setAuthorId(value)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger id="quotes-author" size="sm" className="min-w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {authors.map((author) => (
-                <SelectItem key={author.id} value={String(author.id)}>
-                  {author.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <QuotesFilterBar
+        filters={filters}
+        onChange={handleFiltersChange}
+        onReset={resetFilters}
+        authors={authors}
+        sources={sources}
+        options={filterOptions}
+        tagNames={tagNames}
+      />
 
       {!loading && quotes.length > 0 && (
         <QuotesSelectionBar

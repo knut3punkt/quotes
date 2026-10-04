@@ -18,6 +18,7 @@ import type {
   ProcessingStatus,
   Quote,
   QuoteFilter,
+  QuoteFilterOptions,
   QuoteTag,
   ScriptureImportResult,
   Source,
@@ -57,12 +58,25 @@ export async function fetchImportedQuotes(): Promise<ImportedQuote[]> {
 export function fetchQuotes(filter: QuoteFilter): Promise<PagedQuotes> {
   const params = new URLSearchParams()
   if (filter.authorId !== undefined) params.set('authorId', String(filter.authorId))
+  if (filter.sourceId !== undefined) params.set('sourceId', String(filter.sourceId))
   if (filter.verified !== undefined) params.set('verified', String(filter.verified))
   if (filter.language) params.set('language', filter.language)
   if (filter.search) params.set('search', filter.search)
+  if (filter.provider) params.set('provider', filter.provider)
+  if (filter.sourceConfidence) params.set('sourceConfidence', filter.sourceConfidence)
+  if (filter.minLength !== undefined) params.set('minLength', String(filter.minLength))
+  if (filter.maxLength !== undefined) params.set('maxLength', String(filter.maxLength))
+  if (filter.tag) params.set('tag', filter.tag)
+  if (filter.excerpts) params.set('excerpts', filter.excerpts)
+  if (filter.interpretations) params.set('interpretations', filter.interpretations)
+  if (filter.tags) params.set('tags', filter.tags)
   params.set('page', String(filter.page))
   params.set('pageSize', String(filter.pageSize))
   return request(`/admin/quotes?${params.toString()}`)
+}
+
+export function fetchQuoteFilterOptions(): Promise<QuoteFilterOptions> {
+  return request('/admin/quotes/filter-options')
 }
 
 export function fetchAuthors(): Promise<Author[]> {

@@ -24,6 +24,7 @@ import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.AddQuoteTagRequest
+import no.esotericgames.quotes.server.admin.EnrichmentFilter
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteTagsRequest
@@ -169,13 +170,25 @@ fun Application.configureRouting(
             val params = call.request.queryParameters
             val filter = QuoteFilter(
                 authorId = params["authorId"]?.toIntOrNull(),
+                sourceId = params["sourceId"]?.toIntOrNull(),
                 verified = params["verified"]?.toBooleanStrictOrNull(),
                 language = params["language"],
                 search = params["search"],
+                provider = params["provider"],
+                sourceConfidence = params["sourceConfidence"],
+                minLength = params["minLength"]?.toIntOrNull(),
+                maxLength = params["maxLength"]?.toIntOrNull(),
+                tag = params["tag"],
+                excerpts = params["excerpts"]?.let(EnrichmentFilter::fromQueryValue),
+                interpretations = params["interpretations"]?.let(EnrichmentFilter::fromQueryValue),
+                tags = params["tags"]?.let(EnrichmentFilter::fromQueryValue),
                 page = params["page"]?.toIntOrNull() ?: 1,
                 pageSize = params["pageSize"]?.toIntOrNull() ?: 50,
             )
             call.respond(quoteAdminService.listQuotes(filter))
+        }
+        get("/admin/quotes/filter-options") {
+            call.respond(quoteAdminService.filterOptions())
         }
         post("/admin/quotes/bulk/unapprove") {
             val request = call.receive<BulkUnapproveQuotesRequest>()

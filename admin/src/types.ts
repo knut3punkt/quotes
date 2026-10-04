@@ -167,13 +167,30 @@ export interface PagedQuotes {
   pageSize: number
 }
 
+/** Whether a quote has results from an enrichment pipeline; `none` = a run succeeded but found nothing. */
+export type EnrichmentFilter = 'has' | 'none' | 'notRun'
+
 export interface QuoteFilter {
   authorId?: number
+  sourceId?: number
   verified?: boolean
   language?: string
   search?: string
+  provider?: string
+  sourceConfidence?: SourceConfidence
+  minLength?: number
+  maxLength?: number
+  tag?: string
+  excerpts?: EnrichmentFilter
+  interpretations?: EnrichmentFilter
+  tags?: EnrichmentFilter
   page: number
   pageSize: number
+}
+
+export interface QuoteFilterOptions {
+  providers: string[]
+  languages: string[]
 }
 
 export interface Author {
