@@ -32,3 +32,6 @@ claude.local.md
 # Node / frontend
 node_modules/
 dist/
+
+# Generated tag images (imageGeneration.storageDir, relative to the server working directory)
+server/generated-images/

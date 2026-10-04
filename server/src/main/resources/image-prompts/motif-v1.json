@@ -1,0 +1,33 @@
+{
+  "version": "motif-v1",
+  "template": "This is an RGBA image with transparency. {{style}} of a single {{tag}}, {{view}}, centred with a small empty margin around it. {{colour}}, {{detail}}. The image has alpha channel and the background is transparent. No shadow on the ground, no text, no frame.",
+  "slots": {
+    "style": [
+      "A delicate watercolour illustration",
+      "A fine ink-and-wash illustration",
+      "A softly shaded painterly illustration",
+      "A vintage engraving-style illustration with light colouring",
+      "A gouache illustration"
+    ],
+    "view": [
+      "seen from the front",
+      "seen at a slight three-quarter angle",
+      "seen in profile",
+      "seen slightly from above"
+    ],
+    "colour": [
+      "Muted natural colours",
+      "Soft, slightly desaturated colours",
+      "Warm, earthy colours",
+      "Cool, quiet colours",
+      "Gentle colours with a single brighter accent"
+    ],
+    "detail": [
+      "clean edges and simple forms",
+      "fine detail with clean edges",
+      "gentle hand-drawn linework",
+      "soft shading and crisp silhouette"
+    ]
+  },
+  "negativePrompt": "background, scenery, landscape, ground shadow, text, letters, watermark, signature, frame, border, multiple objects, cropped, cut off"
+}

@@ -66,7 +66,7 @@ const PAGE_DESCRIPTIONS: Record<AdminPage, string> = {
   review: 'Review staged imports and promote them into the quote library.',
   import: 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.',
   quotes: 'Browse the curated quotes that have been approved into the library.',
-  tags: 'Rename, reclassify, and merge the tags generated for quotes.',
+  tags: 'Rename, reclassify, and merge the tags generated for quotes, and generate their images.',
 }
 
 function App() {

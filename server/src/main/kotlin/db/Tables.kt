@@ -169,6 +169,35 @@ object Tags : Table("tags") {
     }
 }
 
+object TagImages : Table("tag_images") {
+    val id = integer("id").autoIncrement()
+    val tagId = integer("tag_id").references(Tags.id, onDelete = ReferenceOption.CASCADE)
+    val kind = text("kind")
+    val filePath = text("file_path").uniqueIndex()
+    val width = integer("width")
+    val height = integer("height")
+    val fileSizeBytes = long("file_size_bytes")
+    val sha256 = text("sha256")
+    val hasAlpha = bool("has_alpha")
+    val transparentFraction = float("transparent_fraction")
+    val meanLuminance = float("mean_luminance")
+    val dominantColors = jsonb<JsonElement>("dominant_colors", Json.Default)
+    val layout = jsonb<JsonElement>("layout", Json.Default)
+    val prompt = text("prompt")
+    val negativePrompt = text("negative_prompt")
+    val promptRecipeVersion = text("prompt_recipe_version")
+    val promptIngredients = jsonb<JsonElement>("prompt_ingredients", Json.Default)
+    val seed = long("seed")
+    val workflowVersion = text("workflow_version")
+    val modelName = text("model_name").nullable()
+    val steps = integer("steps")
+    val comfyPromptId = text("comfy_prompt_id")
+    val generationMillis = integer("generation_millis")
+    val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone)
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 object QuoteTaggingAttempts : Table("quote_tagging_attempts") {
     val id = integer("id").autoIncrement()
     val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.CASCADE)

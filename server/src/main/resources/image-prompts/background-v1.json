@@ -1,0 +1,56 @@
+{
+  "version": "background-v1",
+  "template": "{{medium}} background evoking a {{tag}} mood: {{setting}}. {{palette}}. {{light}}, {{texture}}. {{composition}}, leaving room for a quotation to be placed on top. No text, no letters, no people, no animals, no distinct objects.",
+  "slots": {
+    "medium": [
+      "A painterly",
+      "A soft-focus photographic",
+      "A watercolor",
+      "An oil-painted",
+      "A digital matte-painted",
+      "A pastel-drawn"
+    ],
+    "setting": [
+      "an abstract field of colour",
+      "a hazy, distant horizon",
+      "slowly drifting clouds",
+      "a misty, empty landscape",
+      "an expanse of still water",
+      "softly flowing veils of light and colour",
+      "a wide, open sky",
+      "rolling, featureless hills fading into haze"
+    ],
+    "palette": [
+      "A palette of muted tones that expresses the mood",
+      "Harmonious colours fitting the mood, with one subtle accent colour",
+      "A restrained, nearly monochrome palette in the mood's colours",
+      "Deep, rich colours that carry the mood",
+      "Light, airy colours that carry the mood"
+    ],
+    "light": [
+      "Soft diffuse light",
+      "A gentle glow from one side",
+      "Light filtering through haze",
+      "A subtle gradient of light from top to bottom",
+      "Dim, even light",
+      "A faint luminous glow near the horizon"
+    ],
+    "texture": [
+      "fine film grain",
+      "a soft watercolour wash",
+      "smooth gradients",
+      "a subtle paper texture",
+      "delicate brushed texture",
+      "soft canvas texture"
+    ],
+    "composition": [
+      "A large calm open area in the centre",
+      "A low horizon leaving a wide open sky",
+      "Detail gathered towards the edges with a quiet centre",
+      "A gentle gradient from one side to the other",
+      "A calm open upper half above a slightly richer lower third",
+      "A quiet left two thirds with more texture towards the right edge"
+    ]
+  },
+  "negativePrompt": "text, letters, words, watermark, signature, logo, people, faces, figures, animals, buildings, frame, border, busy clutter, harsh contrast"
+}

@@ -45,7 +45,9 @@ speculatively — only when a specific platform is explicitly requested.
   `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
   stages results in `imported_quotes`. `extraction/`, `interpretation/` and `tagging/` are the
   LLM-backed enrichment pipelines (excerpts, interpretations, and faceted tags respectively), each
-  triggered from the admin. `admin/` (package, not to be confused with the top-level
+  triggered from the admin. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
+  mood tags, transparent collage elements for motif tags) as an admin-started background job, stores
+  the PNGs under `imageGeneration.storageDir` and records them in `tag_images`. `admin/` (package, not to be confused with the top-level
   `admin` frontend project) holds the admin API — DTOs and the service backing the
   `/admin/imported-quotes` routes used to review and approve staged imports into real `quotes`
   rows.
@@ -134,6 +136,20 @@ Important principles:
   normalization, and admin merges (merged tags stay as aliases). Don't bypass `TagVocabulary` when creating tags.
 * Admin edits are durable: a re-run never removes admin-added tags or re-adds admin-rejected ones.
 
+### Tag images
+
+When implementing or modifying tag image generation, or anything that consumes `tag_images` (the collage
+algorithm, serving images), first read:
+
+`docs/features/tag-images.md`
+
+Important principles:
+
+* ComfyUI is reached only through the `ComfyUiClient` abstraction; its address, timeouts, image sizes and
+  steps are configurable in `imageGeneration`.
+* Prompts are built from version-controlled recipe resources (`resources/image-prompts/`), and workflows are
+  version-controlled ComfyUI API exports (`resources/comfyui/`). Add a new version instead of editing one in place.
+* Layout metadata is computed deterministically from the saved PNG, never by a model.
 
 ## Build commands
 

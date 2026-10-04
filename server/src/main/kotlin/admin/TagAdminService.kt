@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.QuoteTagAssignments
 import no.esotericgames.quotes.server.db.Quotes
+import no.esotericgames.quotes.server.db.TagImages
 import no.esotericgames.quotes.server.db.Tags
 import no.esotericgames.quotes.server.tagging.MAX_RELEVANCE
 import no.esotericgames.quotes.server.tagging.MIN_RELEVANCE
@@ -112,6 +113,8 @@ class TagAdminService {
 
             val sourceRows = QuoteTagAssignments.selectAll().where { QuoteTagAssignments.tagId eq tagId }.toList()
             sourceRows.forEach { row -> moveAssignment(row, targetId) }
+            // Generated images belong to canonical tags; the target simply gains the alias's images.
+            TagImages.update({ TagImages.tagId eq tagId }) { it[TagImages.tagId] = targetId }
 
             Tags.update({ Tags.mergedIntoId eq tagId }) { it[mergedIntoId] = targetId }
             Tags.update({ Tags.id eq tagId }) { it[mergedIntoId] = targetId }

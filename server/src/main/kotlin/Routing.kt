@@ -11,6 +11,11 @@ import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.util.getOrFail
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.Frame
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import no.esotericgames.quotes.server.admin.ApproveImportedQuoteRequest
 import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
@@ -19,6 +24,7 @@ import no.esotericgames.quotes.server.admin.AddQuoteTagRequest
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteTagsRequest
+import no.esotericgames.quotes.server.admin.ImageGenerationJobState
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
 import no.esotericgames.quotes.server.admin.MergeTagRequest
@@ -29,6 +35,7 @@ import no.esotericgames.quotes.server.admin.TagAdminService
 import no.esotericgames.quotes.server.admin.UpdateTagRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
+import no.esotericgames.quotes.server.imagegen.TagImageGenerationJob
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.sources.bible.BibleImportService
@@ -38,6 +45,11 @@ import no.esotericgames.quotes.server.sources.taote.TaoTeChingImportService
 import no.esotericgames.quotes.server.sources.wikiquote.WikiquoteImportService
 import no.esotericgames.quotes.server.tagging.QuoteTaggingService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
+
+private const val IMAGE_GENERATION_PUSH_INTERVAL_MILLIS = 250L
+
+// Matches the REST responses, which include default values such as an empty item list.
+private val imageGenerationJson = Json { encodeDefaults = true }
 
 fun Application.configureRouting(
     publicQuoteService: PublicQuoteService,
@@ -54,6 +66,7 @@ fun Application.configureRouting(
     quoteInterpretationService: QuoteInterpretationService,
     quoteTaggingService: QuoteTaggingService,
     tagAdminService: TagAdminService,
+    tagImageGenerationJob: TagImageGenerationJob,
 ) {
     routing {
         get("/health") {
@@ -191,6 +204,31 @@ fun Application.configureRouting(
         post("/admin/tags/{id}/merge") {
             val id = call.parameters.getOrFail("id").toInt()
             call.respond(tagAdminService.mergeTag(id, call.receive<MergeTagRequest>()))
+        }
+        post("/admin/image-generation/start") {
+            call.respond(HttpStatusCode.Accepted, tagImageGenerationJob.start())
+        }
+        post("/admin/image-generation/cancel") {
+            call.respond(tagImageGenerationJob.cancel())
+        }
+        get("/admin/image-generation/status") {
+            call.respond(tagImageGenerationJob.state.value)
+        }
+        webSocket("/admin/image-generation/ws") {
+            // StateFlow collection is conflated, so the delay throttles pushes to the latest state.
+            val pushes = launch {
+                tagImageGenerationJob.state.collect { state ->
+                    send(Frame.Text(imageGenerationJson.encodeToString(ImageGenerationJobState.serializer(), state)))
+                    delay(IMAGE_GENERATION_PUSH_INTERVAL_MILLIS)
+                }
+            }
+            // The client sends nothing, but reading is what notices its Close frame: the handler then
+            // returns, Ktor completes the close handshake, and the push coroutine is cancelled with it.
+            try {
+                for (frame in incoming) Unit
+            } finally {
+                pushes.cancel()
+            }
         }
     }
 }

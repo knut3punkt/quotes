@@ -278,3 +278,44 @@ export interface AuthorEnrichmentResponse {
   enriched: number
   skipped: number
 }
+
+export type ImageKind = 'background' | 'element'
+
+export type ImageGenerationItemStatus =
+  | 'queued'
+  | 'submitting'
+  | 'waiting'
+  | 'running'
+  | 'saving'
+  | 'done'
+  | 'failed'
+  | 'cancelled'
+
+/** One tag in an image generation run, in queue order. Times are epoch milliseconds. */
+export interface ImageGenerationItem {
+  tagId: number
+  tagName: string
+  facet: TagFacet
+  kind: ImageKind
+  status: ImageGenerationItemStatus
+  prompt?: string | null
+  seed?: number | null
+  step?: number | null
+  maxSteps?: number | null
+  error?: string | null
+  filePath?: string | null
+  startedAt?: number | null
+  finishedAt?: number | null
+}
+
+export type ImageGenerationJobStatus = 'idle' | 'running' | 'cancelling' | 'finished' | 'cancelled'
+
+export interface ImageGenerationJobState {
+  status: ImageGenerationJobStatus
+  comfyUiBaseUrl: string
+  startedAt?: number | null
+  finishedAt?: number | null
+  comfyQueueRemaining?: number | null
+  connectionWarning?: string | null
+  items: ImageGenerationItem[]
+}
