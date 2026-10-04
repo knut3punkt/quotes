@@ -26,6 +26,7 @@ export function useQuoteCarousel(quotes: PublicQuote[]) {
   }, [currentIndex, count, next])
 
   return {
+    currentIndex,
     currentQuote: count > 0 ? quotes[currentIndex] : undefined,
     next,
     previous,

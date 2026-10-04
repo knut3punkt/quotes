@@ -35,19 +35,23 @@ speculatively — only when a specific platform is explicitly requested.
   `ares-cli`); written to be reusable for other web-based TV platforms (e.g. Tizen) later. Fetches
   a random batch of quotes from the server's `/api/quotes/random` endpoint and displays one at a
   time, full-screen, with conditional author/source fields, 30s auto-advance, and D-pad/arrow-key
-  navigation with wrap-around. `src/platform/` provides `webos`/`browser` detection for future
+  navigation with wrap-around. Each screen is composed by `src/composition/` from the server-chosen
+  mood background and motif elements (layout, text contrast, fallback gradient), rendered by
+  `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. `src/platform/` provides `webos`/`browser` detection for future
   platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
   entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
   response types and the hard-coded sample quotes. `PublicQuoteService.kt` backs the public
-  `GET /api/quotes/random` endpoint (random verified quotes with author/source, for TV frontends).
+  `GET /api/quotes/random` endpoint (random verified quotes with author/source, for TV frontends),
+  each with `visuals` chosen by `composition/` (a mood background and up to four motif elements).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
   `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
   stages results in `imported_quotes`. `extraction/`, `interpretation/` and `tagging/` are the
   LLM-backed enrichment pipelines (excerpts, interpretations, and faceted tags respectively), each
   triggered from the admin. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
   mood tags, transparent collage elements for motif tags) as an admin-started background job, stores
-  the PNGs under `imageGeneration.storageDir` and records them in `tag_images`. `admin/` (package, not to be confused with the top-level
+  the PNGs under `imageGeneration.storageDir` and records them in `tag_images`; `TagImageFileService`
+  serves them, downscaled and cached, at `GET /api/tag-images/{id}?width=`. `admin/` (package, not to be confused with the top-level
   `admin` frontend project) holds the admin API — DTOs and the service backing the
   `/admin/imported-quotes` routes used to review and approve staged imports into real `quotes`
   rows.
@@ -151,6 +155,21 @@ Important principles:
   version-controlled ComfyUI API exports (`resources/comfyui/`). Add a new version instead of editing one in place.
 * Layout metadata is computed deterministically from the saved PNG, never by a model.
 
+### Quote composition
+
+When implementing or modifying how a TV quote screen is composed from tag images (selection, layout, text
+contrast), first read:
+
+`docs/features/quote-composition.md`
+
+Important principles:
+
+* The server chooses *which* images a showing gets (`server/.../composition/`); the TV app decides *where* they go and
+  how the text is coloured (`platforms/tv-web/src/composition/`). Keep that split.
+* Composition code is pure with an injected random source, so it is tested deterministically.
+* Text must reach the contrast target against the worst part of the background under it. Prefer the gentlest means
+  (tint, halo, then a solved, feathered scrim) and never a hard-edged box.
+
 ## Build commands
 
 ```powershell
@@ -176,6 +195,7 @@ cd platforms/tv-web
 npm install
 npm run dev      # Vite dev server, defaults to http://localhost:5173 (or next free port)
 npm run build     # type-check (tsc -b) then production build to platforms/tv-web/dist
+npm test          # Vitest unit tests for src/composition
 ```
 
 `.\scripts\dev.ps1` starts both `:server:run` and the admin `npm run dev` in separate PowerShell

@@ -221,8 +221,7 @@ re-run, merge and failure semantics against the dev database. Ordinary tests nev
 ## Not in scope yet
 
 * Search endpoints and the TV search UI.
-* The visuals pipeline beyond per-tag asset generation: generating images for mood and motif tags is covered in
-  `tag-images.md`, but the collage algorithm and TV rendering are not built.
 * A hierarchy or relations between concepts, and embeddings for synonym detection or semantic search.
 * Automatic tagging on import.
-* Tags in `/api/quotes/random`.
+* Tags themselves in `/api/quotes/random`. Only the images chosen from mood and motif tags are sent
+  (`quote-composition.md`).

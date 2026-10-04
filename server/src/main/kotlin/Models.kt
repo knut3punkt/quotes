@@ -1,6 +1,7 @@
 package no.esotericgames.quotes.server
 
 import kotlinx.serialization.Serializable
+import no.esotericgames.quotes.server.composition.QuoteVisuals
 
 @Serializable
 data class HealthResponse(val status: String)
@@ -25,6 +26,7 @@ data class PublicQuoteResponse(
     val author: String?,
     val sourceTitle: String?,
     val sourceDetail: String?,
+    val visuals: QuoteVisuals,
 )
 
 @Serializable
