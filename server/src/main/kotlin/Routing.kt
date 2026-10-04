@@ -1,10 +1,13 @@
 package no.esotericgames.quotes.server
 
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondFile
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
@@ -35,6 +38,7 @@ import no.esotericgames.quotes.server.admin.TagAdminService
 import no.esotericgames.quotes.server.admin.UpdateTagRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.extraction.QuoteExtractionService
+import no.esotericgames.quotes.server.imagegen.TagImageFileService
 import no.esotericgames.quotes.server.imagegen.TagImageGenerationJob
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
@@ -47,6 +51,9 @@ import no.esotericgames.quotes.server.tagging.QuoteTaggingService
 import no.esotericgames.quotes.server.wikidata.AuthorEnrichmentService
 
 private const val IMAGE_GENERATION_PUSH_INTERVAL_MILLIS = 250L
+
+// A tag image row is never rewritten in place, so a served file never changes under its URL.
+private const val TAG_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable"
 
 // Matches the REST responses, which include default values such as an empty item list.
 private val imageGenerationJson = Json { encodeDefaults = true }
@@ -67,6 +74,7 @@ fun Application.configureRouting(
     quoteTaggingService: QuoteTaggingService,
     tagAdminService: TagAdminService,
     tagImageGenerationJob: TagImageGenerationJob,
+    tagImageFileService: TagImageFileService,
 ) {
     routing {
         get("/health") {
@@ -78,6 +86,23 @@ fun Application.configureRouting(
         get("/api/quotes/random") {
             val count = call.request.queryParameters["count"]?.toIntOrNull() ?: PublicQuoteService.DEFAULT_COUNT
             call.respond(publicQuoteService.randomQuotes(count))
+        }
+        get("/api/quotes/{id}/visuals") {
+            val id = call.parameters.getOrFail("id").toInt()
+            call.respond(publicQuoteService.visualsFor(id))
+        }
+        get("/api/tag-images/{id}") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val width = call.request.queryParameters["width"]?.toIntOrNull()
+            val file = tagImageFileService.imageFile(id, width)
+            val etag = "\"${file.etag}\""
+            call.response.header(HttpHeaders.CacheControl, TAG_IMAGE_CACHE_CONTROL)
+            call.response.header(HttpHeaders.ETag, etag)
+            if (call.request.headers[HttpHeaders.IfNoneMatch] == etag) {
+                call.respond(HttpStatusCode.NotModified)
+            } else {
+                call.respondFile(file.path.toFile())
+            }
         }
         post("/admin/import/wikiquote") {
             val request = call.receive<WikiquoteImportRequest>()

@@ -151,7 +151,24 @@ directory, so `server/generated-images/` under `:server:run`, which git ignores)
 `tag_images.file_path` is relative to `storageDir`, so the directory can move. Each file is written to a temporary
 file and then moved into place. If the database insert fails, the file is deleted.
 
-Images are not served over HTTP yet.
+---
+
+## Serving
+
+`GET /api/tag-images/{id}?width=` serves an image for TV frontends (`TagImageFileService`):
+
+* The stored `file_path` is resolved under `storageDir`. A path that would escape it is refused.
+* `width` snaps up to 640, 1280 or 1920, which keeps the cache bounded. With no width, or one not smaller than the
+  original, the original PNG is served.
+* A smaller copy is made once and cached at `<storageDir>/derived/<id>-<width>.{jpg,png}`:
+  * backgrounds as JPEG at quality 0.88, about 350 KB at 1920 px instead of about 7 MB;
+  * elements as PNG, to keep alpha.
+  * The resize halves step by step, with bicubic interpolation.
+  * The copy is written to a temporary file and moved into place.
+* Responses carry `Cache-Control: public, max-age=31536000, immutable` and an `ETag` of the image's sha256 plus the
+  width, and answer `If-None-Match` with 304. A tag image row is never rewritten in place.
+
+Which images a quote shows is covered in `quote-composition.md`.
 
 ---
 
@@ -220,6 +237,5 @@ refusing a second run, and cancelling. No test needs a running ComfyUI.
 ## Not in scope yet
 
 * Generating automatically when new mood or motif tags appear.
-* Serving images over HTTP, and showing them in the admin.
+* Showing images in the admin.
 * Several images per tag, or regenerating one. The table already allows several rows per tag.
-* The collage algorithm and the TV-side rendering.

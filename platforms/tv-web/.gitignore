@@ -1,1 +1,3 @@
 dist-ipk
+# Machine-specific overrides, e.g. the server LAN IP for TV builds in .env.production.local
+.env*.local

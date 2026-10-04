@@ -65,5 +65,6 @@ class ApplicationTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
         val quotes = response.body<List<PublicQuoteResponse>>()
         assertTrue(quotes.size <= 5, "expected at most 5 quotes, got ${quotes.size}")
+        assertTrue(quotes.all { it.visuals.elements.size <= 4 }, "expected at most four collage elements per quote")
     }
 }

@@ -1,4 +1,4 @@
-import type { PublicQuote } from './types'
+import type { PublicQuote, QuoteVisuals } from './types'
 
 const DEFAULT_COUNT = 20
 
@@ -15,4 +15,14 @@ async function request<T>(path: string): Promise<T> {
 
 export function fetchRandomQuotes(count: number = DEFAULT_COUNT): Promise<PublicQuote[]> {
   return request(`/api/quotes/random?count=${count}`)
+}
+
+/** A fresh server-side choice of background and collage elements for one quote. */
+export function fetchQuoteVisuals(quoteId: number): Promise<QuoteVisuals> {
+  return request(`/api/quotes/${quoteId}/visuals`)
+}
+
+/** The server snaps `width` to one of a few sizes and caches the downscaled copy. */
+export function tagImageUrl(imageId: number, width: number): string {
+  return `${BASE_URL}/api/tag-images/${imageId}?width=${width}`
 }

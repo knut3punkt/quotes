@@ -11,8 +11,8 @@ npm install
 npm run dev      # Vite dev server, defaults to http://localhost:5173 (or next free port)
 ```
 
-Expects the server (see `../../server`) running on `http://localhost:8080`; override via
-`VITE_API_BASE_URL` in a local `.env` (see `.env.example`).
+Expects the server (see `../../server`) running on `http://localhost:8080`, set by
+`VITE_API_BASE_URL` in `.env.development`, which Vite loads only for `npm run dev`.
 
 ## webOS packaging
 
@@ -20,7 +20,8 @@ Requires LG's `ares-cli` installed and on `PATH` separately — not part of this
 
 `VITE_API_BASE_URL` is baked in at build time, so for a device build point it at your dev
 machine's LAN IP, not `localhost` — on the TV, `localhost` resolves to the TV itself. Set it in
-`.env` before building (e.g. `VITE_API_BASE_URL=http://192.168.1.45:8080`), and make sure the
+`.env.production.local` (git-ignored, loaded only by `npm run build`; copy `.env.example`), e.g.
+`VITE_API_BASE_URL=http://192.168.1.45:8080`, and make sure the
 server (`../../server`) is running and reachable on that IP/port — it binds `0.0.0.0` by default,
 but a firewall on the dev machine may need to allow inbound connections on the port.
 

@@ -23,6 +23,7 @@ import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptJudgeClient
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptSelectionClient
+import no.esotericgames.quotes.server.imagegen.TagImageFileService
 import no.esotericgames.quotes.server.imagegen.TagImageGenerationJob
 import no.esotericgames.quotes.server.imagegen.comfyui.HttpComfyUiClient
 import no.esotericgames.quotes.server.imagegen.loadImageGenerationConfig
@@ -109,5 +110,6 @@ fun Application.module() {
             imageGenerationConfig,
             backgroundScope,
         ),
+        tagImageFileService = TagImageFileService(imageGenerationConfig.storageDir),
     )
 }
