@@ -10,6 +10,7 @@ import type {
   ExtractQuoteExcerptsResponse,
   GenerateQuoteInterpretationsResponse,
   GenerateQuoteTagsResponse,
+  ImageGenerationJobState,
   ImportedQuote,
   NewSourceRequest,
   PagedImportedQuotes,
@@ -201,4 +202,68 @@ export function updateTag(tagId: number, body: UpdateTagRequest): Promise<TagSum
 
 export function mergeTag(tagId: number, intoTagId: number): Promise<TagSummary> {
   return request(`/admin/tags/${tagId}/merge`, { method: 'POST', body: JSON.stringify({ intoTagId }) })
+}
+
+export function fetchImageGenerationStatus(): Promise<ImageGenerationJobState> {
+  return request('/admin/image-generation/status')
+}
+
+export function startImageGeneration(): Promise<ImageGenerationJobState> {
+  return request('/admin/image-generation/start', { method: 'POST' })
+}
+
+export function cancelImageGeneration(): Promise<ImageGenerationJobState> {
+  return request('/admin/image-generation/cancel', { method: 'POST' })
+}
+
+const IMAGE_GENERATION_RECONNECT_MILLIS = 3000
+
+/**
+ * Follows the image generation job over the server's WebSocket, which pushes the whole job state a few
+ * times a second. Reconnects after a drop; `onConnectionChange` lets the UI say when updates have stopped.
+ * Returns a function that closes the connection for good.
+ */
+export function subscribeImageGeneration(
+  onState: (state: ImageGenerationJobState) => void,
+  onConnectionChange: (connected: boolean) => void,
+): () => void {
+  const url = `${BASE_URL.replace(/^http/, 'ws')}/admin/image-generation/ws`
+  let socket: WebSocket | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+  let closed = false
+
+  const connect = () => {
+    socket = new WebSocket(url)
+    socket.onopen = () => onConnectionChange(true)
+    socket.onmessage = (event) => {
+      try {
+        onState(JSON.parse(event.data as string) as ImageGenerationJobState)
+      } catch {
+        // A malformed frame is skipped; the next push carries the full state again.
+      }
+    }
+    socket.onclose = () => {
+      onConnectionChange(false)
+      if (!closed) reconnectTimer = setTimeout(connect, IMAGE_GENERATION_RECONNECT_MILLIS)
+    }
+  }
+
+  connect()
+  return () => {
+    closed = true
+    clearTimeout(reconnectTimer)
+    const current = socket
+    if (!current) return
+    current.onmessage = null
+    current.onclose = null
+    // Closing a socket mid-handshake drops the TCP connection under Ktor's Netty upgrade, which logs a
+    // NullPointerException server-side; React StrictMode's dev double-mount does exactly that. Let the
+    // handshake finish and close cleanly instead.
+    if (current.readyState === WebSocket.CONNECTING) {
+      current.onopen = () => current.close()
+    } else {
+      current.onopen = null
+      current.close()
+    }
+  }
 }

@@ -11,6 +11,10 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
+import io.ktor.server.websocket.WebSockets
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
 import no.esotericgames.quotes.server.admin.QuoteAdminService
 import no.esotericgames.quotes.server.admin.TagAdminService
@@ -19,6 +23,9 @@ import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.extraction.loadExtractionConfig
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptJudgeClient
 import no.esotericgames.quotes.server.extraction.llm.LlamaCppExcerptSelectionClient
+import no.esotericgames.quotes.server.imagegen.TagImageGenerationJob
+import no.esotericgames.quotes.server.imagegen.comfyui.HttpComfyUiClient
+import no.esotericgames.quotes.server.imagegen.loadImageGenerationConfig
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.interpretation.loadInterpretationConfig
 import no.esotericgames.quotes.server.interpretation.llm.LlamaCppInterpretationClient
@@ -56,6 +63,7 @@ fun Application.module() {
         allowMethod(HttpMethod.Delete)
         allowHeader(HttpHeaders.ContentType)
     }
+    install(WebSockets)
     install(StatusPages) {
         exception<NoSuchElementException> { call, cause ->
             call.respond(HttpStatusCode.NotFound, mapOf("error" to cause.message))
@@ -71,6 +79,9 @@ fun Application.module() {
     val extractionConfig = loadExtractionConfig(environment.config)
     val interpretationLlmConfig = loadInterpretationConfig(environment.config)
     val taggingConfig = loadTaggingConfig(environment.config)
+    val imageGenerationConfig = loadImageGenerationConfig(environment.config)
+    // Background work outlives the admin request that starts it, but not the application.
+    val backgroundScope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
     configureRouting(
         publicQuoteService = PublicQuoteService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
@@ -93,5 +104,10 @@ fun Application.module() {
         ),
         quoteTaggingService = QuoteTaggingService(LlamaCppTaggingClient(taggingConfig.llm), taggingConfig),
         tagAdminService = TagAdminService(),
+        tagImageGenerationJob = TagImageGenerationJob(
+            HttpComfyUiClient(imageGenerationConfig.comfyUi),
+            imageGenerationConfig,
+            backgroundScope,
+        ),
     )
 }

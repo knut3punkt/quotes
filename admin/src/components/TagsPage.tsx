@@ -12,6 +12,7 @@ import { toast } from '../hooks/use-toast'
 import { FACET_LABELS, TAG_FACETS, facetChipClassName } from '../tagStyles'
 import type { TagBreadth, TagFacet, TagSummary } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ImageGenerationPanel } from './ImageGenerationPanel'
 
 const FILTER_DEBOUNCE_MILLIS = 250
 
@@ -132,6 +133,8 @@ export function TagsPage() {
 
   return (
     <div>
+      <ImageGenerationPanel />
+
       {loadError && (
         <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
           <AlertDescription>{loadError}</AlertDescription>
