@@ -28,13 +28,14 @@ private val logger = LoggerFactory.getLogger("no.esotericgames.quotes.server.com
 
 /**
  * The visual candidates of each given quote: images of its active, central or significant mood and motif
- * tags, whether the tag sits on the whole quotation or on one of its excerpts (an excerpt-tagged quotation
- * has no whole-quotation tags, and the TV shows the full text). Elements without transparency are left
- * out, since an opaque square breaks a collage. Quotes without candidates are absent from the map.
- * Must run inside a transaction.
+ * tags. [shownExcerpts] maps each quote to the excerpt the TV shows, or to null when it shows the full
+ * text; a shown excerpt contributes its own tags and the whole quotation's (see [groupVisualCandidates]).
+ * Elements without transparency are left out, since an opaque square breaks a collage. Quotes without
+ * candidates are absent from the map. Must run inside a transaction.
  */
-fun selectVisualCandidates(quoteIds: Collection<Int>): Map<Int, QuoteVisualCandidates> {
-    if (quoteIds.isEmpty()) return emptyMap()
+fun selectVisualCandidates(shownExcerpts: Map<Int, Int?>): Map<Int, QuoteVisualCandidates> {
+    if (shownExcerpts.isEmpty()) return emptyMap()
+    val quoteIds = shownExcerpts.keys
     val rows = QuoteTagAssignments.innerJoin(Tags).innerJoin(TagImages)
         .selectAll()
         .where {
@@ -50,8 +51,12 @@ fun selectVisualCandidates(quoteIds: Collection<Int>): Map<Int, QuoteVisualCandi
                             )
                     )
         }
-        .mapNotNull { row -> row.toCandidateImage()?.let { row[QuoteTagAssignments.quoteId] to it } }
-    return groupVisualCandidates(rows)
+        .mapNotNull { row ->
+            row.toCandidateImage()?.let {
+                CandidateRow(row[QuoteTagAssignments.quoteId], row[QuoteTagAssignments.excerptId], it)
+            }
+        }
+    return groupVisualCandidates(rows, shownExcerpts)
 }
 
 private fun ResultRow.toCandidateImage(): CandidateImage? {

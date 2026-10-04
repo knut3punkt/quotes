@@ -64,18 +64,33 @@ class QuoteVisualSelectorTest {
     @Test
     fun `grouping keeps an image once per quote and splits backgrounds from elements`() {
         val rows = listOf(
-            1 to background(imageId = 1, tagId = 10),
-            1 to background(imageId = 1, tagId = 10),
-            1 to element(imageId = 2, tagId = 20),
-            2 to element(imageId = 2, tagId = 20),
+            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10)),
+            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10)),
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 2, tagId = 20)),
+            CandidateRow(quoteId = 2, excerptId = null, element(imageId = 2, tagId = 20)),
         )
 
-        val grouped = groupVisualCandidates(rows)
+        val grouped = groupVisualCandidates(rows, shownExcerpts = mapOf(1 to null, 2 to null))
 
         assertEquals(listOf(1), grouped.getValue(1).backgrounds.map { it.imageId })
         assertEquals(listOf(2), grouped.getValue(1).elements.map { it.imageId })
         assertEquals(emptyList(), grouped.getValue(2).backgrounds)
         assertEquals(listOf(2), grouped.getValue(2).elements.map { it.imageId })
+    }
+
+    @Test
+    fun `a shown excerpt keeps its own and whole-quotation tags but not other excerpts' tags`() {
+        val rows = listOf(
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 1, tagId = 10)),
+            CandidateRow(quoteId = 1, excerptId = 100, element(imageId = 2, tagId = 20)),
+            CandidateRow(quoteId = 1, excerptId = 101, element(imageId = 3, tagId = 30)),
+            CandidateRow(quoteId = 2, excerptId = 200, element(imageId = 4, tagId = 40)),
+        )
+
+        val grouped = groupVisualCandidates(rows, shownExcerpts = mapOf(1 to 100, 2 to null))
+
+        assertEquals(listOf(1, 2), grouped.getValue(1).elements.map { it.imageId })
+        assertEquals(listOf(4), grouped.getValue(2).elements.map { it.imageId })
     }
 
     private fun background(imageId: Int, tagId: Int) = SelectedBackground(

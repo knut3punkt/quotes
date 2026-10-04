@@ -75,7 +75,7 @@ function App() {
   const reroll = useCallback(() => {
     if (!currentQuote) return
     const index = currentIndex
-    fetchQuoteVisuals(currentQuote.id)
+    fetchQuoteVisuals(currentQuote.id, currentQuote.excerptId)
       .then((visuals) =>
         setCompositions((previousCompositions) =>
           previousCompositions.map((entry, i) =>

@@ -89,7 +89,8 @@ fun Application.configureRouting(
         }
         get("/api/quotes/{id}/visuals") {
             val id = call.parameters.getOrFail("id").toInt()
-            call.respond(publicQuoteService.visualsFor(id))
+            val excerptId = call.request.queryParameters["excerptId"]?.toInt()
+            call.respond(publicQuoteService.visualsFor(id, excerptId))
         }
         get("/api/tag-images/{id}") {
             val id = call.parameters.getOrFail("id").toInt()

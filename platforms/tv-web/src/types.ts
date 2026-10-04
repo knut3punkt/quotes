@@ -56,6 +56,8 @@ export interface QuoteVisuals {
 
 export interface PublicQuote {
   id: number
+  /** The excerpt shown as `text`, or null when `text` is the full quotation. */
+  excerptId: number | null
   text: string
   author: string | null
   sourceTitle: string | null

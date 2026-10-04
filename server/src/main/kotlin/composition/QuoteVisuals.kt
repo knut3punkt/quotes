@@ -55,15 +55,29 @@ data class QuoteVisualCandidates(
     }
 }
 
+/** A visual tag image reaching a quote through the whole quotation ([excerptId] null) or through one excerpt. */
+data class CandidateRow(val quoteId: Int, val excerptId: Int?, val image: CandidateImage)
+
 /**
- * Groups `(quoteId, image)` rows into candidates per quote. A tag can reach a quote through the whole
- * quotation and through several excerpts, so an image may appear more than once; it is kept once.
+ * Groups candidate rows into candidates per quote. [shownExcerpts] maps each quote to the excerpt being
+ * shown, or to null when the full quotation is shown. A shown excerpt keeps its own tags and the whole
+ * quotation's, not those of the quote's other excerpts. A tag can reach a quote through the whole quotation
+ * and through several excerpts, so an image may appear more than once; it is kept once.
  */
-fun groupVisualCandidates(rows: List<Pair<Int, CandidateImage>>): Map<Int, QuoteVisualCandidates> =
-    rows.groupBy({ it.first }, { it.second }).mapValues { (_, images) ->
-        val unique = images.distinctBy { it.imageId }
-        QuoteVisualCandidates(
-            backgrounds = unique.filterIsInstance<SelectedBackground>(),
-            elements = unique.filterIsInstance<SelectedElement>(),
-        )
-    }
+fun groupVisualCandidates(
+    rows: List<CandidateRow>,
+    shownExcerpts: Map<Int, Int?>,
+): Map<Int, QuoteVisualCandidates> =
+    rows
+        .filter { row ->
+            val shownExcerptId = shownExcerpts[row.quoteId]
+            row.excerptId == null || shownExcerptId == null || row.excerptId == shownExcerptId
+        }
+        .groupBy({ it.quoteId }, { it.image })
+        .mapValues { (_, images) ->
+            val unique = images.distinctBy { it.imageId }
+            QuoteVisualCandidates(
+                backgrounds = unique.filterIsInstance<SelectedBackground>(),
+                elements = unique.filterIsInstance<SelectedElement>(),
+            )
+        }

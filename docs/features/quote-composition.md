@@ -31,8 +31,10 @@ The TV side lives in `platforms/tv-web/src/composition/`, as pure functions with
 * is not rejected;
 * has relevance 2 or 3 ("visuals should use only central and significant tags", `quote-tagging.md`).
 
-Tags on the whole quotation and tags on its excerpts both count. A quotation with qualifying excerpts is tagged only
-through them, and the TV shows the full text.
+A quotation with qualifying excerpts (`meets_thresholds = true`) is shown on the TV as one of them, picked at random
+for each batch; a quotation without is shown in full. A shown excerpt's tags count, along with any tags on the whole
+quotation (admin-added ones can survive excerpt tagging), but not the tags of the quotation's other excerpts. When
+the full text is shown, all its tags count.
 
 Which images count:
 
@@ -51,10 +53,11 @@ Picking the tag before the image gives every tag the same chance, however many i
 
 **API.**
 
-* `GET /api/quotes/random` gives each quotation
-  `visuals: {background: {imageId, tagId, tagName, width, height, meanLuminance, dominantColors, layout} | null,
+* `GET /api/quotes/random` gives each quotation `excerptId` (the excerpt shown as `text`, or null for the full text)
+  and `visuals: {background: {imageId, tagId, tagName, width, height, meanLuminance, dominantColors, layout} | null,
   elements: [{imageId, tagId, tagName, width, height, dominantColors, contentBox}]}`.
-* `GET /api/quotes/{id}/visuals` returns a fresh selection for one quotation. The TV's re-roll key uses it.
+* `GET /api/quotes/{id}/visuals[?excerptId=]` returns a fresh selection for one quotation, or for the given excerpt of
+  it. The TV's re-roll key uses it.
 
 ---
 

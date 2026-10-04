@@ -22,6 +22,8 @@ val sampleQuotes = listOf(
 @Serializable
 data class PublicQuoteResponse(
     val id: Int,
+    /** The excerpt shown as [text], or null when [text] is the full quotation. */
+    val excerptId: Int?,
     val text: String,
     val author: String?,
     val sourceTitle: String?,
