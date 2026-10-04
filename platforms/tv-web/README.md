@@ -29,5 +29,8 @@ but a firewall on the dev machine may need to allow inbound connections on the p
 npm run build          # production build to dist/
 npm run package:webos   # wraps `ares-package dist -o dist-ipk`
 ares-install --device <device-name> dist-ipk/*.ipk
-ares-launch --device <device-name> no.esotericgames.quotes.tvweb
+ares-launch --device <device-name> no.esotericgames.quotes
 ```
+
+`..\..\scripts\deploy-webos.ps1 [-Device <device-name>]` runs all of the above in one go (build, package, install,
+launch). The device defaults to `mammas`.
