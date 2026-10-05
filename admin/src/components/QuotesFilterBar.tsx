@@ -26,7 +26,6 @@ export interface QuoteFilterState {
   authorId: 'all' | string
   sourceId: 'all' | string
   language: 'all' | string
-  verified: 'all' | 'true' | 'false'
   provider: 'all' | string
   confidence: 'all' | SourceConfidence
   lengthOp: LengthFilterOp
@@ -42,7 +41,6 @@ export const DEFAULT_QUOTE_FILTERS: QuoteFilterState = {
   authorId: 'all',
   sourceId: 'all',
   language: 'all',
-  verified: 'all',
   provider: 'all',
   confidence: 'all',
   lengthOp: 'above',
@@ -162,18 +160,6 @@ function QuotesFilterBarComponent({
             onValueChange={(language) => onChange({ language })}
             options={asOptions(options.languages)}
             className="min-w-[100px]"
-          />
-        </FilterField>
-
-        <FilterField id="quotes-verified" label="Verified">
-          <FilterSelect
-            id="quotes-verified"
-            value={filters.verified}
-            onValueChange={(verified) => onChange({ verified: verified as QuoteFilterState['verified'] })}
-            options={[
-              { value: 'true', label: 'Verified' },
-              { value: 'false', label: 'Unverified' },
-            ]}
           />
         </FilterField>
 

@@ -59,7 +59,6 @@ enum class EnrichmentFilter(val queryValue: String) {
 data class QuoteFilter(
     val authorId: Int? = null,
     val sourceId: Int? = null,
-    val verified: Boolean? = null,
     val language: String? = null,
     val search: String? = null,
     /** Provider of an import linked to the quote. */
@@ -89,7 +88,6 @@ class QuoteAdminService {
             var query = Quotes.leftJoin(Authors).leftJoin(Sources).selectAll()
             filter.authorId?.let { id -> query = query.andWhere { Quotes.authorId eq id } }
             filter.sourceId?.let { id -> query = query.andWhere { Quotes.sourceId eq id } }
-            filter.verified?.let { verified -> query = query.andWhere { Quotes.verified eq verified } }
             filter.language?.let { language -> query = query.andWhere { Quotes.language eq language } }
             filter.search?.trim()?.takeIf { it.isNotEmpty() }?.let { term ->
                 val pattern = "%${term.lowercase()}%"
@@ -256,7 +254,6 @@ private fun ResultRow.toQuoteListItemResponse(
     sourceId = this[Quotes.sourceId],
     sourceTitle = this.getOrNull(Sources.title),
     sourceDetail = this[Quotes.sourceDetail],
-    verified = this[Quotes.verified],
     language = this[Quotes.language],
     excerpts = excerpts,
     interpretations = interpretations,

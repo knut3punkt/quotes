@@ -79,7 +79,6 @@ data class ApproveImportedQuoteRequest(
     val newSource: NewSourceRequest? = null,
     val sourceDetail: String? = null,
     val text: String? = null,
-    val verified: Boolean = false,
     val reviewedBy: String? = null,
 )
 
@@ -90,7 +89,6 @@ data class QuoteResponse(
     val authorId: Int?,
     val sourceId: Int?,
     val sourceDetail: String?,
-    val verified: Boolean,
     val language: String,
 )
 
@@ -103,7 +101,6 @@ data class QuoteListItemResponse(
     val sourceId: Int?,
     val sourceTitle: String?,
     val sourceDetail: String?,
-    val verified: Boolean,
     val language: String,
     val excerpts: List<QuoteExcerptResponse> = emptyList(),
     val interpretations: List<QuoteInterpretationResponse> = emptyList(),

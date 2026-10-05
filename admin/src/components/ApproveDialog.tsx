@@ -3,7 +3,6 @@ import type { FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -83,7 +82,6 @@ export function ApproveDialog({
   const [newSourceYear, setNewSourceYear] = useState(quote.rawSourceYear !== null ? String(quote.rawSourceYear) : '')
   const [newSourceTypeCode, setNewSourceTypeCode] = useState(defaultSourceTypeCode)
   const [sourceDetail, setSourceDetail] = useState(quote.rawSourceLocation ?? '')
-  const [verified, setVerified] = useState(false)
 
   const authorValid =
     authorMode === 'existing' ? authorId !== '' : authorMode === 'new' ? newAuthorName.trim() !== '' : true
@@ -117,7 +115,6 @@ export function ApproveDialog({
             }
           : undefined,
       sourceDetail: sourceDetail.trim() || undefined,
-      verified,
     })
   }
 
@@ -282,17 +279,6 @@ export function ApproveDialog({
               onChange={(event) => setSourceDetail(event.target.value)}
               placeholder="e.g. chapter, page, citation"
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="verified-checkbox"
-              checked={verified}
-              onCheckedChange={(checked) => setVerified(checked === true)}
-            />
-            <Label htmlFor="verified-checkbox" className="font-normal">
-              Mark as verified
-            </Label>
           </div>
 
           {error && (

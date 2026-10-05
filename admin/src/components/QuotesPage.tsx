@@ -1,5 +1,4 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -147,7 +146,6 @@ export function QuotesPage() {
     fetchQuotes({
       authorId: filters.authorId === 'all' ? undefined : Number(filters.authorId),
       sourceId: filters.sourceId === 'all' ? undefined : Number(filters.sourceId),
-      verified: filters.verified === 'all' ? undefined : filters.verified === 'true',
       language: filters.language === 'all' ? undefined : filters.language,
       search: debouncedSearch.trim() || undefined,
       provider: filters.provider === 'all' ? undefined : filters.provider,
@@ -174,7 +172,6 @@ export function QuotesPage() {
     debouncedTag,
     filters.authorId,
     filters.sourceId,
-    filters.verified,
     filters.language,
     filters.provider,
     filters.confidence,
@@ -471,7 +468,6 @@ export function QuotesPage() {
               <TableHead>Tags</TableHead>
               <TableHead>Author</TableHead>
               <TableHead>Source</TableHead>
-              <TableHead>Verified</TableHead>
               <TableHead>Language</TableHead>
             </TableRow>
           </TableHeader>
@@ -523,11 +519,6 @@ export function QuotesPage() {
                 <TableCell className="align-top">
                   {quote.sourceTitle ?? '—'}
                   {quote.sourceDetail && <div className="text-xs text-muted-foreground">{quote.sourceDetail}</div>}
-                </TableCell>
-                <TableCell className="align-top">
-                  <Badge variant={quote.verified ? 'default' : 'secondary'}>
-                    {quote.verified ? 'Verified' : 'Unverified'}
-                  </Badge>
                 </TableCell>
                 <TableCell className="align-top">{quote.language}</TableCell>
               </TableRow>

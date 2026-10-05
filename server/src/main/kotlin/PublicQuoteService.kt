@@ -32,9 +32,6 @@ class PublicQuoteService(
     suspend fun randomQuotes(count: Int): List<PublicQuoteResponse> = withContext(Dispatchers.IO) {
         suspendTransaction {
             val limit = count.coerceIn(1, MAX_COUNT)
-            // Not filtered by `verified` yet: there's no review workflow populating that flag today, so
-            // filtering on it would make this endpoint return nothing. Reinstate the filter once approved
-            // quotes exist (`Quotes.leftJoin(Authors).leftJoin(Sources).selectAll().andWhere { Quotes.verified eq true }`).
             val rows = Quotes.leftJoin(Authors).leftJoin(Sources).selectAll()
                 .orderBy(Random() to SortOrder.ASC)
                 .limit(limit)

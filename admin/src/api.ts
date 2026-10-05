@@ -59,7 +59,6 @@ export function fetchQuotes(filter: QuoteFilter): Promise<PagedQuotes> {
   const params = new URLSearchParams()
   if (filter.authorId !== undefined) params.set('authorId', String(filter.authorId))
   if (filter.sourceId !== undefined) params.set('sourceId', String(filter.sourceId))
-  if (filter.verified !== undefined) params.set('verified', String(filter.verified))
   if (filter.language) params.set('language', filter.language)
   if (filter.search) params.set('search', filter.search)
   if (filter.provider) params.set('provider', filter.provider)

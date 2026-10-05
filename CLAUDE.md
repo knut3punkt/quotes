@@ -42,7 +42,7 @@ speculatively — only when a specific platform is explicitly requested.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
   entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
   response types and the hard-coded sample quotes. `PublicQuoteService.kt` backs the public
-  `GET /api/quotes/random` endpoint (random verified quotes with author/source, for TV frontends; a quote with
+  `GET /api/quotes/random` endpoint (random quotes with author/source, for TV frontends; a quote with
   qualifying excerpts is shown as one of them),
   each with `visuals` chosen by `composition/` (a mood background and up to four motif elements).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,

@@ -147,7 +147,6 @@ class ImportedQuoteAdminService {
                 it[Quotes.authorId] = authorId
                 it[Quotes.sourceId] = sourceId
                 it[sourceDetail] = sourceDetailValue
-                it[verified] = request.verified
                 it[Quotes.language] = language
                 it[normalizedText] = normalizeQuoteText(quoteText)
             }[Quotes.id]
@@ -165,7 +164,6 @@ class ImportedQuoteAdminService {
                 authorId = authorId,
                 sourceId = sourceId,
                 sourceDetail = sourceDetailValue,
-                verified = request.verified,
                 language = language,
             )
         }

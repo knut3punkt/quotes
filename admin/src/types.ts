@@ -40,7 +40,6 @@ export interface Quote {
   authorId: number | null
   sourceId: number | null
   sourceDetail: string | null
-  verified: boolean
   language: string
 }
 
@@ -102,7 +101,6 @@ export interface QuoteListItem {
   sourceId: number | null
   sourceTitle: string | null
   sourceDetail: string | null
-  verified: boolean
   language: string
   excerpts: QuoteExcerpt[]
   interpretations: QuoteInterpretation[]
@@ -173,7 +171,6 @@ export type EnrichmentFilter = 'has' | 'none' | 'notRun'
 export interface QuoteFilter {
   authorId?: number
   sourceId?: number
-  verified?: boolean
   language?: string
   search?: string
   provider?: string
@@ -236,7 +233,6 @@ export interface ApproveImportedQuoteRequest {
   newSource?: NewSourceRequest
   sourceDetail?: string
   text?: string
-  verified?: boolean
   reviewedBy?: string
 }
 

@@ -171,7 +171,6 @@ fun Application.configureRouting(
             val filter = QuoteFilter(
                 authorId = params["authorId"]?.toIntOrNull(),
                 sourceId = params["sourceId"]?.toIntOrNull(),
-                verified = params["verified"]?.toBooleanStrictOrNull(),
                 language = params["language"],
                 search = params["search"],
                 provider = params["provider"],

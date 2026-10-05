@@ -46,7 +46,6 @@ object Quotes : Table("quotes") {
     val authorId = integer("author_id").references(Authors.id).nullable()
     val sourceId = integer("source_id").references(Sources.id).nullable()
     val sourceDetail = text("source_detail").nullable()
-    val verified = bool("verified").default(false)
     val language = text("language").default("en")
     val normalizedText = text("normalized_text")
 
