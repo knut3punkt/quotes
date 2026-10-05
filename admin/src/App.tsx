@@ -24,15 +24,20 @@ import { TagsPage } from './components/TagsPage'
 import { Toaster } from './components/Toaster'
 import { useDebouncedValue } from './hooks/use-debounced-value'
 import { toast } from './hooks/use-toast'
+import {
+  buildAuthorOptions,
+  buildSourceOptions,
+  DEFAULT_IMPORTED_QUOTE_FILTERS,
+  matchesImportedQuoteFilters,
+  type ImportedQuoteFilterState,
+} from './importedQuoteFilters'
 import { canApprove, canDelete, canMarkDuplicate, canReject, canResetToPending, canUnapprove } from './statusRules'
 import type {
   ApproveImportedQuoteRequest,
   Author,
   ImportedQuote,
-  LengthFilterOp,
   ProcessingStatus,
   Source,
-  SourceConfidence,
   SourceType,
 } from './types'
 
@@ -79,14 +84,14 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [selectedStatuses, setSelectedStatuses] = useState<Set<ProcessingStatus>>(new Set(['pending']))
-  const [confidence, setConfidence] = useState<SourceConfidence | 'all'>('all')
-  const [provider, setProvider] = useState('all')
-  const [search, setSearch] = useState('')
-  const [lengthOp, setLengthOp] = useState<LengthFilterOp>('above')
-  const [lengthValue, setLengthValue] = useState('')
-  const debouncedSearch = useDebouncedValue(search, FILTER_DEBOUNCE_MILLIS)
-  const debouncedLengthValue = useDebouncedValue(lengthValue, FILTER_DEBOUNCE_MILLIS)
+  const [filters, setFilters] = useState<ImportedQuoteFilterState>(DEFAULT_IMPORTED_QUOTE_FILTERS)
+  const debouncedSearch = useDebouncedValue(filters.search, FILTER_DEBOUNCE_MILLIS)
+  const debouncedLengthValue = useDebouncedValue(filters.lengthValue, FILTER_DEBOUNCE_MILLIS)
+  const updateFilters = useCallback(
+    (patch: Partial<ImportedQuoteFilterState>) => setFilters((prev) => ({ ...prev, ...patch })),
+    [],
+  )
+  const resetFilters = useCallback(() => setFilters(DEFAULT_IMPORTED_QUOTE_FILTERS), [])
 
   const [approveTarget, setApproveTarget] = useState<ImportedQuote | null>(null)
   const [approveSubmitting, setApproveSubmitting] = useState(false)
@@ -142,35 +147,13 @@ function App() {
     [importedQuotes],
   )
 
-  const filteredQuotes = useMemo(() => {
-    const term = debouncedSearch.trim().toLowerCase()
-    const lengthThreshold = debouncedLengthValue.trim() === '' ? null : Number(debouncedLengthValue)
-    const hasLengthFilter = lengthThreshold !== null && Number.isFinite(lengthThreshold) && lengthThreshold >= 0
-    return importedQuotes.filter((quote) => {
-      if (!selectedStatuses.has(quote.processingStatus)) return false
-      if (confidence !== 'all' && quote.sourceConfidence !== confidence) return false
-      if (provider !== 'all' && quote.provider !== provider) return false
-      if (hasLengthFilter) {
-        const length = quote.rawText.length
-        if (lengthOp === 'above' && length <= lengthThreshold) return false
-        if (lengthOp === 'below' && length >= lengthThreshold) return false
-      }
-      if (term) {
-        const haystack = `${quote.rawText} ${quote.rawAuthor ?? ''}`.toLowerCase()
-        if (!haystack.includes(term)) return false
-      }
-      return true
-    })
-  }, [importedQuotes, selectedStatuses, confidence, provider, lengthOp, debouncedLengthValue, debouncedSearch])
+  const authorOptions = useMemo(() => buildAuthorOptions(importedQuotes), [importedQuotes])
+  const sourceOptions = useMemo(() => buildSourceOptions(importedQuotes, sources), [importedQuotes, sources])
 
-  const toggleStatus = useCallback((status: ProcessingStatus) => {
-    setSelectedStatuses((prev) => {
-      const next = new Set(prev)
-      if (next.has(status)) next.delete(status)
-      else next.add(status)
-      return next
-    })
-  }, [])
+  const filteredQuotes = useMemo(() => {
+    const effectiveFilters = { ...filters, search: debouncedSearch, lengthValue: debouncedLengthValue }
+    return importedQuotes.filter((quote) => matchesImportedQuoteFilters(quote, effectiveFilters))
+  }, [importedQuotes, filters, debouncedSearch, debouncedLengthValue])
 
   const selectedQuotes = useMemo(
     () => importedQuotes.filter((quote) => selectedIds.has(quote.id)),
@@ -517,20 +500,13 @@ function App() {
             )}
 
             <FilterBar
+              filters={filters}
+              onChange={updateFilters}
+              onReset={resetFilters}
               statusCounts={statusCounts}
-              selectedStatuses={selectedStatuses}
-              onToggleStatus={toggleStatus}
-              confidence={confidence}
-              onConfidenceChange={setConfidence}
               providers={providers}
-              provider={provider}
-              onProviderChange={setProvider}
-              search={search}
-              onSearchChange={setSearch}
-              lengthOp={lengthOp}
-              onLengthOpChange={setLengthOp}
-              lengthValue={lengthValue}
-              onLengthValueChange={setLengthValue}
+              authorOptions={authorOptions}
+              sourceOptions={sourceOptions}
             />
 
             {!loading && (
