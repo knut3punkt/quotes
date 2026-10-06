@@ -55,11 +55,16 @@ speculatively — only when a specific platform is explicitly requested.
   serves them, downscaled and cached, at `GET /api/tag-images/{id}?width=`. `admin/` (package, not to be confused with the top-level
   `admin` frontend project) holds the admin API — DTOs and the service backing the
   `/admin/imported-quotes` routes used to review and approve staged imports into real `quotes`
-  rows.
+  rows, and the `/admin/quotes` routes for approved quotes. Both list routes filter on the server
+  (query parameters parsed in `AdminFilterParameters.kt`, shared with their `/selection` routes,
+  which return every matching ID plus what bulk actions need).
 - **`admin`** — React + TypeScript + Vite admin website (not a Gradle module — a separate npm
   project). Talks to the `server`'s `/admin/*` routes over plain `fetch`, no auth yet. Lets a human
-  filter `imported_quotes` by processing status/confidence/provider and approve, reject, mark
-  duplicate, or reset rows; approving creates the corresponding `authors`/`quotes` rows.
+  filter `imported_quotes` and approve, reject, mark duplicate, or reset rows (approving creates the
+  corresponding `authors`/`quotes` rows), and run the enrichment pipelines on approved quotes. Both
+  list pages share `components/data-table/DataTable.tsx` (virtualized, loads pages as you scroll via
+  `usePagedList`), a selection that can span all matching rows (`useBulkSelection`), and
+  `useChunkedRun`, which sends large bulk actions as small batches with progress and cancel.
 
 ## Key architectural decisions
 

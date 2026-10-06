@@ -1,15 +1,14 @@
-import { memo, type ReactNode } from 'react'
+import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
+import { FilterField } from './FilterField'
+import { MultiSelectFilter } from './MultiSelectFilter'
 import {
   isDefaultImportedQuoteFilters,
   type ImportedQuoteFilterState,
-  type PossibleDuplicateFilter,
 } from '../importedQuoteFilters'
-import type { LengthFilterOp, ProcessingStatus, SourceConfidence } from '../types'
+import type { FilterOption, LengthFilterOp, ProcessingStatus, SourceConfidence } from '../types'
 
 const STATUS_ORDER: ProcessingStatus[] = ['pending', 'approved', 'rejected', 'duplicate']
 const CONFIDENCE_OPTIONS: SourceConfidence[] = ['sourced', 'attributed', 'unsourced', 'disputed']
@@ -20,19 +19,8 @@ interface FilterBarProps {
   onReset: () => void
   statusCounts: Record<ProcessingStatus, number>
   providers: string[]
-  authorOptions: MultiSelectOption[]
-  sourceOptions: MultiSelectOption[]
-}
-
-function FilterField({ id, label, children }: { id: string; label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <Label htmlFor={id} className="text-xs font-normal text-muted-foreground">
-        {label}
-      </Label>
-      {children}
-    </div>
-  )
+  authorOptions: FilterOption[]
+  sourceOptions: FilterOption[]
 }
 
 function FilterBarComponent({
@@ -159,7 +147,7 @@ function FilterBarComponent({
         <FilterField id="possible-duplicate-filter" label="Possible duplicate">
           <Select
             value={filters.possibleDuplicate}
-            onValueChange={(value) => onChange({ possibleDuplicate: value as PossibleDuplicateFilter })}
+            onValueChange={(value) => onChange({ possibleDuplicate: value as ImportedQuoteFilterState['possibleDuplicate'] })}
           >
             <SelectTrigger id="possible-duplicate-filter" size="sm" className="min-w-[140px]">
               <SelectValue />

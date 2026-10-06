@@ -34,6 +34,48 @@ export interface PagedImportedQuotes {
   pageSize: number
 }
 
+export type PossibleDuplicateFilter = 'flagged' | 'notFlagged'
+
+/** Server-side filters for imported quotes; `authors` and `sources` hold the keys from the filter-options endpoint. */
+export interface ImportedQuoteFilter {
+  statuses: ProcessingStatus[]
+  provider?: string
+  sourceConfidence?: SourceConfidence
+  search?: string
+  authors: string[]
+  sources: string[]
+  possibleDuplicate?: PossibleDuplicateFilter
+  /** Inclusive ISO timestamp. */
+  importedFrom?: string
+  /** Exclusive ISO timestamp. */
+  importedBefore?: string
+  minLength?: number
+  maxLength?: number
+}
+
+export interface ImportedQuoteSelectionItem {
+  id: number
+  processingStatus: ProcessingStatus
+  /** Has an author or a source, so bulk approve can approve it. */
+  approvable: boolean
+  quoteId: number | null
+}
+
+/** A multi-select filter choice; `value` is the key sent back to the server. */
+export interface FilterOption {
+  value: string
+  label: string
+  /** Matching rows, when known. */
+  count?: number
+}
+
+export interface ImportedQuoteFilterOptions {
+  providers: string[]
+  statusCounts: Partial<Record<ProcessingStatus, number>>
+  authors: FilterOption[]
+  sources: FilterOption[]
+}
+
 export interface Quote {
   id: number
   text: string
@@ -168,26 +210,34 @@ export interface PagedQuotes {
 /** Whether a quote has results from an enrichment pipeline; `none` = a run succeeded but found nothing. */
 export type EnrichmentFilter = 'has' | 'none' | 'notRun'
 
+/** Server-side filters for approved quotes; multi-value filters match any of their values, empty means no filter. */
 export interface QuoteFilter {
-  authorId?: number
-  sourceId?: number
-  language?: string
+  /** Keys from the filter-options endpoint (`id:N` or `none`). */
+  authors: string[]
+  sources: string[]
+  languages: string[]
   search?: string
-  provider?: string
-  sourceConfidence?: SourceConfidence
+  providers: string[]
+  sourceConfidences: string[]
   minLength?: number
   maxLength?: number
   tag?: string
-  excerpts?: EnrichmentFilter
-  interpretations?: EnrichmentFilter
-  tags?: EnrichmentFilter
-  page: number
-  pageSize: number
+  excerpts: EnrichmentFilter[]
+  interpretations: EnrichmentFilter[]
+  tags: EnrichmentFilter[]
+}
+
+export interface QuoteSelectionItem {
+  id: number
+  wordCount: number
 }
 
 export interface QuoteFilterOptions {
-  providers: string[]
-  languages: string[]
+  authors: FilterOption[]
+  sources: FilterOption[]
+  languages: FilterOption[]
+  providers: FilterOption[]
+  sourceConfidences: FilterOption[]
 }
 
 export interface Author {
