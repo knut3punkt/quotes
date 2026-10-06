@@ -1,42 +1,46 @@
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   bulkUnapproveQuotes,
   extractQuoteExcerpts,
-  fetchAuthors,
   fetchQuoteFilterOptions,
   fetchQuotes,
-  fetchSources,
+  fetchQuoteSelection,
   fetchTags,
   generateQuoteInterpretations,
   generateQuoteTags,
 } from '../api'
+import { useBulkSelection } from '../hooks/use-bulk-selection'
+import { useChunkedRun } from '../hooks/use-chunked-run'
 import { useDebouncedValue } from '../hooks/use-debounced-value'
+import { usePagedList } from '../hooks/use-paged-list'
 import { toast } from '../hooks/use-toast'
+import { DEFAULT_QUOTE_FILTERS, toQuoteFilter, type QuoteFilterState } from '../quoteFilters'
 import type {
-  Author,
   QuoteExtractionOutcome,
   QuoteFilterOptions,
   QuoteInterpretationOutcome,
   QuoteListItem,
+  QuoteSelectionItem,
   QuoteTag,
   QuoteTaggingOutcome,
-  Source,
   TagFacet,
 } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
+import { DataTable, type DataTableColumn } from './data-table/DataTable'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
-import { DEFAULT_QUOTE_FILTERS, QuotesFilterBar, type QuoteFilterState } from './QuotesFilterBar'
-import { QuotesSelectionBar } from './QuotesSelectionBar'
+import { QuoteBulkActions } from './QuoteBulkActions'
+import { QuotesFilterBar } from './QuotesFilterBar'
 import { QuoteTagsCell } from './QuoteTagsCell'
+import { SelectionToolbar } from './SelectionToolbar'
 
-const PAGE_SIZE = 50
 const FILTER_DEBOUNCE_MILLIS = 250
+
+// Each LLM run takes seconds per quote, so enrichment requests stay small; unapprove is a plain delete.
+const ENRICHMENT_CHUNK_SIZE = 10
+const UNAPPROVE_CHUNK_SIZE = 200
 
 // The server's actual EXTRACTION_MIN_SOURCE_WORDS-driven check is authoritative; this only estimates
 // which selected quotes will be skipped so the button can show a helpful count before submitting.
@@ -57,10 +61,6 @@ const TAGGING_OUTCOME_LABELS: Record<QuoteTaggingOutcome, string> = {
   notFound: 'not found',
 }
 
-const EMPTY_VOCABULARY: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
-
-const EMPTY_FILTER_OPTIONS: QuoteFilterOptions = { providers: [], languages: [] }
-
 const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> = {
   generated: 'generated',
   noInterpretationsFound: 'no interpretation found',
@@ -68,23 +68,44 @@ const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> 
   notFound: 'not found',
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : 'Something went wrong'
+const EMPTY_VOCABULARY: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
+
+const EMPTY_FILTER_OPTIONS: QuoteFilterOptions = {
+  authors: [],
+  sources: [],
+  languages: [],
+  providers: [],
+  sourceConfidences: [],
 }
 
 function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-export function QuotesPage() {
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [quotes, setQuotes] = useState<QuoteListItem[]>([])
-  const [authors, setAuthors] = useState<Author[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+function quoteId(quote: QuoteListItem): number {
+  return quote.id
+}
 
-  const [sources, setSources] = useState<Source[]>([])
+function quoteSelectionItem(quote: QuoteListItem): QuoteSelectionItem {
+  return { id: quote.id, wordCount: wordCount(quote.text) }
+}
+
+/** A run's results, as "3 tagged, 1 failed", plus quotes whose request failed outright or were cancelled. */
+function summarizeOutcomes<O extends string>(
+  outcomes: O[],
+  labels: Record<O, string>,
+  failedItems: number,
+  cancelledItems: number,
+): { summary: string; anyFailed: boolean } {
+  const counts = new Map<O, number>()
+  for (const outcome of outcomes) counts.set(outcome, (counts.get(outcome) ?? 0) + 1)
+  const parts = Array.from(counts, ([outcome, count]) => `${count} ${labels[outcome]}`)
+  if (failedItems > 0) parts.push(`${failedItems} not processed (request failed)`)
+  if (cancelledItems > 0) parts.push(`${cancelledItems} cancelled`)
+  return { summary: parts.join(', '), anyFailed: failedItems > 0 || (counts.get('failed' as O) ?? 0) > 0 }
+}
+
+export function QuotesPage() {
   const [filterOptions, setFilterOptions] = useState<QuoteFilterOptions>(EMPTY_FILTER_OPTIONS)
   const [filters, setFilters] = useState<QuoteFilterState>(DEFAULT_QUOTE_FILTERS)
 
@@ -92,19 +113,54 @@ export function QuotesPage() {
   const debouncedLengthValue = useDebouncedValue(filters.lengthValue, FILTER_DEBOUNCE_MILLIS)
   const debouncedTag = useDebouncedValue(filters.tag, FILTER_DEBOUNCE_MILLIS)
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [extracting, setExtracting] = useState(false)
-  const [interpreting, setInterpreting] = useState(false)
-  const [tagging, setTagging] = useState(false)
   const [vocabulary, setVocabulary] = useState<Record<TagFacet, string[]>>(EMPTY_VOCABULARY)
   const [unapproveRequest, setUnapproveRequest] = useState<number[] | null>(null)
   const [unapproving, setUnapproving] = useState(false)
   const [unapproveError, setUnapproveError] = useState<string | null>(null)
-  const busy = extracting || interpreting || tagging || unapproving
+
+  const { authors, sources, languages, providers, confidences, lengthOp, excerpts, interpretations, tags } = filters
+  const queryFilter = useMemo(
+    () =>
+      toQuoteFilter({
+        authors,
+        sources,
+        languages,
+        providers,
+        confidences,
+        lengthOp,
+        excerpts,
+        interpretations,
+        tags,
+        search: debouncedSearch,
+        lengthValue: debouncedLengthValue,
+        tag: debouncedTag,
+      }),
+    [
+      authors,
+      sources,
+      languages,
+      providers,
+      confidences,
+      lengthOp,
+      excerpts,
+      interpretations,
+      tags,
+      debouncedSearch,
+      debouncedLengthValue,
+      debouncedTag,
+    ],
+  )
+
+  const list = usePagedList({ fetchPage: fetchQuotes, filters: queryFilter, getId: quoteId })
+  const selection = useBulkSelection<QuoteSelectionItem>(queryFilter)
+  const chunked = useChunkedRun()
+  const { toggle: toggleSelection, toggleMany: toggleSelectionMany, selectAll, remove: removeFromSelection } = selection
+  const { run: runChunked } = chunked
+  const { rows, patchRows, reload } = list
+
+  const busy = chunked.running || unapproving
 
   useEffect(() => {
-    fetchAuthors().then(setAuthors).catch(() => undefined)
-    fetchSources().then(setSources).catch(() => undefined)
     fetchQuoteFilterOptions().then(setFilterOptions).catch(() => undefined)
   }, [])
 
@@ -115,20 +171,16 @@ export function QuotesPage() {
 
   const handleFiltersChange = useCallback((patch: Partial<QuoteFilterState>) => {
     setFilters((prev) => ({ ...prev, ...patch }))
-    setPage(1)
   }, [])
 
-  const resetFilters = useCallback(() => {
-    setFilters(DEFAULT_QUOTE_FILTERS)
-    setPage(1)
-  }, [])
+  const resetFilters = useCallback(() => setFilters(DEFAULT_QUOTE_FILTERS), [])
 
   // Autocomplete suggestions for the add-tag input; refreshed after each generation run.
   const loadVocabulary = useCallback(() => {
     fetchTags()
-      .then((tags) => {
+      .then((tagList) => {
         const byFacet: Record<TagFacet, string[]> = { concept: [], mood: [], motif: [] }
-        for (const tag of tags) byFacet[tag.facet].push(tag.name)
+        for (const tag of tagList) byFacet[tag.facet].push(tag.name)
         setVocabulary(byFacet)
       })
       .catch(() => undefined)
@@ -138,227 +190,122 @@ export function QuotesPage() {
     loadVocabulary()
   }, [loadVocabulary])
 
-  useEffect(() => {
-    setLoading(true)
-    setLoadError(null)
-    const lengthThreshold = debouncedLengthValue.trim() === '' ? undefined : Number(debouncedLengthValue)
-    const validLength = lengthThreshold !== undefined && Number.isFinite(lengthThreshold) ? lengthThreshold : undefined
-    fetchQuotes({
-      authorId: filters.authorId === 'all' ? undefined : Number(filters.authorId),
-      sourceId: filters.sourceId === 'all' ? undefined : Number(filters.sourceId),
-      language: filters.language === 'all' ? undefined : filters.language,
-      search: debouncedSearch.trim() || undefined,
-      provider: filters.provider === 'all' ? undefined : filters.provider,
-      sourceConfidence: filters.confidence === 'all' ? undefined : filters.confidence,
-      minLength: filters.lengthOp === 'above' ? validLength : undefined,
-      maxLength: filters.lengthOp === 'below' ? validLength : undefined,
-      tag: debouncedTag.trim() || undefined,
-      excerpts: filters.excerpts === 'all' ? undefined : filters.excerpts,
-      interpretations: filters.interpretations === 'all' ? undefined : filters.interpretations,
-      tags: filters.tags === 'all' ? undefined : filters.tags,
-      page,
-      pageSize: PAGE_SIZE,
-    })
-      .then((result) => {
-        setQuotes(result.items)
-        setTotal(result.total)
-      })
-      .catch((err) => setLoadError(errorMessage(err)))
-      .finally(() => setLoading(false))
-  }, [
-    page,
-    debouncedSearch,
-    debouncedLengthValue,
-    debouncedTag,
-    filters.authorId,
-    filters.sourceId,
-    filters.language,
-    filters.provider,
-    filters.confidence,
-    filters.lengthOp,
-    filters.excerpts,
-    filters.interpretations,
-    filters.tags,
-  ])
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-
-  const allVisibleSelected = quotes.length > 0 && quotes.every((quote) => selectedIds.has(quote.id))
-
-  const selectedQuotes = useMemo(
-    () => quotes.filter((quote) => selectedIds.has(quote.id)),
-    [quotes, selectedIds],
+  const selectedIds = useMemo(() => selection.summaries.map((item) => item.id), [selection.summaries])
+  const eligibleIds = useMemo(
+    () => selection.summaries.filter((item) => item.wordCount >= ESTIMATED_MIN_SOURCE_WORDS).map((item) => item.id),
+    [selection.summaries],
   )
-  const eligibleQuotes = useMemo(
-    () => selectedQuotes.filter((quote) => wordCount(quote.text) >= ESTIMATED_MIN_SOURCE_WORDS),
-    [selectedQuotes],
+  const skippedCount = selectedIds.length - eligibleIds.length
+
+  const toggleSelect = useCallback((quote: QuoteListItem) => toggleSelection(quoteSelectionItem(quote)), [toggleSelection])
+  const toggleSelectLoaded = useCallback(
+    () => toggleSelectionMany(rows.map(quoteSelectionItem)),
+    [toggleSelectionMany, rows],
   )
-  const skippedCount = selectedQuotes.length - eligibleQuotes.length
+  const selectAllMatching = useCallback(
+    () => selectAll(() => fetchQuoteSelection(queryFilter)),
+    [selectAll, queryFilter],
+  )
 
-  const toggleSelect = useCallback((id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const toggleSelectAllVisible = useCallback(() => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (allVisibleSelected) {
-        for (const quote of quotes) next.delete(quote.id)
-      } else {
-        for (const quote of quotes) next.add(quote.id)
-      }
-      return next
-    })
-  }, [allVisibleSelected, quotes])
-
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
-
-  const handleGenerateInterpretations = useCallback(async () => {
-    const ids = selectedQuotes.map((quote) => quote.id)
-    if (ids.length === 0) return
-    setInterpreting(true)
-    try {
-      const response = await generateQuoteInterpretations(ids)
-      const resultsById = new Map(response.results.map((result) => [result.quoteId, result]))
-
-      setQuotes((prev) =>
+  /**
+   * Runs an enrichment pipeline over `ids` in small batches, merges each result into its row if it is loaded, and
+   * reports the combined outcome counts in one toast.
+   */
+  const runEnrichment = useCallback(
+    async <R extends { quoteId: number; outcome: O }, O extends string>({
+      progressLabel,
+      ids,
+      request,
+      merge,
+      outcomeLabels,
+      title,
+    }: {
+      progressLabel: string
+      ids: number[]
+      request: (chunk: number[]) => Promise<R[]>
+      merge: (quote: QuoteListItem, result: R) => QuoteListItem
+      outcomeLabels: Record<O, string>
+      title: { success: string; partialFailure: string }
+    }) => {
+      if (ids.length === 0) return
+      const { results, failedItems, cancelledItems } = await runChunked(progressLabel, ids, ENRICHMENT_CHUNK_SIZE, request)
+      const resultsById = new Map(results.map((result) => [result.quoteId, result]))
+      patchRows((prev) =>
         prev.map((quote) => {
           const result = resultsById.get(quote.id)
-          if (!result) return quote
-          // A not-found outcome never touched the database, so leave existing interpretations as-is.
-          if (result.outcome === 'notFound') return quote
-          return { ...quote, interpretations: result.interpretations }
+          return result ? merge(quote, result) : quote
         }),
       )
+      removeFromSelection(resultsById.keys())
+      const { summary, anyFailed } = summarizeOutcomes(
+        results.map((result) => result.outcome),
+        outcomeLabels,
+        failedItems,
+        cancelledItems,
+      )
+      if (anyFailed) toast.error(title.partialFailure, summary)
+      else toast.success(title.success, summary)
+    },
+    [runChunked, patchRows, removeFromSelection],
+  )
 
-      const counts = response.results.reduce<Record<string, number>>((acc, result) => {
-        acc[result.outcome] = (acc[result.outcome] ?? 0) + 1
-        return acc
-      }, {})
-      const summary = Object.entries(counts)
-        .map(([outcome, count]) => `${count} ${INTERPRETATION_OUTCOME_LABELS[outcome as QuoteInterpretationOutcome]}`)
-        .join(', ')
-      const failedCount = counts.failed ?? 0
-      if (failedCount > 0) {
-        toast.error('Some interpretation generations failed', summary)
-      } else {
-        toast.success('Interpretation generation complete', summary)
-      }
+  const handleExtractExcerpts = useCallback(
+    () =>
+      runEnrichment({
+        progressLabel: 'Extracting excerpts',
+        ids: eligibleIds,
+        request: async (chunk) => (await extractQuoteExcerpts(chunk)).results,
+        // A skipped/not-found outcome never touched the database, so leave existing highlights as-is.
+        merge: (quote, result) =>
+          result.outcome === 'skippedTooShort' || result.outcome === 'notFound'
+            ? quote
+            : { ...quote, excerpts: result.excerpts },
+        outcomeLabels: OUTCOME_LABELS,
+        title: { success: 'Extraction complete', partialFailure: 'Some extractions failed' },
+      }),
+    [runEnrichment, eligibleIds],
+  )
 
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        for (const id of ids) next.delete(id)
-        return next
-      })
-    } catch (err) {
-      toast.error('Interpretation generation failed', errorMessage(err))
-    } finally {
-      setInterpreting(false)
-    }
-  }, [selectedQuotes])
+  const handleGenerateInterpretations = useCallback(
+    () =>
+      runEnrichment({
+        progressLabel: 'Generating interpretations',
+        ids: selectedIds,
+        request: async (chunk) => (await generateQuoteInterpretations(chunk)).results,
+        // A not-found outcome never touched the database, so leave existing interpretations as-is.
+        merge: (quote, result) =>
+          result.outcome === 'notFound' ? quote : { ...quote, interpretations: result.interpretations },
+        outcomeLabels: INTERPRETATION_OUTCOME_LABELS,
+        title: { success: 'Interpretation generation complete', partialFailure: 'Some interpretation generations failed' },
+      }),
+    [runEnrichment, selectedIds],
+  )
 
   const handleGenerateTags = useCallback(async () => {
-    const ids = selectedQuotes.map((quote) => quote.id)
-    if (ids.length === 0) return
-    setTagging(true)
-    try {
-      const response = await generateQuoteTags(ids)
-      const resultsById = new Map(response.results.map((result) => [result.quoteId, result]))
+    await runEnrichment({
+      progressLabel: 'Tagging',
+      ids: selectedIds,
+      request: async (chunk) => (await generateQuoteTags(chunk)).results,
+      // The server returns every active tag on the quote, including admin-added ones.
+      merge: (quote, result) => (result.outcome === 'notFound' ? quote : { ...quote, tags: result.tags }),
+      outcomeLabels: TAGGING_OUTCOME_LABELS,
+      title: { success: 'Tagging complete', partialFailure: 'Some tagging runs failed' },
+    })
+    loadVocabulary()
+  }, [runEnrichment, selectedIds, loadVocabulary])
 
-      setQuotes((prev) =>
-        prev.map((quote) => {
-          const result = resultsById.get(quote.id)
-          if (!result || result.outcome === 'notFound') return quote
-          // The server returns every active tag on the quote, including admin-added ones.
-          return { ...quote, tags: result.tags }
-        }),
-      )
-
-      const counts = response.results.reduce<Record<string, number>>((acc, result) => {
-        acc[result.outcome] = (acc[result.outcome] ?? 0) + 1
-        return acc
-      }, {})
-      const summary = Object.entries(counts)
-        .map(([outcome, count]) => `${count} ${TAGGING_OUTCOME_LABELS[outcome as QuoteTaggingOutcome]}`)
-        .join(', ')
-      if ((counts.failed ?? 0) > 0) {
-        toast.error('Some tagging runs failed', summary)
-      } else {
-        toast.success('Tagging complete', summary)
-      }
-
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        for (const id of ids) next.delete(id)
-        return next
-      })
-      loadVocabulary()
-    } catch (err) {
-      toast.error('Tagging failed', errorMessage(err))
-    } finally {
-      setTagging(false)
-    }
-  }, [selectedQuotes, loadVocabulary])
-
-  const handleTagsChange = useCallback((quoteId: number, tags: QuoteTag[]) => {
-    setQuotes((prev) => prev.map((quote) => (quote.id === quoteId ? { ...quote, tags } : quote)))
-  }, [])
-
-  const handleExtractExcerpts = useCallback(async () => {
-    const ids = selectedQuotes.map((quote) => quote.id)
-    if (ids.length === 0) return
-    setExtracting(true)
-    try {
-      const response = await extractQuoteExcerpts(ids)
-      const resultsById = new Map(response.results.map((result) => [result.quoteId, result]))
-
-      setQuotes((prev) =>
-        prev.map((quote) => {
-          const result = resultsById.get(quote.id)
-          if (!result) return quote
-          // A skipped/not-found outcome never touched the database, so leave existing highlights as-is.
-          if (result.outcome === 'skippedTooShort' || result.outcome === 'notFound') return quote
-          return { ...quote, excerpts: result.excerpts }
-        }),
-      )
-
-      const counts = response.results.reduce<Record<string, number>>((acc, result) => {
-        acc[result.outcome] = (acc[result.outcome] ?? 0) + 1
-        return acc
-      }, {})
-      const summary = Object.entries(counts)
-        .map(([outcome, count]) => `${count} ${OUTCOME_LABELS[outcome as QuoteExtractionOutcome]}`)
-        .join(', ')
-      const failedCount = counts.failed ?? 0
-      if (failedCount > 0) {
-        toast.error('Some extractions failed', summary)
-      } else {
-        toast.success('Extraction complete', summary)
-      }
-
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        for (const id of ids) next.delete(id)
-        return next
-      })
-    } catch (err) {
-      toast.error('Extraction failed', errorMessage(err))
-    } finally {
-      setExtracting(false)
-    }
-  }, [selectedQuotes])
+  const handleTagsChange = useCallback(
+    (id: number, quoteTags: QuoteTag[]) => {
+      patchRows((prev) => prev.map((quote) => (quote.id === id ? { ...quote, tags: quoteTags } : quote)))
+    },
+    [patchRows],
+  )
 
   const requestUnapprove = useCallback(() => {
-    const ids = selectedQuotes.map((quote) => quote.id)
-    if (ids.length === 0) return
+    if (selectedIds.length === 0) return
     setUnapproveError(null)
-    setUnapproveRequest(ids)
-  }, [selectedQuotes])
+    setUnapproveRequest(selectedIds)
+  }, [selectedIds])
 
   const cancelUnapprove = useCallback(() => {
     if (unapproving) return
@@ -370,35 +317,105 @@ export function QuotesPage() {
     if (!unapproveRequest) return
     setUnapproving(true)
     setUnapproveError(null)
-    try {
-      const result = await bulkUnapproveQuotes({ quoteIds: unapproveRequest })
-      const unapproved = new Set(result.succeededIds)
-      setQuotes((prev) => prev.filter((quote) => !unapproved.has(quote.id)))
-      setTotal((prev) => Math.max(0, prev - unapproved.size))
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        for (const id of unapproved) next.delete(id)
-        return next
-      })
-      if (result.failedIds.length > 0) {
-        setUnapproveError(`${result.failedIds.length} of ${unapproveRequest.length} unapprovals failed`)
-        setUnapproveRequest((prev) => prev?.filter((id) => !unapproved.has(id)) ?? null)
-      } else {
-        toast.success(`Unapproved ${unapproved.size} quote${unapproved.size === 1 ? '' : 's'}`)
-        setUnapproveRequest(null)
-      }
-    } catch (err) {
-      setUnapproveError(errorMessage(err))
-    } finally {
-      setUnapproving(false)
+    const { results, cancelledItems } = await runChunked(
+      'Unapproving',
+      unapproveRequest,
+      UNAPPROVE_CHUNK_SIZE,
+      async (chunk) => (await bulkUnapproveQuotes({ quoteIds: chunk })).succeededIds,
+    )
+    removeFromSelection(results)
+    const failed = unapproveRequest.length - results.length - cancelledItems
+    if (failed > 0) {
+      const unapproved = new Set(results)
+      setUnapproveError(`${failed} of ${unapproveRequest.length} unapprovals failed`)
+      setUnapproveRequest((prev) => prev?.filter((id) => !unapproved.has(id)) ?? null)
+    } else {
+      toast.success(`Unapproved ${results.length} quote${results.length === 1 ? '' : 's'}`)
+      setUnapproveRequest(null)
     }
-  }, [unapproveRequest])
+    setUnapproving(false)
+    reload()
+  }, [unapproveRequest, runChunked, removeFromSelection, reload])
+
+  const columns = useMemo(
+    (): DataTableColumn<QuoteListItem>[] => [
+      { id: 'id', header: 'ID', track: '64px', minWidth: 64, cell: (quote) => quote.id },
+      {
+        id: 'text',
+        header: 'Text',
+        track: 'minmax(320px,3fr)',
+        minWidth: 320,
+        className: 'whitespace-normal',
+        cell: (quote) => (
+          <>
+            {quote.interpretations.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Lightbulb
+                    className="mr-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle text-primary"
+                    aria-label={`${quote.interpretations.length} interpretation${quote.interpretations.length === 1 ? '' : 's'}`}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Has {quote.interpretations.length} interpretation{quote.interpretations.length === 1 ? '' : 's'}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <HighlightedQuoteText
+              text={quote.text}
+              excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
+              interpretations={quote.interpretations}
+            />
+          </>
+        ),
+      },
+      {
+        id: 'tags',
+        header: 'Tags',
+        track: 'minmax(200px,2fr)',
+        minWidth: 200,
+        className: 'whitespace-normal',
+        cell: (quote) => (
+          <QuoteTagsCell
+            quoteId={quote.id}
+            tags={quote.tags}
+            excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
+            vocabulary={vocabulary}
+            disabled={busy}
+            onTagsChange={handleTagsChange}
+          />
+        ),
+      },
+      {
+        id: 'author',
+        header: 'Author',
+        track: 'minmax(100px,1fr)',
+        minWidth: 100,
+        cell: (quote) => quote.authorName ?? '—',
+      },
+      {
+        id: 'source',
+        header: 'Source',
+        track: 'minmax(100px,1fr)',
+        minWidth: 100,
+        className: 'whitespace-normal',
+        cell: (quote) => (
+          <>
+            {quote.sourceTitle ?? '—'}
+            {quote.sourceDetail && <div className="text-xs text-muted-foreground">{quote.sourceDetail}</div>}
+          </>
+        ),
+      },
+      { id: 'language', header: 'Language', track: '88px', minWidth: 88, cell: (quote) => quote.language },
+    ],
+    [vocabulary, busy, handleTagsChange],
+  )
 
   return (
     <div>
-      {loadError && (
+      {list.error && (
         <Alert variant="destructive" className="mb-4 border-destructive/30 bg-destructive/10">
-          <AlertDescription>{loadError}</AlertDescription>
+          <AlertDescription>{list.error}</AlertDescription>
         </Alert>
       )}
 
@@ -406,30 +423,33 @@ export function QuotesPage() {
         filters={filters}
         onChange={handleFiltersChange}
         onReset={resetFilters}
-        authors={authors}
-        sources={sources}
         options={filterOptions}
         tagNames={tagNames}
       />
 
-      {!loading && quotes.length > 0 && (
-        <QuotesSelectionBar
-          selectedCount={selectedIds.size}
-          visibleCount={quotes.length}
-          allVisibleSelected={allVisibleSelected}
-          eligibleCount={eligibleQuotes.length}
-          skippedCount={skippedCount}
-          extracting={extracting}
-          interpreting={interpreting}
-          tagging={tagging}
-          unapproving={unapproving}
-          onToggleSelectAllVisible={toggleSelectAllVisible}
-          onClearSelection={clearSelection}
-          onExtractExcerpts={handleExtractExcerpts}
-          onGenerateInterpretations={handleGenerateInterpretations}
-          onGenerateTags={handleGenerateTags}
-          onUnapprove={requestUnapprove}
-        />
+      {!list.loading && (
+        <SelectionToolbar
+          selectedCount={selection.count}
+          matchingCount={list.total}
+          selectingAll={selection.selectingAll}
+          selectAllError={selection.selectAllError}
+          busy={busy}
+          progress={chunked.progress}
+          onSelectAllMatching={selectAllMatching}
+          onClearSelection={selection.clear}
+          onCancelRun={chunked.cancel}
+        >
+          <QuoteBulkActions
+            selectedCount={selection.count}
+            eligibleCount={eligibleIds.length}
+            skippedCount={skippedCount}
+            busy={busy}
+            onExtractExcerpts={handleExtractExcerpts}
+            onGenerateInterpretations={handleGenerateInterpretations}
+            onGenerateTags={handleGenerateTags}
+            onUnapprove={requestUnapprove}
+          />
+        </SelectionToolbar>
       )}
 
       {unapproveRequest && (
@@ -445,114 +465,24 @@ export function QuotesPage() {
         />
       )}
 
-      {loading ? (
-        <p className="py-8 text-center text-muted-foreground">Loading…</p>
-      ) : quotes.length === 0 ? (
-        <p className="py-8 text-center text-muted-foreground">No quotes match these filters.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <label className="flex h-full w-full cursor-pointer items-center justify-center">
-                  <Checkbox
-                    checked={allVisibleSelected}
-                    onCheckedChange={toggleSelectAllVisible}
-                    disabled={busy}
-                    aria-label="Select all visible rows"
-                  />
-                </label>
-              </TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>Text</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Author</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Language</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {quotes.map((quote) => (
-              <TableRow key={quote.id}>
-                <TableCell className="text-center align-top">
-                  <label className="flex h-full w-full cursor-pointer items-center justify-center">
-                    <Checkbox
-                      checked={selectedIds.has(quote.id)}
-                      onCheckedChange={() => toggleSelect(quote.id)}
-                      disabled={busy}
-                      aria-label={`Select quote ${quote.id}`}
-                    />
-                  </label>
-                </TableCell>
-                <TableCell className="align-top">{quote.id}</TableCell>
-                <TableCell className="max-w-[480px] align-top whitespace-normal">
-                  {quote.interpretations.length > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Lightbulb
-                          className="mr-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle text-primary"
-                          aria-label={`${quote.interpretations.length} interpretation${quote.interpretations.length === 1 ? '' : 's'}`}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Has {quote.interpretations.length} interpretation{quote.interpretations.length === 1 ? '' : 's'}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  <HighlightedQuoteText
-                    text={quote.text}
-                    excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
-                    interpretations={quote.interpretations}
-                  />
-                </TableCell>
-                <TableCell className="max-w-[320px] align-top whitespace-normal">
-                  <QuoteTagsCell
-                    quoteId={quote.id}
-                    tags={quote.tags}
-                    excerpts={quote.excerpts.filter((excerpt) => excerpt.meetsThresholds)}
-                    vocabulary={vocabulary}
-                    disabled={busy}
-                    onTagsChange={handleTagsChange}
-                  />
-                </TableCell>
-                <TableCell className="align-top">{quote.authorName ?? '—'}</TableCell>
-                <TableCell className="align-top">
-                  {quote.sourceTitle ?? '—'}
-                  {quote.sourceDetail && <div className="text-xs text-muted-foreground">{quote.sourceDetail}</div>}
-                </TableCell>
-                <TableCell className="align-top">{quote.language}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        rows={rows}
+        getRowId={quoteId}
+        columns={columns}
+        selectedIds={selection.selectedIds}
+        onToggleSelect={toggleSelect}
+        onToggleSelectLoaded={toggleSelectLoaded}
+        selectionDisabled={busy}
+        loading={list.loading}
+        loadingMore={list.loadingMore}
+        hasMore={list.hasMore}
+        onEndReached={list.loadMore}
+        emptyMessage="No quotes match these filters."
+      />
 
-      <div className="mt-4 flex items-center justify-between gap-4">
-        <span className="text-sm text-muted-foreground">{total} quotes</span>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page === 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          >
-            Prev
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page * PAGE_SIZE >= total}
-            onClick={() => setPage((prev) => prev + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {list.total} quotes{list.hasMore ? ` · ${rows.length} loaded, scroll for more` : ''}
+      </p>
     </div>
   )
 }

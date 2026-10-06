@@ -1,124 +1,31 @@
-import { memo, type ReactNode } from 'react'
+import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type {
-  Author,
-  EnrichmentFilter,
-  LengthFilterOp,
-  QuoteFilterOptions,
-  Source,
-  SourceConfidence,
-} from '../types'
+import { isDefaultQuoteFilters, type QuoteFilterState } from '../quoteFilters'
+import type { EnrichmentFilter, FilterOption, LengthFilterOp, QuoteFilterOptions } from '../types'
+import { FilterField } from './FilterField'
+import { MultiSelectFilter } from './MultiSelectFilter'
 
-const CONFIDENCE_OPTIONS: SourceConfidence[] = ['sourced', 'attributed', 'unsourced', 'disputed']
-
-const ENRICHMENT_OPTIONS: { value: EnrichmentFilter; label: string }[] = [
+const ENRICHMENT_OPTIONS: FilterOption[] = [
   { value: 'has', label: 'Has' },
   { value: 'none', label: 'None found' },
   { value: 'notRun', label: 'Not run' },
 ]
 
-/** Raw control values; `'all'` stands for "no filter" because Radix Select doesn't allow an empty value. */
-export interface QuoteFilterState {
-  search: string
-  authorId: 'all' | string
-  sourceId: 'all' | string
-  language: 'all' | string
-  provider: 'all' | string
-  confidence: 'all' | SourceConfidence
-  lengthOp: LengthFilterOp
-  lengthValue: string
-  tag: string
-  excerpts: 'all' | EnrichmentFilter
-  interpretations: 'all' | EnrichmentFilter
-  tags: 'all' | EnrichmentFilter
-}
-
-export const DEFAULT_QUOTE_FILTERS: QuoteFilterState = {
-  search: '',
-  authorId: 'all',
-  sourceId: 'all',
-  language: 'all',
-  provider: 'all',
-  confidence: 'all',
-  lengthOp: 'above',
-  lengthValue: '',
-  tag: '',
-  excerpts: 'all',
-  interpretations: 'all',
-  tags: 'all',
-}
-
 interface QuotesFilterBarProps {
   filters: QuoteFilterState
   onChange: (patch: Partial<QuoteFilterState>) => void
   onReset: () => void
-  authors: Author[]
-  sources: Source[]
   options: QuoteFilterOptions
   tagNames: string[]
 }
 
-function FilterField({ id, label, children }: { id: string; label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <Label htmlFor={id} className="text-xs font-normal text-muted-foreground">
-        {label}
-      </Label>
-      {children}
-    </div>
-  )
+function capitalized(options: FilterOption[]): FilterOption[] {
+  return options.map((option) => ({ ...option, label: option.label.charAt(0).toUpperCase() + option.label.slice(1) }))
 }
 
-function FilterSelect({
-  id,
-  value,
-  onValueChange,
-  options,
-  className = 'min-w-[140px]',
-}: {
-  id: string
-  value: string
-  onValueChange: (value: string) => void
-  options: { value: string; label: string }[]
-  className?: string
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger id={id} size="sm" className={className}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All</SelectItem>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-function asOptions(values: string[]): { value: string; label: string }[] {
-  return values.map((value) => ({ value, label: value }))
-}
-
-function QuotesFilterBarComponent({
-  filters,
-  onChange,
-  onReset,
-  authors,
-  sources,
-  options,
-  tagNames,
-}: QuotesFilterBarProps) {
-  const isDefault = (Object.keys(DEFAULT_QUOTE_FILTERS) as (keyof QuoteFilterState)[]).every(
-    (key) => filters[key] === DEFAULT_QUOTE_FILTERS[key],
-  )
-
+function QuotesFilterBarComponent({ filters, onChange, onReset, options, tagNames }: QuotesFilterBarProps) {
   return (
     <div className="mb-5 flex flex-col gap-4 border-b border-border pb-4">
       <div className="flex flex-wrap items-end gap-4">
@@ -134,53 +41,52 @@ function QuotesFilterBarComponent({
         </FilterField>
 
         <FilterField id="quotes-author" label="Author">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-author"
-            value={filters.authorId}
-            onValueChange={(authorId) => onChange({ authorId })}
-            options={authors.map((author) => ({ value: String(author.id), label: author.name }))}
-            className="min-w-[160px]"
+            options={options.authors}
+            selected={filters.authors}
+            onChange={(authors) => onChange({ authors })}
+            searchPlaceholder="Find author…"
           />
         </FilterField>
 
         <FilterField id="quotes-source" label="Source">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-source"
-            value={filters.sourceId}
-            onValueChange={(sourceId) => onChange({ sourceId })}
-            options={sources.map((source) => ({ value: String(source.id), label: source.title }))}
-            className="min-w-[160px] max-w-[260px]"
+            options={options.sources}
+            selected={filters.sources}
+            onChange={(sources) => onChange({ sources })}
+            searchPlaceholder="Find source…"
           />
         </FilterField>
 
         <FilterField id="quotes-language" label="Language">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-language"
-            value={filters.language}
-            onValueChange={(language) => onChange({ language })}
-            options={asOptions(options.languages)}
-            className="min-w-[100px]"
+            options={options.languages}
+            selected={filters.languages}
+            onChange={(languages) => onChange({ languages })}
+            className="min-w-[100px] max-w-[160px]"
           />
         </FilterField>
 
         <FilterField id="quotes-provider" label="Provider">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-provider"
-            value={filters.provider}
-            onValueChange={(provider) => onChange({ provider })}
-            options={asOptions(options.providers)}
+            options={options.providers}
+            selected={filters.providers}
+            onChange={(providers) => onChange({ providers })}
+            className="min-w-[140px] max-w-[200px]"
           />
         </FilterField>
 
         <FilterField id="quotes-confidence" label="Confidence">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-confidence"
-            value={filters.confidence}
-            onValueChange={(confidence) => onChange({ confidence: confidence as QuoteFilterState['confidence'] })}
-            options={CONFIDENCE_OPTIONS.map((option) => ({
-              value: option,
-              label: option.charAt(0).toUpperCase() + option.slice(1),
-            }))}
+            options={capitalized(options.sourceConfidences)}
+            selected={filters.confidences}
+            onChange={(confidences) => onChange({ confidences })}
+            className="min-w-[140px] max-w-[200px]"
           />
         </FilterField>
 
@@ -228,38 +134,38 @@ function QuotesFilterBarComponent({
         </FilterField>
 
         <FilterField id="quotes-excerpts" label="Excerpts">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-excerpts"
-            value={filters.excerpts}
-            onValueChange={(excerpts) => onChange({ excerpts: excerpts as QuoteFilterState['excerpts'] })}
             options={ENRICHMENT_OPTIONS}
-            className="min-w-[130px]"
+            selected={filters.excerpts}
+            onChange={(excerpts) => onChange({ excerpts: excerpts as Set<EnrichmentFilter> })}
+            className="min-w-[130px] max-w-[180px]"
           />
         </FilterField>
 
         <FilterField id="quotes-interpretations" label="Interpretations">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-interpretations"
-            value={filters.interpretations}
-            onValueChange={(interpretations) =>
-              onChange({ interpretations: interpretations as QuoteFilterState['interpretations'] })
-            }
             options={ENRICHMENT_OPTIONS}
-            className="min-w-[130px]"
+            selected={filters.interpretations}
+            onChange={(interpretations) =>
+              onChange({ interpretations: interpretations as Set<EnrichmentFilter> })
+            }
+            className="min-w-[130px] max-w-[180px]"
           />
         </FilterField>
 
         <FilterField id="quotes-tags-status" label="Tags">
-          <FilterSelect
+          <MultiSelectFilter
             id="quotes-tags-status"
-            value={filters.tags}
-            onValueChange={(tags) => onChange({ tags: tags as QuoteFilterState['tags'] })}
             options={ENRICHMENT_OPTIONS}
-            className="min-w-[130px]"
+            selected={filters.tags}
+            onChange={(tags) => onChange({ tags: tags as Set<EnrichmentFilter> })}
+            className="min-w-[130px] max-w-[180px]"
           />
         </FilterField>
 
-        {!isDefault && (
+        {!isDefaultQuoteFilters(filters) && (
           <Button type="button" variant="outline" size="sm" onClick={onReset}>
             Reset filters
           </Button>

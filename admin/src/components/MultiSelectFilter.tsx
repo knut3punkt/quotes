@@ -3,23 +3,21 @@ import { ChevronDownIcon } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-
-export interface MultiSelectOption {
-  value: string
-  label: string
-  count: number
-}
+import type { FilterOption } from '../types'
 
 /** Rendering thousands of checkbox rows makes the popover sluggish; the search box narrows past this. */
 const MAX_VISIBLE_OPTIONS = 300
 
+// Short lists (statuses, languages) are easier to scan without a search box.
+const SEARCH_THRESHOLD = 10
+
 interface MultiSelectFilterProps {
   id: string
   /** Options in display order; a "none" option, if any, is expected first. */
-  options: MultiSelectOption[]
+  options: FilterOption[]
   selected: Set<string>
   onChange: (selected: Set<string>) => void
-  searchPlaceholder: string
+  searchPlaceholder?: string
   className?: string
 }
 
@@ -28,7 +26,7 @@ function MultiSelectFilterComponent({
   options,
   selected,
   onChange,
-  searchPlaceholder,
+  searchPlaceholder = 'Find…',
   className = 'min-w-[160px] max-w-[240px]',
 }: MultiSelectFilterProps) {
   const [term, setTerm] = useState('')
@@ -67,14 +65,16 @@ function MultiSelectFilterComponent({
           <ChevronDownIcon className="pointer-events-none size-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="flex w-[320px] flex-col gap-2">
-        <Input
-          type="search"
-          value={term}
-          placeholder={searchPlaceholder}
-          onChange={(event) => setTerm(event.target.value)}
-          autoFocus
-        />
+      <PopoverContent className="flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2">
+        {options.length > SEARCH_THRESHOLD && (
+          <Input
+            type="search"
+            value={term}
+            placeholder={searchPlaceholder}
+            onChange={(event) => setTerm(event.target.value)}
+            autoFocus
+          />
+        )}
         <div className="max-h-[320px] overflow-y-auto">
           {visible.length === 0 && <p className="px-2 py-3 text-center text-sm text-muted-foreground">No matches</p>}
           {visible.map((option) => (
@@ -86,7 +86,9 @@ function MultiSelectFilterComponent({
               <span className="min-w-0 flex-1 truncate" title={option.label}>
                 {option.label}
               </span>
-              <span className="text-xs text-muted-foreground tabular-nums">{option.count}</span>
+              {option.count !== undefined && (
+                <span className="text-xs text-muted-foreground tabular-nums">{option.count}</span>
+              )}
             </label>
           ))}
           {matching.length > visible.length && (

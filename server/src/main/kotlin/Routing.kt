@@ -24,17 +24,16 @@ import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.AddQuoteTagRequest
-import no.esotericgames.quotes.server.admin.EnrichmentFilter
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteTagsRequest
 import no.esotericgames.quotes.server.admin.ImageGenerationJobState
 import no.esotericgames.quotes.server.admin.ImportedQuoteAdminService
-import no.esotericgames.quotes.server.admin.ImportedQuoteFilter
+import no.esotericgames.quotes.server.admin.importedQuoteFilterFrom
 import no.esotericgames.quotes.server.admin.MergeTagRequest
 import no.esotericgames.quotes.server.admin.NewSourceRequest
 import no.esotericgames.quotes.server.admin.QuoteAdminService
-import no.esotericgames.quotes.server.admin.QuoteFilter
+import no.esotericgames.quotes.server.admin.quoteFilterFrom
 import no.esotericgames.quotes.server.admin.TagAdminService
 import no.esotericgames.quotes.server.admin.UpdateTagRequest
 import no.esotericgames.quotes.server.admin.UpdateImportedQuoteStatusRequest
@@ -130,16 +129,15 @@ fun Application.configureRouting(
             call.respond(quranImportService.import())
         }
         get("/admin/imported-quotes") {
-            val params = call.request.queryParameters
-            val filter = ImportedQuoteFilter(
-                statuses = params.getAll("status")?.toSet(),
-                provider = params["provider"],
-                sourceConfidence = params["sourceConfidence"],
-                search = params["search"],
-                page = params["page"]?.toIntOrNull() ?: 1,
-                pageSize = params["pageSize"]?.toIntOrNull() ?: 200,
-            )
+            val filter = importedQuoteFilterFrom(call.request.queryParameters, defaultPageSize = 100)
             call.respond(importedQuoteAdminService.listImportedQuotes(filter))
+        }
+        get("/admin/imported-quotes/selection") {
+            val filter = importedQuoteFilterFrom(call.request.queryParameters, defaultPageSize = 100)
+            call.respond(importedQuoteAdminService.selection(filter))
+        }
+        get("/admin/imported-quotes/filter-options") {
+            call.respond(importedQuoteAdminService.filterOptions())
         }
         patch("/admin/imported-quotes/{id}/status") {
             val id = call.parameters.getOrFail("id").toInt()
@@ -167,24 +165,12 @@ fun Application.configureRouting(
             call.respond(HttpStatusCode.NoContent)
         }
         get("/admin/quotes") {
-            val params = call.request.queryParameters
-            val filter = QuoteFilter(
-                authorId = params["authorId"]?.toIntOrNull(),
-                sourceId = params["sourceId"]?.toIntOrNull(),
-                language = params["language"],
-                search = params["search"],
-                provider = params["provider"],
-                sourceConfidence = params["sourceConfidence"],
-                minLength = params["minLength"]?.toIntOrNull(),
-                maxLength = params["maxLength"]?.toIntOrNull(),
-                tag = params["tag"],
-                excerpts = params["excerpts"]?.let(EnrichmentFilter::fromQueryValue),
-                interpretations = params["interpretations"]?.let(EnrichmentFilter::fromQueryValue),
-                tags = params["tags"]?.let(EnrichmentFilter::fromQueryValue),
-                page = params["page"]?.toIntOrNull() ?: 1,
-                pageSize = params["pageSize"]?.toIntOrNull() ?: 50,
-            )
+            val filter = quoteFilterFrom(call.request.queryParameters, defaultPageSize = 50)
             call.respond(quoteAdminService.listQuotes(filter))
+        }
+        get("/admin/quotes/selection") {
+            val filter = quoteFilterFrom(call.request.queryParameters, defaultPageSize = 50)
+            call.respond(quoteAdminService.selection(filter))
         }
         get("/admin/quotes/filter-options") {
             call.respond(quoteAdminService.filterOptions())

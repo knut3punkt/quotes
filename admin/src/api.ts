@@ -12,6 +12,9 @@ import type {
   GenerateQuoteTagsResponse,
   ImageGenerationJobState,
   ImportedQuote,
+  ImportedQuoteFilter,
+  ImportedQuoteFilterOptions,
+  ImportedQuoteSelectionItem,
   NewSourceRequest,
   PagedImportedQuotes,
   PagedQuotes,
@@ -19,6 +22,7 @@ import type {
   Quote,
   QuoteFilter,
   QuoteFilterOptions,
+  QuoteSelectionItem,
   QuoteTag,
   ScriptureImportResult,
   Source,
@@ -31,9 +35,8 @@ import type {
   WikiquoteImportResponse,
 } from './types'
 
-// A generous default page size: the admin UI still filters client-side over this whole page, so
-// this preserves "see everything" behavior until it adopts real pagination controls.
-const DEFAULT_PAGE_SIZE = 2000
+// The tags page lists the whole vocabulary at once.
+const DEFAULT_TAG_LIMIT = 2000
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
@@ -50,28 +53,63 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export async function fetchImportedQuotes(): Promise<ImportedQuote[]> {
-  const page = await request<PagedImportedQuotes>(`/admin/imported-quotes?pageSize=${DEFAULT_PAGE_SIZE}`)
-  return page.items
-}
-
-export function fetchQuotes(filter: QuoteFilter): Promise<PagedQuotes> {
+function importedQuoteParams(filter: ImportedQuoteFilter): URLSearchParams {
   const params = new URLSearchParams()
-  if (filter.authorId !== undefined) params.set('authorId', String(filter.authorId))
-  if (filter.sourceId !== undefined) params.set('sourceId', String(filter.sourceId))
-  if (filter.language) params.set('language', filter.language)
-  if (filter.search) params.set('search', filter.search)
+  for (const status of filter.statuses) params.append('status', status)
   if (filter.provider) params.set('provider', filter.provider)
   if (filter.sourceConfidence) params.set('sourceConfidence', filter.sourceConfidence)
+  if (filter.search) params.set('search', filter.search)
+  for (const author of filter.authors) params.append('author', author)
+  for (const source of filter.sources) params.append('source', source)
+  if (filter.possibleDuplicate) params.set('possibleDuplicate', filter.possibleDuplicate)
+  if (filter.importedFrom) params.set('importedFrom', filter.importedFrom)
+  if (filter.importedBefore) params.set('importedBefore', filter.importedBefore)
+  if (filter.minLength !== undefined) params.set('minLength', String(filter.minLength))
+  if (filter.maxLength !== undefined) params.set('maxLength', String(filter.maxLength))
+  return params
+}
+
+export function fetchImportedQuotes(filter: ImportedQuoteFilter, page: number, pageSize: number): Promise<PagedImportedQuotes> {
+  const params = importedQuoteParams(filter)
+  params.set('page', String(page))
+  params.set('pageSize', String(pageSize))
+  return request(`/admin/imported-quotes?${params.toString()}`)
+}
+
+export function fetchImportedQuoteSelection(filter: ImportedQuoteFilter): Promise<ImportedQuoteSelectionItem[]> {
+  return request(`/admin/imported-quotes/selection?${importedQuoteParams(filter).toString()}`)
+}
+
+export function fetchImportedQuoteFilterOptions(): Promise<ImportedQuoteFilterOptions> {
+  return request('/admin/imported-quotes/filter-options')
+}
+
+function quoteParams(filter: QuoteFilter): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const author of filter.authors) params.append('author', author)
+  for (const source of filter.sources) params.append('source', source)
+  for (const language of filter.languages) params.append('language', language)
+  if (filter.search) params.set('search', filter.search)
+  for (const provider of filter.providers) params.append('provider', provider)
+  for (const confidence of filter.sourceConfidences) params.append('sourceConfidence', confidence)
   if (filter.minLength !== undefined) params.set('minLength', String(filter.minLength))
   if (filter.maxLength !== undefined) params.set('maxLength', String(filter.maxLength))
   if (filter.tag) params.set('tag', filter.tag)
-  if (filter.excerpts) params.set('excerpts', filter.excerpts)
-  if (filter.interpretations) params.set('interpretations', filter.interpretations)
-  if (filter.tags) params.set('tags', filter.tags)
-  params.set('page', String(filter.page))
-  params.set('pageSize', String(filter.pageSize))
+  for (const status of filter.excerpts) params.append('excerpts', status)
+  for (const status of filter.interpretations) params.append('interpretations', status)
+  for (const status of filter.tags) params.append('tags', status)
+  return params
+}
+
+export function fetchQuotes(filter: QuoteFilter, page: number, pageSize: number): Promise<PagedQuotes> {
+  const params = quoteParams(filter)
+  params.set('page', String(page))
+  params.set('pageSize', String(pageSize))
   return request(`/admin/quotes?${params.toString()}`)
+}
+
+export function fetchQuoteSelection(filter: QuoteFilter): Promise<QuoteSelectionItem[]> {
+  return request(`/admin/quotes/selection?${quoteParams(filter).toString()}`)
 }
 
 export function fetchQuoteFilterOptions(): Promise<QuoteFilterOptions> {
@@ -205,7 +243,7 @@ export function fetchTags(params: { facet?: TagFacet; search?: string; limit?: n
   const query = new URLSearchParams()
   if (params.facet) query.set('facet', params.facet)
   if (params.search) query.set('search', params.search)
-  query.set('limit', String(params.limit ?? DEFAULT_PAGE_SIZE))
+  query.set('limit', String(params.limit ?? DEFAULT_TAG_LIMIT))
   return request(`/admin/tags?${query.toString()}`)
 }
 

@@ -35,6 +35,28 @@ data class PagedImportedQuotesResponse(
     val pageSize: Int,
 )
 
+/** One row of a "select all matching" request on the imported-quotes page. */
+@Serializable
+data class ImportedQuoteSelectionItem(
+    val id: Int,
+    val processingStatus: String,
+    /** Has an author or a source, so it can be approved without the approve dialog. */
+    val approvable: Boolean,
+    val quoteId: Int?,
+)
+
+/** A multi-select filter choice; [value] is the filter key sent back to the server. */
+@Serializable
+data class FilterOptionResponse(val value: String, val label: String, val count: Long)
+
+@Serializable
+data class ImportedQuoteFilterOptionsResponse(
+    val providers: List<String>,
+    val statusCounts: Map<String, Long>,
+    val authors: List<FilterOptionResponse>,
+    val sources: List<FilterOptionResponse>,
+)
+
 @Serializable
 data class UpdateImportedQuoteStatusRequest(
     val status: String,
@@ -115,11 +137,18 @@ data class PagedQuotesResponse(
     val pageSize: Int,
 )
 
-/** Values present in the library, offered as choices by the approved-quotes filters. */
+/** One row of a "select all matching" request on the approved-quotes page. */
+@Serializable
+data class QuoteSelectionItem(val id: Int, val wordCount: Int)
+
+/** Values present in the library, with quote counts, offered as choices by the approved-quotes filters. */
 @Serializable
 data class QuoteFilterOptionsResponse(
-    val providers: List<String>,
-    val languages: List<String>,
+    val authors: List<FilterOptionResponse>,
+    val sources: List<FilterOptionResponse>,
+    val languages: List<FilterOptionResponse>,
+    val providers: List<FilterOptionResponse>,
+    val sourceConfidences: List<FilterOptionResponse>,
 )
 
 @Serializable
