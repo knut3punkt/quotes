@@ -47,42 +47,60 @@ Do not:
 * add words,
 * combine non-contiguous units.
 
-A candidate may span several units when they form a single coherent thought. Prefer the shortest range that
-preserves the full meaning and force of the passage.
+A candidate may span several units when they together express a single coherent thought. Prefer the shortest **self-contained** range that preserves the full meaning, insight, and rhetorical force of the passage.
 
-References to earlier text:
+Do not shorten a passage merely because its most striking sentence can be understood after consulting earlier units. A quotation candidate should normally contain the idea it expresses, rather than requiring the reader to reconstruct an essential part of that idea from omitted context.
 
-For every candidate, list in "references" each word or phrase that points to something stated elsewhere: pronouns
-(it, they, he, she, this, that, these, those, such), opening connectives (but, and, so, thus, therefore, yet,
-however), and phrases like "the latter", "the same", or "the method" that refer back to something already
-mentioned. Give the unit id where the referent is actually stated. The author speaking as "I", and generic "you",
-"we", or "one", do not need to be listed.
+### References to earlier text
 
-If a strong line depends on an earlier unit, propose BOTH versions: the short range, and the range extended back to
-include the unit that states the referent. The judge will choose the version that stands on its own.
+For every candidate, list in `"references"` words or phrases whose meaning materially depends on something stated outside the candidate. Examples include pronouns or demonstratives such as *it, they, he, she, this, that, these,* and *those*, and referring expressions such as *the latter, the same,* or *the method*. Give the unit id where the referent is actually stated.
 
-In "coreIdea", state in at most 15 words of your own the general idea the candidate expresses. If you cannot state
-any general idea, the candidate is probably not worth proposing.
+Do not mark a word merely because it can relate grammatically to earlier text. Mark it only when resolving that reference is important to understanding the candidate.
 
-Returning zero candidates is correct when the source contains nothing that could stand as a quotation. Return only
-genuine candidates from the supplied text.
+Opening connectives such as *but, and, so, thus, therefore, yet,* and *however* may indicate dependence on earlier context, but they are not by themselves references. Consider whether the candidate remains semantically complete without the preceding contrast, cause, or argument.
 
-Example.
+The author speaking as `"I"`, and generic `"you"`, `"we"`, or `"one"`, do not need to be listed.
+
+If a striking passage depends on an earlier unit for an essential part of its meaning, extend the candidate backward far enough to include that information.
+
+Propose both a short and an extended version **only when the short version is itself a plausible quotation**. Do not propose an obviously incomplete fragment merely so that the judge can reject it.
+
+In `"coreIdea"`, state in at most 15 words, in your own words, the central idea, observation, or insight expressed by the candidate. The candidate itself should substantially express this idea. If the `"coreIdea"` can only be stated by importing essential information from omitted units, extend the candidate or do not propose it.
+
+If you cannot state a coherent core idea, observation, or insight for a passage, it is probably not worth proposing.
+
+Returning zero candidates is correct when the source contains nothing that could stand as a quotation. Return only genuine candidates from the supplied text.
+
+### Example
 
 SOURCE UNITS
 
-[1] The old sailor had crossed the Atlantic eleven times.
-[2] He rarely spoke of storms.
-[3] What he spoke of instead was the calm: the long, windless days when nothing could be done.
-[4] Those, he said, are what break a man; storms at least give him something to fight.
+[1] Mara spent years postponing every decision that frightened her.
+[2] She told herself that indecision kept her options open.
+[3] Refusing to choose is itself a choice.
+[4] It hands the future over to whatever happens without you.
 
 Response:
 
 {"excerpts":[
-{"startUnit":4,"endUnit":4,"references":[{"phrase":"Those","referentUnit":3},{"phrase":"he said","referentUnit":1}],"coreIdea":"Idle helplessness breaks people more than open struggle does.","reason":"Striking claim, but 'Those' refers to the calm days in unit 3."},
-{"startUnit":3,"endUnit":4,"references":[{"phrase":"he","referentUnit":1}],"coreIdea":"Idle helplessness breaks people more than open struggle does.","reason":"Includes the referent of 'Those'; 'he' remains but the idea is clear."}
+  {
+    "startUnit":3,
+    "endUnit":3,
+    "references":[],
+    "coreIdea":"Avoiding a decision is itself a form of deciding.",
+    "reason":"A concise, self-contained claim that expresses a complete idea."
+  },
+  {
+    "startUnit":3,
+    "endUnit":4,
+    "references":[],
+    "coreIdea":"Avoiding decisions surrenders control over what happens next.",
+    "reason":"Units 3–4 form a stronger complete thought; unit 4 alone would be incomplete because 'It' refers to unit 3."
+  }
 ]}
 
-Units 1 and 2 are biographical scene-setting and are not proposed.
+Unit 4 alone is **not** proposed. Although it contains a striking formulation, `"It"` carries an essential part of the meaning from unit 3, so the sentence does not express a complete thought by itself.
+
+Units 1 and 2 provide narrative context but are not necessary for either quotation candidate.
 
 Return only the structured response required by the response schema.
