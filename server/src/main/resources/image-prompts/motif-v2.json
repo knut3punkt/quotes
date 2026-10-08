@@ -1,0 +1,654 @@
+{
+  "version": "motif-v2",
+
+  "description": "Prompt configuration for symbolic motif images that are composited over independently generated quote backgrounds. Each motif uses one coherent visual style selected independently from the background style. The generated asset should contain one recognizable symbolic motif surrounded by a style-appropriate vignette that dissolves naturally toward transparent edges during later compositing.",
+
+  "inputs": {
+    "motif": "The symbolic subject to depict, for example an antique clock, open door, key, mirror, staircase, eye, hourglass, tree, labyrinth, flame, broken chain or moon."
+  },
+
+  "template": "This is an RGBA image with transparency. Create a single isolated symbolic motif: {{motif}}. {{medium}}. Visual treatment: {{treatment}}. {{edgeTreatment}} The motif must remain immediately recognizable, but may be transformed, fragmented, stylized, illuminated or partially abstracted according to the selected visual style. Present it as a self-contained artistic vignette rather than as an object photographed against a scene. Keep the main motif fully inside the canvas with generous clear space around it. The visual treatment should be strongest around the motif and progressively dissolve outward. No full environment, no narrative scene, no typography. The image has alpha channel and the background is transparent.",
+
+  "styleProfiles": [
+    {
+      "id": "neon-noir",
+      "weight": 1.7,
+      "mediums": [
+        "A cinematic neon-noir digital artwork",
+        "A dark photographic-surreal object study",
+        "A high-detail cinematic 3D artwork"
+      ],
+      "treatments": [
+        "Near-black surfaces cut by electric cyan and ultraviolet rim light, concentrated neon highlights, deep shadow and restrained magenta reflections",
+        "A dark sculptural form illuminated by cyan, red or violet neon, glossy reflections, atmospheric depth and intense low-key lighting"
+      ],
+      "edgeTreatments": [
+        "Surround it with a sparse halo of coloured haze and neon bloom that gradually disappears into transparency toward the outer edge.",
+        "Allow reflected light, thin mist and a few luminous particles to extend irregularly outward before softly dissolving."
+      ]
+    },
+
+    {
+      "id": "cyberpunk",
+      "weight": 1.35,
+      "mediums": [
+        "A cyberpunk object artwork",
+        "A futuristic 3D digital sculpture"
+      ],
+      "treatments": [
+        "Dark technological surfaces with subtle circuitry, industrial components, cyan and crimson illumination, holographic fragments and restrained mechanical detail",
+        "A futuristic transformation using black metal, luminous seams, small technological structures and electric atmospheric light without turning the motif into an unrelated machine"
+      ],
+      "edgeTreatments": [
+        "Let circuitry-like lines, holographic fragments and faint electronic particles break apart toward the perimeter.",
+        "Surround the motif with sparse technological fragments and coloured haze that fade into an irregular transparent boundary."
+      ]
+    },
+
+    {
+      "id": "dark-psychedelic-surrealism",
+      "weight": 1.7,
+      "mediums": [
+        "A dark psychedelic surreal artwork",
+        "An intricate visionary 3D composition"
+      ],
+      "treatments": [
+        "Transform the motif through recursive geometry, luminous violet, cyan and acid-green detail, liquid distortion and impossible internal space while retaining its recognizable silhouette",
+        "A hallucinatory interpretation using spectral colour, repeating forms, organic geometry and altered spatial relationships emerging from deep darkness"
+      ],
+      "edgeTreatments": [
+        "Let fractal tendrils, spectral vapour and tiny luminous forms thin out organically toward transparency.",
+        "Allow parts of the motif to dissolve into recursive particles and flowing psychedelic filaments at the perimeter."
+      ]
+    },
+
+    {
+      "id": "visionary-psychedelic",
+      "weight": 1.45,
+      "mediums": [
+        "A visionary psychedelic artwork",
+        "An intricate luminous symbolic artwork"
+      ],
+      "treatments": [
+        "Elaborate luminous geometry, jewel-like colour, recursive organic structures and radiating patterns integrated into the motif",
+        "A richly detailed visionary interpretation using symmetry, spectral colour, organic geometry and a sense of expanded perception"
+      ],
+      "edgeTreatments": [
+        "Extend delicate luminous geometry beyond the motif and let it become increasingly fine and transparent toward the edge.",
+        "Surround the motif with faint radiant patterns and translucent organic forms that dissolve into open space."
+      ]
+    },
+
+    {
+      "id": "dark-surrealism",
+      "weight": 1.4,
+      "mediums": [
+        "A cinematic dark surrealist object study",
+        "A dark fine-art digital composition"
+      ],
+      "treatments": [
+        "An uncanny transformation using deep shadow, impossible proportions, subtle distortion, strange material transitions and isolated pools of light",
+        "A mysterious dream-logic version of the motif using charcoal darkness, unexpected spatial relationships and restrained surreal alteration"
+      ],
+      "edgeTreatments": [
+        "Let shadow, fog and fragments of the motif disappear unevenly into transparency.",
+        "Surround it with sparse atmospheric darkness and faint drifting material that softly dissolves at the perimeter."
+      ]
+    },
+
+    {
+      "id": "metaphysical-surrealism",
+      "weight": 1.35,
+      "mediums": [
+        "A metaphysical surrealist artwork",
+        "A sculptural surreal digital composition"
+      ],
+      "treatments": [
+        "Render the motif as a monumental enigmatic form with impossible geometry, unusual perspective, long shadow relationships and philosophical stillness",
+        "A strange geometric interpretation with sparse planes, spatial paradoxes and one restrained luminous accent"
+      ],
+      "edgeTreatments": [
+        "Use sparse planes, shadows and geometric fragments that gradually detach and fade into transparency.",
+        "Allow a few impossible geometric extensions to dissolve before reaching the outer canvas."
+      ]
+    },
+
+    {
+      "id": "bioluminescent-surrealism",
+      "weight": 1.55,
+      "mediums": [
+        "A bioluminescent organic artwork",
+        "An alien macro-inspired 3D artwork"
+      ],
+      "treatments": [
+        "Transform the motif into translucent organic material containing turquoise, violet and electric-blue bioluminescent veins",
+        "An alien organic interpretation with glowing filaments, translucent membranes, phosphorescent structures and deep internal light"
+      ],
+      "edgeTreatments": [
+        "Let translucent tendrils, glowing filaments and microscopic particles extend outward and fade delicately.",
+        "Surround the motif with faint bioluminescent spores and transparent organic strands that disappear toward the perimeter."
+      ]
+    },
+
+    {
+      "id": "synthwave-retrowave",
+      "weight": 1.0,
+      "mediums": [
+        "A stylized synthwave object artwork",
+        "A retrofuturist graphic 3D composition"
+      ],
+      "treatments": [
+        "Deep violet and midnight blue with electric magenta and cyan illumination, chrome surfaces and restrained retrofuturist geometry",
+        "A dark retrowave interpretation using smooth neon gradients, reflective chrome and graphic geometric light"
+      ],
+      "edgeTreatments": [
+        "Allow neon glow, grid-like fragments and smooth coloured light to fade outward into transparency.",
+        "Use a restrained halo of magenta-cyan bloom with a few geometric fragments dissolving near the edge."
+      ]
+    },
+
+    {
+      "id": "retrofuturism",
+      "weight": 0.85,
+      "mediums": [
+        "A retrofuturist object illustration",
+        "A cinematic vintage-future 3D artwork"
+      ],
+      "treatments": [
+        "Reimagine the motif through elegant space-age curves, polished metal, enamel surfaces, analog-futurist details and bold mid-century colour",
+        "A sophisticated alternate-future interpretation using chrome, rounded machinery-like forms and restrained vintage technological detail"
+      ],
+      "edgeTreatments": [
+        "Surround it with sparse analog glow and geometric shapes that become faint and incomplete toward the boundary.",
+        "Use subtle light falloff and a few floating retrofuturist fragments rather than a hard silhouette."
+      ]
+    },
+
+    {
+      "id": "glitch-digital-decay",
+      "weight": 1.2,
+      "mediums": [
+        "An experimental glitch artwork",
+        "A digitally corrupted symbolic composition"
+      ],
+      "treatments": [
+        "Fragment the motif through controlled RGB separation, pixel displacement, signal tearing and digital corruption while keeping the overall object readable",
+        "A broken-signal interpretation with displaced sections, scanline interference, chromatic errors and restrained datamoshing"
+      ],
+      "edgeTreatments": [
+        "Let pixels, scanlines and displaced fragments progressively break apart into transparent digital noise.",
+        "Allow the perimeter to fragment into corrupted blocks, thin signal lines and fading RGB ghosts."
+      ]
+    },
+
+    {
+      "id": "holographic-iridescent-futurism",
+      "weight": 1.3,
+      "mediums": [
+        "A holographic futuristic 3D artwork",
+        "An iridescent macro-inspired object artwork"
+      ],
+      "treatments": [
+        "Construct the motif from dichroic glass, translucent geometry, liquid chrome and spectral cyan-violet-orange refraction",
+        "A pearlescent futuristic interpretation using diffraction, holographic surfaces, transparent layers and elegant spectral highlights"
+      ],
+      "edgeTreatments": [
+        "Let transparent shards, refracted light and spectral reflections become increasingly faint toward the outer boundary.",
+        "Surround it with a delicate prismatic halo and a few translucent fragments fading naturally into transparency."
+      ]
+    },
+
+    {
+      "id": "cosmic-surrealism",
+      "weight": 1.2,
+      "mediums": [
+        "A cosmic surreal symbolic artwork",
+        "A cinematic celestial digital composition"
+      ],
+      "treatments": [
+        "Transform the motif into an impossible celestial object containing deep space, nebular colour, stellar light and vast internal depth",
+        "A cosmic interpretation using black, indigo, violet, star-like illumination and subtle astronomical geometry without replacing the motif with a generic galaxy"
+      ],
+      "edgeTreatments": [
+        "Let luminous dust, faint nebular vapour and tiny star-like particles dissolve into transparency.",
+        "Use a sparse cosmic aura that becomes progressively darker and more transparent toward the edge."
+      ]
+    },
+
+    {
+      "id": "esoteric-geometry",
+      "weight": 1.25,
+      "mediums": [
+        "An esoteric geometric symbolic artwork",
+        "A luminous diagrammatic composition"
+      ],
+      "treatments": [
+        "Integrate the motif with precise concentric geometry, orbital relationships, fine luminous lines and restrained gold, cyan or violet illumination",
+        "A geometric-mystical interpretation using circles, radial structures, layered symmetry and diagrammatic detail without readable writing"
+      ],
+      "edgeTreatments": [
+        "Let fine geometric lines become incomplete, faint and transparent as they radiate outward.",
+        "Surround the motif with sparse concentric lines and glowing points whose opacity falls smoothly toward the edge."
+      ]
+    },
+
+    {
+      "id": "brutalist-scifi",
+      "weight": 1.15,
+      "mediums": [
+        "A brutalist science-fiction digital sculpture",
+        "A monumental architectural object artwork"
+      ],
+      "treatments": [
+        "Reconstruct the motif as a massive austere concrete-like form with severe geometry, raw surfaces and a single saturated luminous accent",
+        "A monumental futuristic interpretation using charcoal concrete, steel-like edges, geometric mass and sparse directional illumination"
+      ],
+      "edgeTreatments": [
+        "Allow dust, fog, small mineral fragments and shadow to soften the outer silhouette.",
+        "Surround the form with sparse particulate haze and broken geometric debris that fades away from the core."
+      ]
+    },
+
+    {
+      "id": "dark-fantasy",
+      "weight": 1.1,
+      "mediums": [
+        "A cinematic dark fantasy object artwork",
+        "A surreal fantasy digital sculpture"
+      ],
+      "treatments": [
+        "Give the motif an ancient, mythic, weathered character with moonlit shadow, subtle supernatural illumination and deep blue-black or crimson tones",
+        "A mysterious dark-fantasy transformation using aged material, ethereal light, mist and restrained otherworldly detail"
+      ],
+      "edgeTreatments": [
+        "Let mist, faint embers, dust or ethereal light trail outward and dissolve gently.",
+        "Use irregular wisps of shadow and luminous atmosphere rather than a hard cut-out edge."
+      ]
+    },
+
+    {
+      "id": "gothic-futurism",
+      "weight": 0.95,
+      "mediums": [
+        "A gothic-futuristic symbolic artwork",
+        "A dark speculative 3D sculpture"
+      ],
+      "treatments": [
+        "Transform the motif through severe vertical geometry, black metallic surfaces, cathedral-like proportions and restrained crimson or ultraviolet light",
+        "A fusion of dark gothic form and futuristic material using pointed geometry, polished black surfaces and luminous edges"
+      ],
+      "edgeTreatments": [
+        "Allow thin gothic geometry, mist and glowing edges to extend outward before fading.",
+        "Break parts of the silhouette into dark architectural fragments and translucent haze near the perimeter."
+      ]
+    },
+
+    {
+      "id": "tenebrist-chiaroscuro",
+      "weight": 1.25,
+      "mediums": [
+        "A dramatic fine-art object study",
+        "A cinematic chiaroscuro artwork"
+      ],
+      "treatments": [
+        "Extreme tenebrist treatment with much of the motif disappearing into blackness while selected surfaces emerge through concentrated illumination",
+        "Sculptural chiaroscuro using rich blacks, restrained colour, tactile illuminated surfaces and dramatic directional light"
+      ],
+      "edgeTreatments": [
+        "Let deep shadow naturally merge into transparency around most of the perimeter.",
+        "Use a soft halo of darkness and faint atmospheric falloff so the illuminated core appears to emerge from nothing."
+      ]
+    },
+
+    {
+      "id": "surreal-photomontage",
+      "weight": 1.3,
+      "mediums": [
+        "A surreal photographic montage",
+        "A high-end symbolic photo manipulation"
+      ],
+      "treatments": [
+        "Construct the motif from layered photographic fragments, impossible material transitions, altered scale and cinematic composite realism",
+        "A sophisticated surreal photo manipulation retaining a realistic motif while introducing impossible internal imagery, fragmentation and visual metaphor"
+      ],
+      "edgeTreatments": [
+        "Let photographic fragments, torn shapes and soft atmospheric layers become increasingly sparse and transparent outward.",
+        "Use irregular layered edges with a mixture of soft feathering and a few deliberately torn photographic fragments."
+      ]
+    },
+
+    {
+      "id": "editorial-collage",
+      "weight": 1.1,
+      "mediums": [
+        "A sophisticated editorial collage",
+        "An experimental mixed-media symbolic artwork"
+      ],
+      "treatments": [
+        "Build the motif from photographic fragments, cut-paper-like geometry, print texture and bold overlapping shapes while retaining a clear silhouette",
+        "A contemporary collage treatment with unexpected layering, paper-like shapes, restrained surrealism and strong graphic composition"
+      ],
+      "edgeTreatments": [
+        "Use irregular torn-paper and translucent layered edges rather than a rectangular boundary.",
+        "Allow a few collage fragments to extend beyond the main form while progressively decreasing in size and opacity."
+      ]
+    },
+
+    {
+      "id": "dreamcore",
+      "weight": 0.9,
+      "mediums": [
+        "A dreamcore symbolic artwork",
+        "A dreamlike photographic object study"
+      ],
+      "treatments": [
+        "Make the motif feel like an object remembered from a dream through altered scale, hazy illumination, selective saturation and subtle spatial unreality",
+        "A nostalgic but impossible interpretation using strange softness, isolated vivid colour and ambiguous dream-memory atmosphere"
+      ],
+      "edgeTreatments": [
+        "Let soft bloom, haze and faint photographic ghosts disappear gradually outward.",
+        "Blur selected peripheral fragments into translucent dreamlike colour while preserving a crisp recognizable core."
+      ]
+    },
+
+    {
+      "id": "acid-graphics",
+      "weight": 1.0,
+      "mediums": [
+        "An experimental acid-graphic symbolic artwork",
+        "A dark electronic graphic composition"
+      ],
+      "treatments": [
+        "Use fluorescent lime, cyan, violet and black, warped geometry, aggressive distortion and glossy synthetic surfaces while maintaining the motif's identity",
+        "A high-energy acid-graphic transformation with warped contours, fluorescent gradients, hard geometric interruptions and controlled visual chaos"
+      ],
+      "edgeTreatments": [
+        "Let warped graphic bands, fluorescent fragments and distorted lines break away and fade near the edge.",
+        "Use an irregular boundary of stretched colour, digital noise and translucent fluorescent shapes."
+      ]
+    },
+
+    {
+      "id": "vaporwave",
+      "weight": 0.7,
+      "mediums": [
+        "A sophisticated vaporwave symbolic artwork",
+        "A surreal retro-digital object composition"
+      ],
+      "treatments": [
+        "Use violet, cyan, pink and deep blue gradients, reflective surfaces, obsolete-digital cues and nostalgic surrealism without turning the image into parody",
+        "A restrained vaporwave treatment with smooth luminous gradients, reflective material and quiet retro-digital unreality"
+      ],
+      "edgeTreatments": [
+        "Let CRT bloom, faint scanlines and coloured digital haze softly fade toward transparency.",
+        "Use a smooth spectral aura with sparse geometric fragments dissolving at the perimeter."
+      ]
+    },
+
+    {
+      "id": "y2k-futurism",
+      "weight": 0.85,
+      "mediums": [
+        "A polished Y2K futuristic object artwork",
+        "An early-digital-era 3D composition"
+      ],
+      "treatments": [
+        "Reimagine the motif with chrome, translucent plastic, electric blue, silver, bubbles and liquid-metal forms",
+        "A sleek turn-of-the-millennium futuristic interpretation using transparent materials, glossy chrome and optimistic digital aesthetics"
+      ],
+      "edgeTreatments": [
+        "Let translucent bubbles, chrome droplets and faint cyan glow become sparse and transparent outward.",
+        "Use smooth refractive fragments and glossy highlights that disperse away from the central object."
+      ]
+    },
+
+    {
+      "id": "dieselpunk",
+      "weight": 0.75,
+      "mediums": [
+        "A cinematic dieselpunk symbolic artwork",
+        "An industrial retrofuturist object study"
+      ],
+      "treatments": [
+        "Rebuild the motif through dark steel, brass, mechanical structures, soot and warm amber illumination while preserving its fundamental identity",
+        "An industrial retrofuture transformation using weathered metal, machinery-like components, smoke and restrained orange-red light"
+      ],
+      "edgeTreatments": [
+        "Let smoke, soot particles, sparks and small mechanical fragments thin out toward the boundary.",
+        "Use irregular industrial debris and warm atmospheric haze that progressively fades into transparency."
+      ]
+    },
+
+    {
+      "id": "biopunk",
+      "weight": 0.9,
+      "mediums": [
+        "A biopunk symbolic artwork",
+        "An organic science-fiction 3D object study"
+      ],
+      "treatments": [
+        "Transform the motif into engineered biological material using translucent membranes, synthetic fibres, cellular structures and subtle fluorescent light",
+        "A biotechnology-inspired fusion of organic and artificial structures with wet surfaces, laboratory precision and controlled luminous colour"
+      ],
+      "edgeTreatments": [
+        "Let cellular strands, membranes and fluorescent particles extend outward and become increasingly translucent.",
+        "Use thin organic fibres and microscopic fragments that dissolve naturally around the silhouette."
+      ]
+    },
+
+    {
+      "id": "solarpunk",
+      "weight": 0.8,
+      "mediums": [
+        "A luminous solarpunk symbolic artwork",
+        "A bright speculative 3D object artwork"
+      ],
+      "treatments": [
+        "Integrate the motif with elegant organic geometry, clean advanced materials, fresh greens, teal, warm gold and radiant natural light",
+        "An optimistic futuristic transformation combining plant-like forms, glass, clean geometry and warm luminous colour"
+      ],
+      "edgeTreatments": [
+        "Let delicate leaf-like geometry, warm light and translucent organic structures soften and fade outward.",
+        "Surround the motif with sparse luminous organic fragments and fresh atmospheric colour that becomes transparent at the edges."
+      ]
+    },
+
+    {
+      "id": "neo-expressionism",
+      "weight": 0.9,
+      "mediums": [
+        "A neo-expressionist symbolic artwork",
+        "An experimental mixed-media object composition"
+      ],
+      "treatments": [
+        "Interpret the motif through raw gestural marks, emotional distortion, black space, scratched surfaces and intense red, cobalt, ochre or fluorescent accents",
+        "A deliberately imperfect expressive transformation using energetic brushwork, irregular geometry and layered emotional colour"
+      ],
+      "edgeTreatments": [
+        "Let brush strokes, scratches and pigment-like marks extend irregularly beyond the motif and become sparse outward.",
+        "Use rough expressive edges with isolated paint-like gestures dissolving into transparent space."
+      ]
+    },
+
+    {
+      "id": "ink-noir",
+      "weight": 1.05,
+      "mediums": [
+        "An ink-noir symbolic artwork",
+        "A monochrome mixed-media ink composition"
+      ],
+      "treatments": [
+        "Render the motif through deep black ink masses, dry-brush texture, stark white highlights and one restrained crimson, cyan or gold accent",
+        "A dark expressive ink interpretation using flowing black forms, sharp contrast and elegant graphic simplification"
+      ],
+      "edgeTreatments": [
+        "Allow ink washes, dry-brush streaks and sparse splatter to taper naturally into transparency.",
+        "Use irregular bleeding ink and brush fibres around the perimeter rather than a clean cut-out."
+      ]
+    },
+
+    {
+      "id": "etching-engraving",
+      "weight": 0.85,
+      "mediums": [
+        "A surreal engraved symbolic illustration",
+        "A contemporary digital etching"
+      ],
+      "treatments": [
+        "Render the motif with dense cross-hatching, intricate engraved linework, scientific precision and subtle surreal transformation",
+        "A modern occult-scientific engraving aesthetic using monochrome linework with restrained luminous colour accents"
+      ],
+      "edgeTreatments": [
+        "Let fine engraved lines become increasingly incomplete and sparse outward from the motif.",
+        "Use floating line fragments, stippling and faint hatched shadows that disappear gradually toward the boundary."
+      ]
+    },
+
+    {
+      "id": "low-poly-surrealism",
+      "weight": 0.75,
+      "mediums": [
+        "A low-poly surreal symbolic artwork",
+        "A faceted geometric 3D sculpture"
+      ],
+      "treatments": [
+        "Reconstruct the motif from angular faceted geometry, crystalline planes, artificial scale and saturated directional light",
+        "A surreal polygonal interpretation using geometric simplification, crystalline edges and dramatic material contrast"
+      ],
+      "edgeTreatments": [
+        "Let small polygonal shards detach from the silhouette and disperse before fading.",
+        "Use faceted fragments and crystalline particles that decrease in size and opacity toward the outer canvas."
+      ]
+    },
+
+    {
+      "id": "abstract-geometry",
+      "weight": 1.0,
+      "mediums": [
+        "A sophisticated geometric symbolic artwork",
+        "A minimalist digital object composition"
+      ],
+      "treatments": [
+        "Reduce and reconstruct the motif using precise circles, planes, arcs and intersecting forms while keeping its essential silhouette readable",
+        "A geometric abstraction balancing recognizable form with elegant asymmetry, bold spatial relationships and controlled luminous accents"
+      ],
+      "edgeTreatments": [
+        "Let secondary geometric forms become smaller, thinner and more transparent outward.",
+        "Use sparse arcs, planes and line fragments to create a soft geometric transition into empty space."
+      ]
+    },
+
+    {
+      "id": "generative-geometry",
+      "weight": 1.05,
+      "mediums": [
+        "A generative geometric symbolic artwork",
+        "A computational abstract object composition"
+      ],
+      "treatments": [
+        "Construct the motif from algorithmic curves, repeated lines, particles and evolving procedural structures while preserving its recognizable overall form",
+        "A computational interpretation using recursive geometry, parametric linework and luminous emergent patterns"
+      ],
+      "edgeTreatments": [
+        "Let procedural lines and particles become increasingly sparse and faint away from the motif.",
+        "Dissolve the perimeter into algorithmic point clouds, thin curves and transparent recursive fragments."
+      ]
+    },
+
+    {
+      "id": "liquid-abstraction",
+      "weight": 1.1,
+      "mediums": [
+        "A liquid surreal symbolic artwork",
+        "A fluid high-detail 3D object composition"
+      ],
+      "treatments": [
+        "Render the motif as flowing translucent glass-like material with marbled colour, iridescent edges and smooth continuous motion",
+        "A fluid interpretation using liquid reflections, oil-like spectral colour and forms that appear to melt while retaining recognizability"
+      ],
+      "edgeTreatments": [
+        "Let droplets, flowing tendrils and translucent fluid trails separate from the motif and fade.",
+        "Use thin liquid ribbons and small reflective droplets that become increasingly transparent outward."
+      ]
+    },
+
+    {
+      "id": "analog-scifi",
+      "weight": 0.95,
+      "mediums": [
+        "A surreal analog-science-fiction symbolic artwork",
+        "A cinematic retro-photographic object composition"
+      ],
+      "treatments": [
+        "Interpret the motif through obsolete-future materials, muted cinematic colour, strange analog technological detail and subtle luminous displays without readable text",
+        "A retro-speculative treatment using aged photographic colour, chrome, dark synthetic materials and mysterious analog-future design"
+      ],
+      "edgeTreatments": [
+        "Let film grain, optical glow and faint technological fragments dissolve naturally around the object.",
+        "Use soft analog light falloff, occasional film-like artifacts and sparse fragments fading into transparency."
+      ]
+    },
+
+    {
+      "id": "biomechanical-surrealism",
+      "weight": 1.1,
+      "mediums": [
+        "A biomechanical surreal symbolic artwork",
+        "An organic-mechanical 3D sculpture"
+      ],
+      "treatments": [
+        "Fuse the motif with ribbed organic structures, dark machinery, bone-like geometry, translucent membranes and cold internal illumination",
+        "An alien biomechanical transformation using complex repeating structures, polished black material and subtle bioluminescent detail"
+      ],
+      "edgeTreatments": [
+        "Let tubing-like structures, fine fibres and dark organic fragments thin out toward the perimeter.",
+        "Use delicate biomechanical tendrils and faint mist to transition irregularly into transparent space."
+      ]
+    }
+  ],
+
+  "globalInstructions": [
+    "Select exactly one style profile. Never combine treatments from different style profiles.",
+    "The style of the motif is independent of the style of the background onto which it will later be composited.",
+    "The motif must remain recognizable at normal viewing size.",
+    "Stylization may transform the motif strongly, but should not replace it with an unrelated scene or object.",
+    "Generate one dominant symbolic motif only.",
+    "Do not generate a full environment around the motif.",
+    "Do not place the motif on a floor, table, landscape or other conventional scene unless that surface is inseparable from the motif itself.",
+    "Do not use a rectangular card, badge, medallion, poster or decorative frame around the motif.",
+    "Instead of a literal frame, create an irregular style-appropriate vignette whose visual density decreases outward from the motif.",
+    "Keep the outer canvas relatively sparse so the motif can be isolated cleanly.",
+    "Keep the entire motif inside the image boundaries. Do not crop important portions.",
+    "Leave generous padding around the motif for later scaling and positioning.",
+    "The visual centre should contain the strongest detail and opacity.",
+    "Peripheral smoke, particles, fragments, lines, glow, paint, geometry or material should become progressively less dense toward the outer boundary.",
+    "Avoid tiny details that disappear when the motif is displayed at a smaller size.",
+    "Do not generate typography, labels or pseudo-text.",
+    "Do not add unrelated symbolic objects unless explicitly included in the motif input.",
+    "The motif should work at multiple placements and scales when composited over a separate background."
+  ],
+
+  "negativePrompt": "text, typography, letters, words, numbers, watermark, signature, logo, readable symbols, pseudo-text, gibberish writing, poster, book cover, UI, interface, full landscape, full room, full cityscape, elaborate background scene, horizon, floor plane, tabletop, pedestal, rectangular card, badge, decorative border, picture frame, hard rectangular vignette, multiple copies of the main motif, repeated main object, unrelated objects, clutter, people unless explicitly requested, faces unless explicitly requested, animals unless explicitly requested, cropped subject, object touching canvas edge, flat stock icon, emoji, clip art, product photography, plain catalogue photography, generic stock illustration, children's illustration, cute aesthetic",
+
+  "selectionRules": {
+    "styleSelection": "Select exactly one style profile using weighted random selection from styleProfiles. The selection must be independent of the background's style.",
+    "mediumSelection": "Select one medium only from the chosen style profile.",
+    "treatmentSelection": "Select one treatment only from the chosen style profile.",
+    "edgeTreatmentSelection": "Select one edge treatment only from the chosen style profile.",
+    "crossStyleMixing": false,
+    "randomness": "Random selections must be performed by application code rather than delegated to the language model.",
+    "motifIntegrity": "Preserve the recognizable identity of the requested motif even when heavily stylized.",
+    "sceneAvoidance": "Do not generate a conventional surrounding scene. The asset is intended to be composited over another independently generated image.",
+    "edgeBehavior": "The generated visual content should naturally become less dense toward the image perimeter. Transparency comes from Qwen Image 2.1's RGBA mode, which the template's opening and closing sentences ('This is an RGBA image with transparency.' ... 'The image has alpha channel and the background is transparent.') switch on; the workflow has no separate matting step, so keep those sentences."
+  },
+
+  "assetComposition": {
+    "canvas": "Prefer a square source canvas for reusable motif assets.",
+    "subjectCoverage": "The core motif should normally occupy approximately 55 to 70 percent of the canvas dimension.",
+    "padding": "Leave substantial open space around every side of the motif.",
+    "cropping": "Never crop the main motif.",
+    "core": "The central motif should contain the strongest contrast, recognizability and detail.",
+    "perimeter": "Only secondary glow, smoke, particles, lines, fragments, paint strokes or other style-specific material should extend toward the perimeter.",
+    "alpha": "Final transparency comes from Qwen Image 2.1's RGBA output, triggered by the template's transparency sentences. Partial alpha for glow, fog, smoke, fine strands and other soft peripheral material is kept wherever the model produces it."
+  }
+}

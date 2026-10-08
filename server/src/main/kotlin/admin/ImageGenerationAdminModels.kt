@@ -2,13 +2,14 @@ package no.esotericgames.quotes.server.admin
 
 import kotlinx.serialization.Serializable
 
-/** One tag in an image generation run, in queue order. Times are epoch milliseconds. */
+/** One image in an image generation run, in queue order. Times are epoch milliseconds. */
 @Serializable
 data class ImageGenerationItem(
     val tagId: Int,
     val tagName: String,
     val facet: String, // "mood" | "motif"
     val kind: String, // "background" | "element"
+    val style: String? = null, // the style profile id from the image's prompt recipe
     // "queued" | "submitting" | "waiting" (in ComfyUI's queue) | "running" | "saving" | "done" | "failed" | "cancelled"
     val status: String,
     val prompt: String? = null,

@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.encodeToJsonElement
 import no.esotericgames.quotes.server.admin.ImageGenerationItem
 import no.esotericgames.quotes.server.admin.ImageGenerationJobState
@@ -31,6 +32,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -53,12 +55,29 @@ private const val EVENTS_RECONNECT_DELAY_MILLIS = 3_000L
 /** JavaScript numbers are exact up to 2^53, and the admin shows the seed, so seeds stay below it. */
 private const val MAX_SEED_EXCLUSIVE = 1L shl 53
 
-/** A tag that should get an image in this run. */
-data class EligibleTag(val id: Int, val name: String, val normalizedName: String, val kind: ImageKind)
+/** Images each tag gets from its kind's current recipe, each in a different style. */
+val IMAGES_PER_TAG = mapOf(ImageKind.BACKGROUND to 3, ImageKind.ELEMENT to 1)
 
 /**
- * Generates one image per mood and motif tag that has none yet (docs/features/tag-images.md), one at a
- * time on ComfyUI, in a coroutine owned by [scope] so the admin request that starts it returns at once.
+ * A tag that should get images in this run: [imagesNeeded] more of its kind, in styles other than
+ * [existingStyles] (it already has images in those styles from the current recipe).
+ */
+data class EligibleTag(
+    val id: Int,
+    val name: String,
+    val normalizedName: String,
+    val kind: ImageKind,
+    val imagesNeeded: Int = 1,
+    val existingStyles: Set<String> = emptySet(),
+)
+
+/** One image to generate: a tag, and the style profile it is drawn in. */
+private data class PlannedImage(val tag: EligibleTag, val style: String)
+
+/**
+ * Generates the missing images of mood and motif tags (docs/features/tag-images.md): [IMAGES_PER_TAG]
+ * backgrounds per mood tag and elements per motif tag, in distinct styles. Images go one at a time to
+ * ComfyUI, in a coroutine owned by [scope] so the admin request that starts it returns at once.
  *
  * Only one run exists at a time. Its [state] is the single source of truth for the admin: items move
  * through their statuses as the run submits each prompt, ComfyUI's WebSocket reports execution and
@@ -66,7 +85,7 @@ data class EligibleTag(val id: Int, val name: String, val normalizedName: String
  * Completion is decided by polling `/history`, so a dropped WebSocket only costs the step counts. Each
  * item is processed independently: a failure marks that item and the run moves on. Failures leave no row,
  * so the next run retries them. The state is in memory only; a server restart forgets the last run,
- * and the next run simply picks up the tags that still have no image.
+ * and the next run simply picks up the images that are still missing.
  */
 class TagImageGenerationJob(
     private val client: ComfyUiClient,
@@ -74,6 +93,8 @@ class TagImageGenerationJob(
     private val scope: CoroutineScope,
     private val historyPollMillis: Long = 1_000,
     private val nextSeed: () -> Long = { Random.nextLong(0, MAX_SEED_EXCLUSIVE) },
+    // Picks each tag's styles when a run starts; prompts themselves are seeded per image.
+    private val styleRandom: Random = Random.Default,
     // Lets the dev-database test run on its own tags instead of every eligible tag in the vocabulary.
     private val loadEligibleTags: suspend () -> List<EligibleTag> = {
         withContext(Dispatchers.IO) { suspendTransaction { findEligibleTags() } }
@@ -85,7 +106,6 @@ class TagImageGenerationJob(
     private val mutableState = MutableStateFlow(ImageGenerationJobState(status = "idle", comfyUiBaseUrl = config.comfyUi.baseUrl))
     val state: StateFlow<ImageGenerationJobState> = mutableState.asStateFlow()
 
-    private val recipes = ImageKind.entries.associateWith { PromptRecipe.forKind(it) }
     private val workflows = ImageKind.entries.associateWith { ComfyWorkflow.forKind(it) }
 
     private val running = AtomicBoolean(false)
@@ -104,29 +124,30 @@ class TagImageGenerationJob(
     suspend fun start(): ImageGenerationJobState {
         check(running.compareAndSet(false, true)) { "an image generation run is already in progress" }
         try {
-            val tags = loadEligibleTags()
+            val images = planImages(loadEligibleTags())
             cancelRequested.set(false)
             itemIndexByPromptId.clear()
             val now = System.currentTimeMillis()
             mutableState.value = ImageGenerationJobState(
-                status = if (tags.isEmpty()) "finished" else "running",
+                status = if (images.isEmpty()) "finished" else "running",
                 comfyUiBaseUrl = config.comfyUi.baseUrl,
                 startedAt = now,
-                finishedAt = if (tags.isEmpty()) now else null,
-                items = tags.map { tag ->
+                finishedAt = if (images.isEmpty()) now else null,
+                items = images.map { image ->
                     ImageGenerationItem(
-                        tagId = tag.id,
-                        tagName = tag.name,
-                        facet = tag.kind.facet.dbValue,
-                        kind = tag.kind.dbValue,
+                        tagId = image.tag.id,
+                        tagName = image.tag.name,
+                        facet = image.tag.kind.facet.dbValue,
+                        kind = image.tag.kind.dbValue,
+                        style = image.style,
                         status = "queued",
                     )
                 },
             )
-            if (tags.isEmpty()) {
+            if (images.isEmpty()) {
                 running.set(false)
             } else {
-                scope.launch { runAll(tags) }
+                scope.launch { runAll(images) }
             }
             return mutableState.value
         } catch (e: Throwable) {
@@ -143,15 +164,21 @@ class TagImageGenerationJob(
         return mutableState.value
     }
 
-    private suspend fun runAll(tags: List<EligibleTag>) {
+    /** Expands tags into images, a tag's images next to each other in distinct, weight-picked styles. */
+    private fun planImages(tags: List<EligibleTag>): List<PlannedImage> = tags.flatMap { tag ->
+        RECIPES.getValue(tag.kind).pickStyles(tag.imagesNeeded, tag.existingStyles, styleRandom)
+            .map { style -> PlannedImage(tag, style) }
+    }
+
+    private suspend fun runAll(images: List<PlannedImage>) {
         val clientId = UUID.randomUUID().toString()
         try {
             coroutineScope {
                 val eventsJob = launch { followEvents(clientId) }
                 try {
-                    for ((index, tag) in tags.withIndex()) {
+                    for ((index, image) in images.withIndex()) {
                         if (cancelRequested.get()) break
-                        processItem(index, tag, clientId)
+                        processItem(index, image, clientId)
                     }
                 } finally {
                     eventsJob.cancelAndJoin()
@@ -177,14 +204,14 @@ class TagImageGenerationJob(
         }
     }
 
-    private suspend fun processItem(index: Int, tag: EligibleTag, clientId: String) {
+    private suspend fun processItem(index: Int, image: PlannedImage, clientId: String) {
+        val tag = image.tag
         val startedAt = System.currentTimeMillis()
         try {
             val seed = nextSeed()
-            val recipe = recipes.getValue(tag.kind)
             val workflow = workflows.getValue(tag.kind)
             val settings = config.renderSettings(tag.kind)
-            val composed = recipe.compose(tag.name, seed)
+            val composed = RECIPES.getValue(tag.kind).compose(tag.name, image.style, seed)
             updateItem(index) {
                 it.copy(status = "submitting", prompt = composed.prompt, seed = seed, maxSteps = settings.steps, startedAt = startedAt)
             }
@@ -234,7 +261,7 @@ class TagImageGenerationJob(
                 withContext(Dispatchers.IO) {
                     suspendTransaction {
                         insertImageRow(
-                            tag, relativePath, bytes, analysis, composed, recipe, workflow, settings, seed, promptId,
+                            tag, relativePath, bytes, analysis, composed, workflow, settings, seed, promptId,
                             generationMillis,
                         )
                     }
@@ -348,7 +375,6 @@ class TagImageGenerationJob(
         bytes: ByteArray,
         analysis: ImageAnalysisResult,
         composed: ComposedPrompt,
-        recipe: PromptRecipe,
         workflow: ComfyWorkflow,
         settings: ImageRenderSettings,
         seed: Long,
@@ -372,7 +398,7 @@ class TagImageGenerationJob(
             it[layout] = analysis.layout
             it[prompt] = composed.prompt
             it[negativePrompt] = composed.negativePrompt
-            it[promptRecipeVersion] = recipe.version
+            it[promptRecipeVersion] = composed.recipeVersion
             it[promptIngredients] = JsonObject(composed.ingredients.mapValues { (_, phrase) -> JsonPrimitive(phrase) })
             it[TagImages.seed] = seed
             it[workflowVersion] = workflow.version
@@ -388,10 +414,13 @@ class TagImageGenerationJob(
         private val FINAL_STATUSES = setOf("done", "failed", "cancelled")
         private val ACTIVE_STATUSES = setOf("submitting", "waiting", "running")
 
+        private val RECIPES = ImageKind.entries.associateWith { StyledPromptRecipe.forKind(it) }
+
         /**
-         * Canonical mood and motif tags in use (at least one non-rejected assignment) that have no image yet.
-         * Moods come first, then motifs, each most-used first, so an interrupted run has covered the tags
-         * that matter most.
+         * Canonical mood and motif tags in use (at least one non-rejected assignment) that have fewer than
+         * [IMAGES_PER_TAG] images from their kind's current recipe (older recipe versions don't count). Moods
+         * come first, then motifs, each most-used first, so an interrupted run has covered the tags that
+         * matter most.
          */
         fun findEligibleTags(): List<EligibleTag> {
             val facets = ImageKind.entries.map { it.facet.dbValue }
@@ -399,14 +428,28 @@ class TagImageGenerationJob(
                 .where { QuoteTagAssignments.rejected eq false }
                 .groupingBy { it[QuoteTagAssignments.tagId] }
                 .eachCount()
-            val withImages = TagImages.select(TagImages.tagId).map { it[TagImages.tagId] }.toSet()
+            // Per tag, the style of each image it has from its kind's current recipe.
+            val currentStyles = TagImages.select(TagImages.tagId, TagImages.promptIngredients)
+                .where {
+                    ImageKind.entries
+                        .map { kind ->
+                            (TagImages.kind eq kind.dbValue) and (TagImages.promptRecipeVersion eq RECIPES.getValue(kind).version)
+                        }
+                        .reduce { either, other -> either or other }
+                }
+                .groupBy({ it[TagImages.tagId] }) { row ->
+                    ((row[TagImages.promptIngredients] as? JsonObject)?.get("style") as? JsonPrimitive)?.contentOrNull
+                }
             return Tags.selectAll()
                 .where { (Tags.facet inList facets) and Tags.mergedIntoId.isNull() }
                 .mapNotNull { row ->
                     val id = row[Tags.id]
                     val kind = TagFacet.fromDbValue(row[Tags.facet])?.let { ImageKind.forFacet(it) }
-                    if (kind == null || id in withImages || (usage[id] ?: 0) == 0) return@mapNotNull null
-                    EligibleTag(id, row[Tags.name], row[Tags.normalizedName], kind)
+                    if (kind == null || (usage[id] ?: 0) == 0) return@mapNotNull null
+                    val styles = currentStyles[id].orEmpty()
+                    val needed = IMAGES_PER_TAG.getValue(kind) - styles.size
+                    if (needed <= 0) return@mapNotNull null
+                    EligibleTag(id, row[Tags.name], row[Tags.normalizedName], kind, needed, styles.filterNotNull().toSet())
                 }
                 .sortedWith(compareBy<EligibleTag> { it.kind.ordinal }.thenByDescending { usage[it.id] ?: 0 }.thenBy { it.name })
         }

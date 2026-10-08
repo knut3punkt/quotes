@@ -51,10 +51,10 @@ import kotlin.test.assertTrue
 
 /**
  * Stands in for ComfyUI: each submitted prompt gets an id, emits start/progress events, and completes
- * on the second history poll with whatever [completionFor] says for the prompt's text.
+ * on the second history poll with whatever [completionFor] says for the prompt's id and text.
  */
 private class FakeComfyUiClient(
-    private val completionFor: (prompt: String) -> PromptCompletion?,
+    private val completionFor: (promptId: String, prompt: String) -> PromptCompletion?,
     private val imageBytes: ByteArray,
 ) : ComfyUiClient {
     private val counter = AtomicInteger()
@@ -74,7 +74,7 @@ private class FakeComfyUiClient(
 
     override suspend fun fetchCompletion(promptId: String, saveNodeId: String): ComfyUiResult<PromptCompletion?> {
         val pollCount = polls.merge(promptId, 1, Int::plus)!!
-        return ComfyUiResult.Success(if (pollCount < 2) null else completionFor(promptTexts.getValue(promptId)))
+        return ComfyUiResult.Success(if (pollCount < 2) null else completionFor(promptId, promptTexts.getValue(promptId)))
     }
 
     override suspend fun downloadImage(image: OutputImageRef): ComfyUiResult<ByteArray> = ComfyUiResult.Success(imageBytes)
@@ -117,13 +117,15 @@ class TagImageGenerationJobTest {
                 }
             }
 
-            // Only used, canonical mood and motif tags qualify; moods come first.
+            // Only used, canonical mood and motif tags qualify; moods come first, and need 3 backgrounds.
             assertEquals(listOf(calmId to ImageKind.BACKGROUND, lampId to ImageKind.ELEMENT), ownTags().map { it.id to it.kind })
+            assertEquals(listOf(3, 1), ownTags().map { it.imagesNeeded })
             assertTrue(unusedMoodId !in ownTags().map { it.id })
 
+            // The first background (p1) fails; the other two and the element succeed.
             val fake = FakeComfyUiClient(
-                completionFor = { prompt ->
-                    if ("calm" in prompt) {
+                completionFor = { promptId, _ ->
+                    if (promptId == "p1") {
                         PromptCompletion.Failed("KSampler: out of memory")
                     } else {
                         PromptCompletion.Succeeded(listOf(OutputImageRef("x.png", "", "output")))
@@ -132,35 +134,56 @@ class TagImageGenerationJobTest {
                 imageBytes = transparentElementPng(),
             )
             val config = DEFAULT_IMAGE_GENERATION_CONFIG.copy(storageDir = storageDir.toString())
-            val job = TagImageGenerationJob(fake, config, scope, historyPollMillis = 10, nextSeed = { 4242L }, loadEligibleTags = ownTags)
+            val seeds = AtomicInteger(4240)
+            val job = TagImageGenerationJob(
+                fake, config, scope, historyPollMillis = 10, nextSeed = { seeds.incrementAndGet().toLong() },
+                loadEligibleTags = ownTags,
+            )
 
             val initial = job.start()
-            assertEquals(listOf("queued", "queued"), initial.items.map { it.status })
+            assertEquals(listOf(calmId, calmId, calmId, lampId), initial.items.map { it.tagId })
+            assertEquals(List(4) { "queued" }, initial.items.map { it.status })
+            val calmStyles = initial.items.take(3).map { it.style!! }
+            assertEquals(3, calmStyles.toSet().size)
+            val lampStyle = initial.items[3].style!!
             val finished = withTimeout(10_000) { job.state.first { it.status == "finished" } }
 
-            val (calmItem, lampItem) = finished.items
-            assertEquals("failed", calmItem.status)
-            assertEquals("KSampler: out of memory", calmItem.error)
-            assertEquals("done", lampItem.status)
-            assertEquals(4242L, lampItem.seed)
+            assertEquals(listOf("failed", "done", "done", "done"), finished.items.map { it.status })
+            assertEquals("KSampler: out of memory", finished.items[0].error)
+            val lampItem = finished.items[3]
+            assertEquals(4244L, lampItem.seed)
             assertTrue(lampItem.prompt!!.contains("$prefix lamp"))
+            assertTrue(finished.items[1].prompt!!.contains("$prefix calm mood"))
 
-            val row = withContext(Dispatchers.IO) {
-                suspendTransaction { TagImages.selectAll().where { TagImages.tagId eq lampId }.single() }
+            val (lampRow, calmRows) = withContext(Dispatchers.IO) {
+                suspendTransaction {
+                    TagImages.selectAll().where { TagImages.tagId eq lampId }.single() to
+                        TagImages.selectAll().where { TagImages.tagId eq calmId }.toList()
+                }
             }
-            assertEquals("element", row[TagImages.kind])
-            assertEquals(lampItem.filePath, row[TagImages.filePath])
-            assertTrue(row[TagImages.hasAlpha])
-            assertEquals(4242L, row[TagImages.seed])
-            assertEquals("motif-v1", row[TagImages.promptRecipeVersion])
-            assertEquals("p2", row[TagImages.comfyPromptId])
-            assertTrue(storageDir.resolve(row[TagImages.filePath]).exists())
+            assertEquals("element", lampRow[TagImages.kind])
+            assertEquals(lampItem.filePath, lampRow[TagImages.filePath])
+            assertTrue(lampRow[TagImages.hasAlpha])
+            assertEquals(4244L, lampRow[TagImages.seed])
+            assertEquals("motif-v2", lampRow[TagImages.promptRecipeVersion])
+            assertEquals(lampStyle, lampRow[TagImages.promptIngredients].jsonObject.getValue("style").jsonPrimitive.content)
+            assertEquals("p4", lampRow[TagImages.comfyPromptId])
+            assertTrue(storageDir.resolve(lampRow[TagImages.filePath]).exists())
 
-            // The failed mood is still missing, so a second run retries only that one; this time it never
-            // completes, which also shows a run can't be started twice and can be cancelled.
-            val stuck = FakeComfyUiClient(completionFor = { null }, imageBytes = transparentElementPng())
+            assertEquals(List(2) { "background" }, calmRows.map { it[TagImages.kind] })
+            assertEquals(List(2) { "background-v4" }, calmRows.map { it[TagImages.promptRecipeVersion] })
+            val storedStyles = calmRows.map { it[TagImages.promptIngredients].jsonObject.getValue("style").jsonPrimitive.content }.toSet()
+            assertEquals(calmStyles.drop(1).toSet(), storedStyles)
+
+            // The mood is one background short, so a second run plans just that one, in a style it doesn't
+            // have yet; this time it never completes, which also shows a run can't be started twice and can
+            // be cancelled.
+            assertEquals(listOf(calmId to 1), ownTags().map { it.id to it.imagesNeeded })
+            val stuck = FakeComfyUiClient(completionFor = { _, _ -> null }, imageBytes = transparentElementPng())
             val stuckJob = TagImageGenerationJob(stuck, config, scope, historyPollMillis = 10, loadEligibleTags = ownTags)
-            assertEquals(listOf(calmId), stuckJob.start().items.map { it.tagId })
+            val retryItem = stuckJob.start().items.single()
+            assertEquals(calmId, retryItem.tagId)
+            assertTrue(retryItem.style!! !in storedStyles)
             withTimeout(5_000) { stuckJob.state.first { it.items.single().status == "running" } }
             assertFailsWith<IllegalStateException> { stuckJob.start() }
 

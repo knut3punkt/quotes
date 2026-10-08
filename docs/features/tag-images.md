@@ -5,9 +5,10 @@
 The TV screen behind a quotation will be composed from pre-made per-tag assets (see `quote-tagging.md`, "Adaptive
 visuals"). This feature makes those assets:
 
-* a **background** for each `mood` tag: a full-screen 16:9 atmosphere image with calm areas for text;
-* a **collage element** for each `motif` tag: one isolated, drawable object on a transparent background, to be
-  layered over a background.
+* **backgrounds** for each `mood` tag (3, in different styles): full-screen 16:9 atmosphere images, usually with
+  a calm area for text;
+* a **collage element** for each `motif` tag: one symbolic motif in a soft, style-appropriate vignette on a
+  transparent background, to be layered over a background.
 
 Images are generated on a ComfyUI server (Qwen Image 2.1), stored as PNG files on the server, and recorded in
 `tag_images` with provenance and layout metadata for a future collage algorithm. Nothing is generated per quotation.
@@ -23,10 +24,17 @@ A run covers every tag that:
 * has facet `mood` or `motif`;
 * is canonical (`merged_into_id IS NULL`);
 * is in use, with at least one non-rejected assignment;
-* has no `tag_images` row yet.
+* has fewer images from its kind's **current** recipe version than `IMAGES_PER_TAG` asks for: 3 backgrounds per
+  mood tag, 1 element per motif tag. It gets the missing number, each in a different style profile, avoiding the
+  styles it already has from that version.
 
-Moods come first, then motifs, each most-used first, so a cancelled run has covered the tags that matter most.
-Failed images leave no row, so the next run retries them. A run never regenerates a tag that already has an image.
+Moods come first, then motifs, each most-used first, so a cancelled run has covered the tags that matter most. A
+tag's images sit next to each other in the queue. Failed images leave no row, so the next run retries them, and a
+tag with only some of its images is topped up. A run never regenerates an image that exists.
+
+Images from older recipe versions don't count. So when a recipe gets a new version, every tag of that kind gets a
+full new set on the next run. The old rows stay in `tag_images` and are still candidates for composition, which
+picks one image per tag at random.
 
 When an admin merges tag A into tag B, A's images move to B. An image that finishes generating after its tag was
 merged is stored on the canonical tag.
@@ -35,36 +43,85 @@ merged is stored on the canonical tag.
 
 ## Prompts
 
-Prompts are built from versioned recipes in `server/src/main/resources/image-prompts/` (`background-v1.json`,
-`motif-v1.json`):
+Prompts are built from versioned style-profile recipes in `server/src/main/resources/image-prompts/`, read by
+`StyledPromptRecipe`: `background-v4.json` for backgrounds and `motif-v2.json` for elements. Random choices are made
+by application code, never by a model, with a generator seeded by the image's seed. The same seed also goes to the
+KSampler, so a stored image can be reproduced exactly. The choices are stored as `prompt_ingredients` and the full
+text as `prompt`, so provenance never depends on the generator staying the same across Kotlin versions.
 
 ```json
 {
-  "version": "background-v1",
-  "template": "{{medium}} background evoking a {{tag}} mood: {{setting}}. ...",
-  "slots": { "medium": ["A painterly", "A watercolor", ...], "setting": [...], ... },
-  "negativePrompt": "text, letters, ..."
+  "version": "background-v4",
+  "description": "...",
+  "inputs": { "tag": "..." },
+  "template": "{{medium}} intended as a reusable background for quotations sharing a {{tag}} mood. Visual style: {{look}}. {{texture}}. {{composition}} {{quoteInstruction}} ...",
+  "quoteLayouts": [ { "id": "left", "weight": 1.0, "instruction": "...", "composition": "..." }, ... ],
+  "styleProfiles": [ { "id": "neon-noir", "weight": 1.7, "mediums": [...], "looks": [...], "textures": [...] }, ... ],
+  "globalInstructions": [ "..." ],
+  "negativePrompt": "text, typography, ...",
+  "selectionRules": { ... }
 }
 ```
 
-`{{tag}}` is the tag's display name. Every other placeholder is a slot, and one phrase is picked per slot with a
-random generator seeded by the image's seed. The same seed also goes to the KSampler, so a stored image can be
-reproduced exactly. The picked phrases are stored as `prompt_ingredients` and the full text as `prompt`, so
-provenance never depends on the generator staying the same across Kotlin versions.
+### How a recipe is read
 
-Recipe rules:
+* `inputs` has exactly one key, the placeholder that takes the tag's display name: `{{tag}}` in backgrounds,
+  `{{motif}}` in motifs.
+* Each style profile has an `id`, a `weight`, and phrase lists with plural names. The template uses the singular
+  as the placeholder: `mediums` fills `{{medium}}`, `edgeTreatments` fills `{{edgeTreatment}}`. Every profile has the
+  same lists.
+* When a run starts, each tag's styles are picked **by weight without replacement**, so one tag's images never
+  share a style. Styles the tag already has from the current version are left out.
+* For each image, the seeded generator picks one phrase from each list, uniformly and **only from that image's
+  style**. Lists are picked in template order.
+* `quoteLayouts` is optional. When a recipe has them, one is picked by weight and supplies both `{{composition}}`
+  and `{{quoteInstruction}}`.
+* `prompt_ingredients` holds `style`, one entry per list (`medium`, `look`, `texture`, or `medium`, `treatment`,
+  `edgeTreatment`), and `quoteLayout` (the layout id) when there is one.
+* `StyledPromptRecipe.parse` refuses a recipe that:
+  * doesn't name exactly one input, or never uses it;
+  * uses a placeholder it doesn't fill, or never uses one of its style lists;
+  * uses layout placeholders without layouts, or has layouts without using their placeholders;
+  * has profiles with differing lists, a field that isn't a plural list of strings, or an empty or blank phrase;
+  * has duplicate or blank ids, or a weight that isn't positive.
 
-* Mood is open vocabulary, so background slots never name a colour or a feeling outright. They ask for a palette
-  "that expresses the mood" and vary the medium, setting, light, texture and composition. Compositions always leave
-  calm, open space, because a quotation goes on top.
-* The motif template opens with Qwen Image 2.1's transparency phrasing ("This is an RGBA image with transparency.
-  ... The image has alpha channel and the background is transparent."). That phrasing is what makes the model write
-  an alpha channel. Motif styles are kept to a small family of illustration styles, so elements from different
-  tags still sit together in one collage.
-* `PromptRecipe.parse` refuses a recipe whose placeholders lack phrases, or that never uses `{{tag}}`.
+### What reaches the image model
 
-When a recipe changes, add a new file (`background-v2.json`), keep the old one, and point `PromptRecipe` at the new
-version. Each image records `prompt_recipe_version`.
+The model gets only the filled `template` and the `negativePrompt`. The other fields are guidance for whoever
+edits the recipe. They are parsed, so a typo still fails loudly, but they are **not sent**:
+
+* `description` and `inputs` describe the recipe.
+* `globalInstructions` are meta-rules ("select exactly one style profile", "independent of the background's
+  style"), or are already said by the template and negative prompt. Meta-instructions mean nothing to the text
+  encoder and would only lengthen the prompt.
+* `selectionRules` are enforced by the code as described above.
+* `assetComposition` (motifs) is framing guidance:
+  * the square canvas is the motif render size;
+  * padding and no cropping are in the template;
+  * the 55–70 % coverage figure stays a guide for writing phrases.
+
+### Backgrounds (`background-v4.json`)
+
+The `overlay` layout reserves no quote area, so the TV's contrast handling has to cope with a busy background
+there.
+
+### Motifs (`motif-v2.json`)
+
+The template opens and closes with Qwen Image 2.1's transparency phrasing: "This is an RGBA image with
+transparency." and "The image has alpha channel and the background is transparent." That phrasing is what makes
+the model write an alpha channel. The workflow has no separate matting step.
+
+The draft of this recipe left the phrasing out, on the assumption that the workflow would make the transparency.
+It was added on purpose, and `selectionRules.edgeBehavior` and `assetComposition.alpha` say so. Without it,
+elements come back opaque, and composition skips elements without alpha. The soft vignettes the edge treatments
+ask for rely on the model writing partial alpha.
+
+### Changing a recipe
+
+When a recipe changes, add a new file, keep the old one (stored rows name it), and point
+`StyledPromptRecipe.forKind` at the new version. Each image records `prompt_recipe_version`. `background-v1.json`
+and `motif-v1.json` are the original recipes, in an older slot format that no code reads any more. They are kept
+only as provenance for the rows made with them.
 
 ---
 
@@ -187,8 +244,8 @@ returns at once. Only one run exists at a time.
   `done`, or ends as `failed` or `cancelled`. A failure only affects its own item.
 * **Cancel** stops the run after the current item: the server removes that prompt from ComfyUI's queue
   (`POST /queue` with `delete`) and interrupts it (`POST /interrupt`). Remaining items are marked `cancelled`.
-* The job state lives in memory. After a server restart the last run is forgotten, and a new run picks up the tags
-  that still have no image. A prompt that was in ComfyUI during the restart still finishes there, but is not
+* The job state lives in memory. After a server restart the last run is forgotten, and a new run picks up the images
+  that are still missing. A prompt that was in ComfyUI during the restart still finishes there, but is not
   recorded.
 
 Admin API:
@@ -201,11 +258,12 @@ Admin API:
 | `WS /admin/image-generation/ws` | Pushes the full state as JSON, at most four times a second |
 
 The state is `{status, comfyUiBaseUrl, startedAt, finishedAt, comfyQueueRemaining, connectionWarning, items[]}`, with
-each item `{tagId, tagName, facet, kind, status, prompt, seed, step, maxSteps, error, filePath, startedAt,
-finishedAt}`. Seeds stay below 2^53, so JavaScript shows them exactly.
+one item per image `{tagId, tagName, facet, kind, style, status, prompt, seed, step, maxSteps, error, filePath, startedAt,
+finishedAt}`. `style` is the image's style profile id. Seeds stay below 2^53, so
+JavaScript shows them exactly.
 
 The admin's Tags page shows a **Tag images** panel with the generate and cancel buttons, overall progress, and the
-queue. Each queue row shows the tag, kind, status, step progress for the active image, elapsed time, the error for a
+queue. Each queue row shows the tag, kind and style, status, step progress for the active image, elapsed time, the error for a
 failed image, and the prompt, which expands to show the seed and file path.
 
 ---
@@ -238,4 +296,4 @@ refusing a second run, and cancelling. No test needs a running ComfyUI.
 
 * Generating automatically when new mood or motif tags appear.
 * Showing images in the admin.
-* Several images per tag, or regenerating one. The table already allows several rows per tag.
+* Regenerating or deleting a single image.

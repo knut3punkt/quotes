@@ -1,0 +1,742 @@
+{
+  "version": "background-v4",
+
+  "description": "Prompt configuration for reusable mood-based quote backgrounds. Select exactly one coherent style profile and one quote layout. All visual choices must come from the selected style profile.",
+
+  "inputs": {
+    "tag": "Mood or emotional tag, for example serene, melancholic, transcendent, ominous, joyful"
+  },
+
+  "template": "{{medium}} intended as a reusable background for quotations sharing a {{tag}} mood. Visual style: {{look}}. {{texture}}. {{composition}} {{quoteInstruction}} Express the {{tag}} mood through colour, lighting, spatial feeling, form, atmosphere, and intensity while preserving the selected visual style. Maintain a strong, intentional art direction rather than generic concept art. The image should function as an atmospheric background rather than as a poster or self-contained narrative scene. No generated typography.",
+
+  "quoteLayouts": [
+    {
+      "id": "left",
+      "weight": 1.0,
+      "instruction": "Reserve a generous low-detail region in the interior left side of the image for quotation text, beginning well inside the image margins. Keep this area atmospheric and visually integrated rather than making an obvious blank rectangle. Push the strongest focal detail, contrast, and complex forms toward the right side.",
+      "composition": "Use an asymmetrical composition whose visual energy gradually decreases toward the left quote area."
+    },
+    {
+      "id": "right",
+      "weight": 1.0,
+      "instruction": "Reserve a generous low-detail region in the interior right side of the image for quotation text, ending well before the outer edge. Keep this area atmospheric and visually integrated rather than making an obvious blank rectangle. Push the strongest focal detail, contrast, and complex forms toward the left side.",
+      "composition": "Use an asymmetrical composition whose visual energy gradually decreases toward the right quote area."
+    },
+    {
+      "id": "top",
+      "weight": 1.0,
+      "instruction": "Reserve a generous low-detail region across the upper interior portion of the image for quotation text, leaving comfortable margins above and at the sides. Keep the region part of the image rather than making a blank panel. Concentrate stronger forms and focal detail primarily below it.",
+      "composition": "Use vertical depth and visual weight in the lower half, fading into a calmer upper quote region."
+    },
+    {
+      "id": "center",
+      "weight": 1.0,
+      "instruction": "Reserve a broad low-detail region around the interior center of the image for quotation text. Surround it indirectly with atmosphere, light, texture, or abstract forms without creating a visible rectangular frame. Keep important focal elements away from the central quote area.",
+      "composition": "Arrange visual interest around the outer and off-centre regions while maintaining an integrated calm central zone."
+    },
+    {
+      "id": "bottom",
+      "weight": 1.0,
+      "instruction": "Reserve a generous low-detail region across the lower interior portion of the image for quotation text, leaving comfortable space before the lower and side edges. Keep this region atmospheric rather than blank. Concentrate stronger focal detail primarily above it.",
+      "composition": "Use visual weight in the upper and middle regions, fading toward a calmer lower quote region."
+    },
+    {
+      "id": "overlay",
+      "weight": 1.0,
+      "instruction": "Do not reserve a specific area for quotation text. The quotation will be displayed separately on top of its own contrasting background or translucent panel. Compose the image naturally across the full canvas with balanced visual interest.",
+      "composition": "Use a complete edge-to-edge composition without deliberately creating empty quote space."
+    }
+  ],
+
+  "styleProfiles": [
+    {
+      "id": "neon-noir",
+      "weight": 1.7,
+      "mediums": [
+        "A cinematic digital artwork",
+        "A dark fine-art photographic composition",
+        "A cinematic surreal 3D artwork"
+      ],
+      "looks": [
+        "Neon noir with near-black shadows, electric cyan and ultraviolet accents, concentrated luminous highlights, volumetric haze, restrained futuristic detail, and dramatic nocturnal depth",
+        "Nocturnal neon noir using charcoal, midnight blue, magenta and cyan, wet reflective surfaces, strong rim lighting, deep shadow, and cinematic colour grading",
+        "Minimal neon noir with large areas of darkness, one or two saturated light sources, atmospheric fog, glossy reflections, and elegant negative space"
+      ],
+      "textures": [
+        "Subtle film grain, halation around luminous areas, suspended atmospheric particles, and controlled glossy reflections",
+        "Smooth darkness contrasted with mist, glass, wet surfaces, and faint chromatic aberration"
+      ]
+    },
+
+    {
+      "id": "cyberpunk",
+      "weight": 1.35,
+      "mediums": [
+        "A cinematic cyberpunk digital artwork",
+        "A futuristic environmental concept artwork",
+        "A high-detail cinematic 3D render"
+      ],
+      "looks": [
+        "Dark cyberpunk visual language with dense technological atmosphere, deep blacks, cyan and red illumination, luminous circuitry-like forms, industrial depth, and restrained futuristic complexity",
+        "Minimal cyberpunk abstraction with black space, luminous geometric technology, holographic forms reduced to abstraction, electric accents, haze, and strong depth"
+      ],
+      "textures": [
+        "Metal, dark glass, atmospheric smoke, luminous reflections, subtle digital noise, and controlled surface wear",
+        "Glossy synthetic surfaces mixed with industrial texture and faint electronic distortion"
+      ]
+    },
+
+    {
+      "id": "dark-psychedelic-surrealism",
+      "weight": 1.7,
+      "mediums": [
+        "A dark psychedelic digital artwork",
+        "A surreal visionary artwork",
+        "An intricate psychedelic 3D composition"
+      ],
+      "looks": [
+        "Dark psychedelic surrealism with luminous recursive forms, impossible geometry, altered perception, ultraviolet, cyan and acid-green light emerging from a near-black void",
+        "Hallucinatory dark surrealism with fluid geometry, strange depth, spectral colour, repeating forms, impossible spatial relationships, and an atmosphere of mystery rather than playfulness"
+      ],
+      "textures": [
+        "Intricate fractal detail dissolving into smooth darkness, translucent layers, glowing filaments, and subtle iridescence",
+        "Liquid surfaces, spectral gradients, fine luminous patterns, and deep atmospheric space"
+      ]
+    },
+
+    {
+      "id": "visionary-psychedelic",
+      "weight": 1.45,
+      "mediums": [
+        "A visionary psychedelic digital artwork",
+        "An intricate symbolic surreal artwork"
+      ],
+      "looks": [
+        "Visionary art with elaborate luminous geometry, layered abstract forms, rich jewel tones, recursive structures, and an atmosphere of expanded perception",
+        "Sophisticated psychedelic imagery using intricate organic geometry, radiant colour, symmetry that gradually breaks into surreal forms, and a sense of consciousness extending beyond ordinary space"
+      ],
+      "textures": [
+        "Extremely fine luminous detail, translucent colour layers, glowing linework, and jewel-like surfaces",
+        "Organic patterns, subtle fractal repetition, spectral glow, and polished digital detail"
+      ]
+    },
+
+    {
+      "id": "dark-surrealism",
+      "weight": 1.45,
+      "mediums": [
+        "A cinematic dark surrealist artwork",
+        "A surreal fine-art photographic composition",
+        "A dark digital matte artwork"
+      ],
+      "looks": [
+        "Dark surrealism using dream logic, vast empty spaces, unsettling scale, sparse enigmatic forms, black and charcoal tones, and restrained pools of coloured light",
+        "An uncanny abstract environment with impossible relationships, atmospheric emptiness, mysterious scale, deep shadow, and a quiet rather than horror-oriented sense of strangeness"
+      ],
+      "textures": [
+        "Soft fog, distant grain, matte shadow, weathered surfaces, and isolated luminous detail",
+        "Atmospheric haze, subtle film texture, deep blacks, and tactile but restrained surfaces"
+      ]
+    },
+
+    {
+      "id": "metaphysical-surrealism",
+      "weight": 1.4,
+      "mediums": [
+        "A metaphysical surrealist digital artwork",
+        "A cinematic surreal environmental artwork"
+      ],
+      "looks": [
+        "Metaphysical surrealism with monumental empty space, impossible geometry, long shadows, mysterious horizons, and an atmosphere of philosophical stillness",
+        "A dreamlike abstract environment using sparse geometric structures, uncanny perspective, strange spatial relationships, muted darkness, and one unexpected luminous accent"
+      ],
+      "textures": [
+        "Smooth monumental surfaces, atmospheric perspective, distant haze, and subtle grain",
+        "Stone-like geometry, soft shadow gradients, sparse reflective areas, and dry atmospheric texture"
+      ]
+    },
+
+    {
+      "id": "bioluminescent-surrealism",
+      "weight": 1.55,
+      "mediums": [
+        "A bioluminescent surreal digital artwork",
+        "A cinematic alien macro artwork",
+        "An organic futuristic 3D artwork"
+      ],
+      "looks": [
+        "Bioluminescent surrealism with translucent organic forms, glowing filaments, deep oceanic darkness, turquoise, violet and electric-blue internal light",
+        "An alien organic environment where forms generate their own light, combining dark teal, black, fluorescent cyan and subtle magenta with elegant natural geometry"
+      ],
+      "textures": [
+        "Translucent membranes, microscopic particles, glowing veins, soft mist, and wet organic surfaces",
+        "Glass-like organic material, phosphorescent edges, delicate filaments, and deep atmospheric darkness"
+      ]
+    },
+
+    {
+      "id": "synthwave-retrowave",
+      "weight": 1.0,
+      "mediums": [
+        "A stylized synthwave digital artwork",
+        "A retrofuturist graphic artwork"
+      ],
+      "looks": [
+        "Dark synthwave with deep violet and midnight-blue space, electric magenta and cyan illumination, sparse geometric perspective, chrome highlights, and restrained 1980s retrofuturism",
+        "Minimal retrowave using luminous gradients, graphic geometric forms, electric colour, and cinematic retrofuturist atmosphere without excessive nostalgia clichés"
+      ],
+      "textures": [
+        "Smooth graphic gradients, subtle analog grain, chrome reflections, and atmospheric glow",
+        "Soft CRT-like bloom, subtle scan texture, luminous geometry, and clean dark surfaces"
+      ]
+    },
+
+    {
+      "id": "retrofuturism",
+      "weight": 0.85,
+      "mediums": [
+        "A cinematic retrofuturist artwork",
+        "A speculative vintage-future illustration"
+      ],
+      "looks": [
+        "Retrofuturism combining imagined technology with elegant mid-century visual forms, dramatic space-age geometry, rich colour, and slightly uncanny optimism",
+        "A sophisticated alternate-future aesthetic with curved abstract mechanical forms, analog technology cues, metallic surfaces, and bold but restrained colour blocking"
+      ],
+      "textures": [
+        "Brushed metal, aged photographic grain, smooth enamel surfaces, and soft analog light",
+        "Vintage print texture blended with polished futuristic surfaces"
+      ]
+    },
+
+    {
+      "id": "glitch-digital-decay",
+      "weight": 1.15,
+      "mediums": [
+        "An experimental glitch artwork",
+        "A cinematic digitally corrupted composition"
+      ],
+      "looks": [
+        "Controlled glitch art with fragmented geometry, RGB channel separation, displaced image regions, signal interference, deep black space, and electric red and cyan accents",
+        "Digital decay using broken visual continuity, compression-like fragmentation, distorted layers, scanline structures, chromatic errors, and restrained technological chaos"
+      ],
+      "textures": [
+        "Pixel displacement, subtle datamoshing, scanlines, chromatic aberration, and digital noise",
+        "Compression artifacts, signal tearing, fragmented translucent layers, and smooth dark regions"
+      ]
+    },
+
+    {
+      "id": "holographic-iridescent-futurism",
+      "weight": 1.25,
+      "mediums": [
+        "A holographic futuristic digital artwork",
+        "A high-end abstract 3D artwork",
+        "A futuristic macro photographic composition"
+      ],
+      "looks": [
+        "Holographic futurism with dichroic glass, spectral cyan-violet-orange reflections, deep surrounding darkness, translucent geometry, and elegant prismatic light",
+        "Iridescent futurism using pearlescent surfaces, diffraction, spectral colour, transparent layers, liquid chrome, and sophisticated luminous minimalism"
+      ],
+      "textures": [
+        "Dichroic glass, holographic foil, smooth translucent surfaces, spectral reflections, and subtle haze",
+        "Pearlescent material, liquid-metal highlights, prismatic refraction, and polished transparent layers"
+      ]
+    },
+
+    {
+      "id": "cosmic-surrealism",
+      "weight": 1.35,
+      "mediums": [
+        "A cosmic surreal digital artwork",
+        "A cinematic astronomical artwork"
+      ],
+      "looks": [
+        "Cosmic surrealism with immense scale, dark celestial space, subtle nebular colour, impossible astronomical relationships, and a transcendent rather than literal science-fiction atmosphere",
+        "An interdimensional cosmic environment using black, indigo, violet, stellar light, mysterious geometry, and a profound sense of scale and distance"
+      ],
+      "textures": [
+        "Fine star-like particles, deep atmospheric gradients, faint nebular structures, and luminous dust",
+        "Smooth cosmic darkness mixed with spectral clouds, distant light, and delicate spatial grain"
+      ]
+    },
+
+    {
+      "id": "esoteric-geometry",
+      "weight": 1.2,
+      "mediums": [
+        "An abstract esoteric geometric artwork",
+        "A luminous diagrammatic digital artwork"
+      ],
+      "looks": [
+        "Abstract sacred geometry composed of luminous fine lines, concentric structures, celestial diagram-like relationships, deep black space, and restrained gold, cyan or violet illumination",
+        "Geometric mysticism using precise circles, orbital structures, layered symmetry, diagrammatic spatial relationships, and subtle holographic depth without readable symbols or text"
+      ],
+      "textures": [
+        "Fine luminous linework, faint aged-paper influence, glowing points, and deep atmospheric darkness",
+        "Holographic geometry, delicate grain, subtle metallic detail, and translucent overlapping lines"
+      ]
+    },
+
+    {
+      "id": "brutalist-scifi",
+      "weight": 1.35,
+      "mediums": [
+        "A cinematic brutalist science-fiction artwork",
+        "An architectural fine-art composition"
+      ],
+      "looks": [
+        "Brutalist science fiction with immense concrete-like geometry, severe monumental scale, dense fog, charcoal and steel tones, and a single saturated light accent",
+        "Austere futuristic monumentalism using raw geometric masses, vast negative space, near-monochrome surfaces, oppressive scale, and sparse directional illumination"
+      ],
+      "textures": [
+        "Rough concrete, weathered mineral surfaces, fog, subtle grain, and matte shadow",
+        "Raw stone-like texture, industrial wear, fine atmospheric particles, and hard-edged geometry"
+      ]
+    },
+
+    {
+      "id": "dark-fantasy",
+      "weight": 1.1,
+      "mediums": [
+        "A cinematic dark fantasy artwork",
+        "An atmospheric fantasy matte artwork"
+      ],
+      "looks": [
+        "Dark fantasy with mysterious ancient-feeling atmosphere, moonlit mist, deep shadow, weathered abstract forms, restrained supernatural illumination, and mythic depth",
+        "Surreal dark fantasy using ethereal fog, monumental forms, black-blue shadows, subtle gold or crimson accents, and dreamlike rather than illustrative fantasy"
+      ],
+      "textures": [
+        "Weathered stone-like texture, mist, moonlit haze, aged surfaces, and subtle film grain",
+        "Soft atmospheric layers, rough natural texture, faint luminous particles, and deep shadow"
+      ]
+    },
+
+    {
+      "id": "gothic-futurism",
+      "weight": 0.95,
+      "mediums": [
+        "A gothic futuristic digital artwork",
+        "A cinematic speculative architectural artwork"
+      ],
+      "looks": [
+        "Gothic futurism combining soaring dark geometry, severe verticality, futuristic materials, deep shadow, crimson or ultraviolet illumination, and cathedral-like spatial drama without literal religious imagery",
+        "A dark technological environment with elegant gothic proportions, pointed abstract geometry, metallic-black surfaces, atmospheric mist, and restrained luminous accents"
+      ],
+      "textures": [
+        "Dark metal, polished stone, haze, subtle reflective surfaces, and fine atmospheric dust",
+        "Matte black architectural surfaces, smoky air, luminous edges, and weathered metallic detail"
+      ]
+    },
+
+    {
+      "id": "tenebrist-chiaroscuro",
+      "weight": 1.2,
+      "mediums": [
+        "A cinematic fine-art composition",
+        "A dramatic photographic artwork",
+        "A digitally rendered chiaroscuro artwork"
+      ],
+      "looks": [
+        "Extreme tenebrism with most of the frame disappearing into deep darkness while selected abstract forms emerge through concentrated warm or coloured illumination",
+        "Dramatic chiaroscuro using sculptural light and shadow, rich blacks, restrained colour, sharp luminous transitions, and a timeless theatrical atmosphere"
+      ],
+      "textures": [
+        "Velvety darkness, subtle grain, tactile illuminated surfaces, and faint atmospheric haze",
+        "Rich matte shadow, soft luminous falloff, fine surface texture, and controlled highlight bloom"
+      ]
+    },
+
+    {
+      "id": "surreal-photomontage",
+      "weight": 1.25,
+      "mediums": [
+        "A cinematic surreal photomontage",
+        "A high-end digital photo manipulation"
+      ],
+      "looks": [
+        "Surreal photomontage with impossible juxtaposition, realistic photographic fragments, strange scale relationships, deep atmospheric colour, and sophisticated visual rhythm",
+        "Cinematic photo manipulation combining dreamlike environments, abstract photographic layers, surreal spatial relationships, rich shadows, and highly controlled composite realism"
+      ],
+      "textures": [
+        "Photographic grain, atmospheric haze, subtle edge blending, realistic surface detail, and layered depth",
+        "Film texture, fragmented visual layers used sparingly, realistic light integration, and soft chromatic variation"
+      ]
+    },
+
+    {
+      "id": "editorial-collage",
+      "weight": 0.95,
+      "mediums": [
+        "A sophisticated editorial digital collage",
+        "An experimental mixed-media collage"
+      ],
+      "looks": [
+        "Contemporary editorial collage using carefully layered photographic fragments, abstract shapes, unexpected scale, dark fields of colour, and striking visual relationships",
+        "Mixed-media collage combining photography, geometric cut-paper-like forms, textured surfaces, bold composition, and restrained surrealism"
+      ],
+      "textures": [
+        "Paper grain, photographic texture, subtle torn edges, ink-like areas, and translucent overlays",
+        "Layered print texture, analog imperfections, matte shapes, and photographic fragments"
+      ]
+    },
+
+    {
+      "id": "liminal-spaces",
+      "weight": 1.05,
+      "mediums": [
+        "A liminal fine-art photographic composition",
+        "A cinematic liminal 3D environment"
+      ],
+      "looks": [
+        "Liminal-space aesthetics with strangely empty environments, familiar but contextless spatial forms, fluorescent or nocturnal light, quiet unease, and dreamlike stillness",
+        "An uncanny transitional environment using empty spatial forms, atmospheric haze, unusual lighting, muted colour, and unsettling familiarity"
+      ],
+      "textures": [
+        "Soft photographic grain, slightly artificial surfaces, distant haze, fluorescent bloom, and subtle lens imperfections",
+        "Clean but uncanny materials, dim atmospheric depth, smooth surfaces, and quiet pools of light"
+      ]
+    },
+
+    {
+      "id": "dreamcore",
+      "weight": 0.9,
+      "mediums": [
+        "A surreal dreamcore artwork",
+        "A dreamlike photographic composition"
+      ],
+      "looks": [
+        "Dreamcore with nostalgic but impossible environments, altered scale, hazy illumination, saturated isolated colours, soft unreality, and ambiguous emotional tone",
+        "A strange dream-memory aesthetic using surreal familiar spatial forms, diffuse light, improbable skies or geometry, subtle visual discontinuity, and a feeling of remembered unreality"
+      ],
+      "textures": [
+        "Soft blur in selective areas, analog grain, hazy colour bloom, and slightly degraded photographic texture",
+        "Dreamlike softness mixed with sharp isolated detail, subtle noise, and atmospheric colour bleed"
+      ]
+    },
+
+    {
+      "id": "acid-graphics",
+      "weight": 0.95,
+      "mediums": [
+        "An experimental acid-graphic artwork",
+        "A dark electronic-music-inspired graphic composition"
+      ],
+      "looks": [
+        "Acid graphics with fluorescent lime, cyan, violet and black, warped geometry, aggressive abstract forms, high-energy visual distortion, and underground electronic-art aesthetics",
+        "Dark acid graphic design using near-black space, fluorescent accents, fluid warped forms, hard geometric interruptions, and controlled visual intensity"
+      ],
+      "textures": [
+        "Digital grain, fluorescent bloom, warped vector-like surfaces, subtle noise, and glossy synthetic elements",
+        "Sharp graphic surfaces mixed with degraded print texture, distortion, and luminous gradients"
+      ]
+    },
+
+    {
+      "id": "vaporwave",
+      "weight": 0.65,
+      "mediums": [
+        "A sophisticated vaporwave artwork",
+        "A surreal retro-digital composition"
+      ],
+      "looks": [
+        "Restrained vaporwave using violet, pink, cyan and dark blue, obsolete-digital atmosphere, surreal geometry, smooth gradients, and quiet nostalgic unreality",
+        "Dark vaporwave with sparse retro-computing visual language, reflective surfaces, strange horizons, luminous pastel-neon gradients, and elegant rather than ironic composition"
+      ],
+      "textures": [
+        "Soft CRT glow, subtle scanlines, glossy surfaces, analog digital noise, and smooth gradients",
+        "Low-level VHS texture, spectral colour bleed, digital haze, and reflective geometry"
+      ]
+    },
+
+    {
+      "id": "y2k-futurism",
+      "weight": 0.8,
+      "mediums": [
+        "A Y2K-inspired futuristic artwork",
+        "A polished early-digital-era 3D composition"
+      ],
+      "looks": [
+        "Y2K futurism using chrome, translucent plastic, electric blue, silver, liquid-metal forms, optimistic digital-space imagery, and glossy technological abstraction",
+        "A sleek turn-of-the-millennium futuristic aesthetic with clean white or deep-blue space, transparent forms, polished chrome, luminous cyan, and playful but sophisticated geometry"
+      ],
+      "textures": [
+        "Liquid chrome, translucent plastic, smooth glass, pearlescent highlights, and polished digital surfaces",
+        "Glossy synthetic material, refractive glass, metallic gradients, and subtle digital grain"
+      ]
+    },
+
+    {
+      "id": "afrofuturism",
+      "weight": 0.7,
+      "mediums": [
+        "An abstract Afrofuturist speculative artwork",
+        "A futuristic mixed-media composition"
+      ],
+      "looks": [
+        "Afrofuturist visual language combining advanced speculative technology with bold geometric pattern, solar and celestial motifs, metallic surfaces, rich black, gold, cobalt and crimson, and monumental futuristic design",
+        "A speculative future aesthetic drawing from African geometric design traditions through abstract pattern, luminous technology, warm metallic tones, cosmic scale, and sophisticated contemporary composition"
+      ],
+      "textures": [
+        "Metallic surfaces, intricate geometric pattern, woven-like abstract texture, luminous details, and deep atmospheric colour",
+        "Polished futuristic material combined with tactile patterned surfaces, subtle grain, and radiant metallic accents"
+      ]
+    },
+
+    {
+      "id": "dieselpunk",
+      "weight": 0.7,
+      "mediums": [
+        "A cinematic dieselpunk artwork",
+        "An industrial retrofuturist composition"
+      ],
+      "looks": [
+        "Dieselpunk with massive industrial geometry, steel, soot, brass, deep shadow, warm amber light, and heavy alternate-history futurism",
+        "Industrial retrofuture using dark steel, weathered metal, mechanical abstraction, smoke, hard directional light, and restrained orange-red accents"
+      ],
+      "textures": [
+        "Weathered steel, soot, oil, brass, scratched metal, smoke, and industrial wear",
+        "Riveted surfaces, oxidized metal, matte grime, atmospheric dust, and warm reflected light"
+      ]
+    },
+
+    {
+      "id": "biopunk",
+      "weight": 0.85,
+      "mediums": [
+        "A biopunk speculative artwork",
+        "An organic science-fiction 3D artwork"
+      ],
+      "looks": [
+        "Biopunk aesthetics with synthetic biological structures, translucent tissue-like forms, laboratory precision, dark organic geometry, fluorescent green or cyan light, and unsettling technological elegance",
+        "A biotechnology-inspired environment where engineered organic structures merge with machinery-like geometry, using deep shadow, wet surfaces, translucent membranes, and controlled luminous colour"
+      ],
+      "textures": [
+        "Translucent membranes, wet organic surfaces, cellular patterns, synthetic fibres, glass, and subtle fluorescence",
+        "Microscopic biological texture, polished laboratory surfaces, soft mist, and luminous internal structures"
+      ]
+    },
+
+    {
+      "id": "solarpunk",
+      "weight": 0.75,
+      "mediums": [
+        "A luminous solarpunk artwork",
+        "A bright speculative environmental composition"
+      ],
+      "looks": [
+        "Solarpunk with radiant natural light, advanced technology integrated into organic geometry, fresh greens, teal, warm gold, clear atmosphere, and optimistic futuristic elegance",
+        "A bright ecological future using abundant sunlight, clean geometric structures, vegetation-like abstract forms, reflective water, warm illumination, and sophisticated natural colour"
+      ],
+      "textures": [
+        "Luminous glass, organic surfaces, foliage-like geometry, soft atmospheric haze, and sparkling water-like reflections",
+        "Clean materials, natural texture, warm light bloom, translucent surfaces, and subtle environmental detail"
+      ]
+    },
+
+    {
+      "id": "neo-expressionism",
+      "weight": 0.85,
+      "mediums": [
+        "A neo-expressionist digital painting",
+        "An experimental mixed-media expressionist artwork"
+      ],
+      "looks": [
+        "Neo-expressionist abstraction with raw energetic forms, bold gestural marks, emotional distortion, black space, intense red, cobalt, ochre or fluorescent accents, and deliberately imperfect composition",
+        "An emotionally charged abstract composition using aggressive strokes, scratched forms, layered colour, irregular geometry, and high visual energy"
+      ],
+      "textures": [
+        "Heavy brush-like digital marks, scratches, rough pigment texture, scraped surfaces, and layered paint-like material",
+        "Raw mixed-media texture, gestural marks, uneven surfaces, grain, and expressive colour buildup"
+      ]
+    },
+
+    {
+      "id": "ink-noir",
+      "weight": 1.0,
+      "mediums": [
+        "An ink-noir abstract artwork",
+        "A monochrome mixed-media ink composition"
+      ],
+      "looks": [
+        "Ink noir with dominant black, expressive flowing forms, large areas of negative space, stark white highlights, and a single restrained crimson, cyan or gold accent",
+        "Dark abstract ink work using dry-brush shapes, flowing black masses, sharp contrast, sparse colour, and elegant visual tension"
+      ],
+      "textures": [
+        "Dry brush, bleeding ink, rough paper texture, splatter used sparingly, and deep matte black",
+        "Layered ink wash, scratched marks, tactile paper grain, and crisp graphic edges"
+      ]
+    },
+
+    {
+      "id": "etching-engraving",
+      "weight": 0.7,
+      "mediums": [
+        "A surreal engraved illustration",
+        "A contemporary digital artwork inspired by antique etching"
+      ],
+      "looks": [
+        "Dense engraving aesthetics with intricate cross-hatching, strange scientific or celestial geometry, black ink, aged ivory or deep-black reversal, and surreal impossible imagery",
+        "A modernized occult-scientific etching style using extremely fine linework, technical detail, astronomical forms, and selective luminous colour introduced into otherwise monochrome imagery"
+      ],
+      "textures": [
+        "Fine cross-hatching, engraved line texture, aged paper grain, scratched marks, and detailed stippling",
+        "Dense black linework, etched surfaces, subtle paper wear, and occasional luminous digital overlay"
+      ]
+    },
+
+    {
+      "id": "low-poly-surrealism",
+      "weight": 0.7,
+      "mediums": [
+        "A low-poly surreal 3D artwork",
+        "A geometric digital sculpture composition"
+      ],
+      "looks": [
+        "Low-poly surrealism with crystalline simplified geometry, impossible landscapes, faceted forms, deep shadows, saturated highlights, and strange artificial scale",
+        "A surreal geometric world built from angular polygonal forms, smooth colour gradients, dramatic lighting, and deliberately artificial spatial relationships"
+      ],
+      "textures": [
+        "Faceted matte surfaces, crystalline edges, subtle reflections, clean gradients, and atmospheric depth",
+        "Polygonal surfaces, low-detail geometry, soft ambient occlusion, and selected glossy facets"
+      ]
+    },
+
+    {
+      "id": "abstract-geometry",
+      "weight": 1.0,
+      "mediums": [
+        "A sophisticated abstract geometric artwork",
+        "A minimalist digital composition"
+      ],
+      "looks": [
+        "Abstract geometry using bold spatial relationships, large simple forms, strong negative space, deep colour, and one or two luminous accents",
+        "Geometric abstraction with precise circles, planes, arcs and intersecting forms, cinematic depth, elegant asymmetry, and controlled high-contrast colour"
+      ],
+      "textures": [
+        "Smooth matte surfaces, subtle grain, translucent overlays, and occasional reflective accents",
+        "Clean geometry with fine surface texture, soft depth gradients, and restrained material variation"
+      ]
+    },
+
+    {
+      "id": "generative-geometry",
+      "weight": 1.05,
+      "mediums": [
+        "A generative geometric digital artwork",
+        "A computational abstract composition"
+      ],
+      "looks": [
+        "Generative geometry with algorithmic repetition, evolving patterns, recursive structure, luminous lines, controlled complexity, and deep spatial layering",
+        "Computational abstraction built from parametric curves, particles, grids and emergent geometric structures with rich dark backgrounds and radiant accents"
+      ],
+      "textures": [
+        "Extremely fine procedural linework, particles, luminous nodes, and smooth depth gradients",
+        "Layered algorithmic patterns, subtle noise, translucent structures, and precise digital detail"
+      ]
+    },
+
+    {
+      "id": "liquid-abstraction",
+      "weight": 1.05,
+      "mediums": [
+        "A high-detail liquid abstract artwork",
+        "A fluid 3D composition",
+        "An abstract macro photographic artwork"
+      ],
+      "looks": [
+        "Liquid abstraction with flowing translucent forms, dark reflective depth, ink-like colour movement, jewel-tone highlights, and elegant organic motion",
+        "Fluid surrealism using swirling glass-like material, marbled colour, deep shadow, iridescent edges, and smooth continuous forms"
+      ],
+      "textures": [
+        "Liquid glass, oil-like iridescence, translucent layers, rippling reflections, and smooth fluid gradients",
+        "Marbled fluid detail, reflective surfaces, bubbles used sparingly, and flowing colour boundaries"
+      ]
+    },
+
+    {
+      "id": "macro-abstraction",
+      "weight": 1.05,
+      "mediums": [
+        "An extreme macro abstract photographic artwork",
+        "A highly detailed macro-inspired digital artwork"
+      ],
+      "looks": [
+        "Macro abstraction using an extreme close view of glass, crystal, liquid, smoke, metal or unknown material until the subject becomes an abstract landscape of light and texture",
+        "An ambiguous close-up environment built from microscopic surface detail, shallow depth, dramatic light, unusual materials, and rich abstract colour"
+      ],
+      "textures": [
+        "Extreme material detail, shallow depth of field, microscopic imperfections, soft bokeh, and luminous reflections",
+        "Crystal edges, fluid surfaces, fine particulate detail, refracted light, and tactile macro texture"
+      ]
+    },
+
+    {
+      "id": "analog-scifi",
+      "weight": 0.9,
+      "mediums": [
+        "A surreal analog science-fiction artwork",
+        "A cinematic retro-photographic speculative composition"
+      ],
+      "looks": [
+        "Analog science fiction with strange obsolete technology-like geometry, dark space-age environments, filmic colour shifts, subdued futuristic forms, and mysterious retro-speculative atmosphere",
+        "A surreal future imagined through old photographic technology, using muted cinematic colour, unexpected technological forms, deep shadows, and subtle luminous displays without readable text"
+      ],
+      "textures": [
+        "35mm-style grain, halation, slight colour drift, optical imperfections, and aged photographic surfaces",
+        "Analog noise, subtle film scratches, soft lens bloom, faded blacks, and occasional chrome detail"
+      ]
+    },
+
+    {
+      "id": "biomechanical-surrealism",
+      "weight": 1.0,
+      "mediums": [
+        "A biomechanical surreal digital artwork",
+        "An organic-mechanical 3D composition"
+      ],
+      "looks": [
+        "Biomechanical surrealism where flowing organic geometry merges with dark machinery, ribbed structures, black metal, translucent membranes, and cold luminous accents",
+        "An alien fusion of mechanical and biological forms using complex repeating structures, deep shadow, metallic surfaces, bone-like geometry, and subtle bioluminescence"
+      ],
+      "textures": [
+        "Ribbed organic structures, dark metal, translucent membranes, polished surfaces, and intricate mechanical detail",
+        "Bone-like matte surfaces, oily reflections, fine tubing-like geometry, mist, and faint internal glow"
+      ]
+    }
+  ],
+
+  "globalInstructions": [
+    "The selected style profile is authoritative. Do not combine visual styles from different profiles.",
+    "Generate the image for the mood itself, not for an individual quotation.",
+    "The resulting background should be reusable across many different quotations sharing the same mood.",
+    "Do not infer or depict the semantic subject matter of any specific quotation.",
+    "Mood and visual style are independent. Serene does not imply pastel, watercolor, softness, or bright colours.",
+    "Interpret the mood through composition, light, spatial feeling, colour, texture, form, atmosphere, and intensity while preserving the chosen style.",
+    "Prefer atmospheric, abstract, environmental, textural, geometric, or non-narrative imagery over a specific story or scene.",
+    "Avoid prominent symbolic foreground objects because symbolic elements may be composited separately during final rendering.",
+    "Avoid generic fantasy concept art and generic AI illustration aesthetics.",
+    "Avoid making every spiritual, philosophical, or transcendent mood into a galaxy or outer-space scene.",
+    "Avoid making every dark mood cyberpunk.",
+    "Avoid making every psychedelic image rainbow-coloured.",
+    "Avoid obvious rectangular empty panels for quotation space.",
+    "A reserved quotation region should still contain subtle colour, atmosphere, gradients, or extremely low-detail texture.",
+    "The strongest focal element should normally remain outside the reserved quotation region.",
+    "Keep the composition suitable for repeated use behind overlaid typography.",
+    "Do not generate text or pseudo-text."
+  ],
+
+  "negativePrompt": "text, typography, letters, words, sentences, numbers, watermark, signature, logo, readable signage, pseudo-text, gibberish writing, UI, interface text, poster design, book cover layout, decorative frame, border, obvious empty rectangle, text box, people, faces, portraits, human figures, crowds, animals, cartoon characters, prominent symbolic objects, clock, door, staircase, mirror, book, skull, eye, key, hourglass, statue, vehicle, weapon, furniture, clip art, cute aesthetic, children's illustration, whimsical storybook illustration, generic watercolor, generic pastel painting, washed-out pastel aesthetic, beige lifestyle aesthetic, generic fantasy concept art, generic stock illustration, random clutter, excessive unrelated objects",
+
+  "selectionRules": {
+    "styleSelection": "Select exactly one style profile using weighted random selection from styleProfiles.",
+    "mediumSelection": "Select one medium only from the chosen style profile.",
+    "lookSelection": "Select one look only from the chosen style profile.",
+    "textureSelection": "Select one texture only from the chosen style profile.",
+    "quoteLayoutSelection": "Select exactly one quote layout using weighted random selection from quoteLayouts.",
+    "crossStyleMixing": false,
+    "randomness": "Random selections must be performed by application code, not delegated to the language model.",
+    "overlayBehavior": "When quoteLayouts.id is overlay, do not add any other instruction about leaving blank or quiet space for quotation text.",
+    "reservedAreaBehavior": "For all layouts except overlay, the reserved area must be low-detail but visually continuous with the rest of the image.",
+    "safeMargins": "Quote space refers to an interior region. Do not interpret left, right, top or bottom as extending typography space all the way to the canvas edge."
+  }
+}

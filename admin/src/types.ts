@@ -360,6 +360,8 @@ export interface ImageGenerationItem {
   tagName: string
   facet: TagFacet
   kind: ImageKind
+  /** The style profile id from the image's prompt recipe. */
+  style?: string | null
   status: ImageGenerationItemStatus
   prompt?: string | null
   seed?: number | null

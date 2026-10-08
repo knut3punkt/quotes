@@ -243,7 +243,10 @@ export function ImageGenerationPanel() {
                         {FACET_LABELS[item.facet]}
                       </span>
                       <span className="font-medium">{item.tagName}</span>
-                      <span className="text-xs text-muted-foreground">{KIND_LABELS[item.kind]}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {KIND_LABELS[item.kind]}
+                        {item.style && ` · ${item.style}`}
+                      </span>
                       <span className="ml-auto flex items-center gap-2">
                         {duration != null && (
                           <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(duration)}</span>
