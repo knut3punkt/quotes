@@ -13,6 +13,7 @@ import { FACET_LABELS, TAG_FACETS, facetChipClassName } from '../tagStyles'
 import type { TagBreadth, TagFacet, TagSummary } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ImageGenerationPanel } from './ImageGenerationPanel'
+import { TagPicker } from './TagPicker'
 
 const FILTER_DEBOUNCE_MILLIS = 250
 
@@ -74,6 +75,8 @@ export function TagsPage() {
     for (const list of Object.values(byFacet)) list.sort((a, b) => a.name.localeCompare(b.name))
     return byFacet
   }, [allTags])
+
+  const tagsById = useMemo(() => new Map(allTags.map((tag) => [tag.id, tag])), [allTags])
 
   const replaceTag = (updated: TagSummary) => {
     setTags((prev) => prev.map((tag) => (tag.id === updated.id ? updated : tag)))
@@ -272,21 +275,13 @@ export function TagsPage() {
                 </TableCell>
                 <TableCell className="align-top">
                   <div className="flex items-center gap-1">
-                    <select
-                      className="h-7 max-w-[180px] rounded-md border border-input bg-background px-1 text-xs"
-                      value={mergeTargets[tag.id] ?? ''}
-                      onChange={(event) => setMergeTargets((prev) => ({ ...prev, [tag.id]: event.target.value }))}
-                      aria-label={`Tag to merge ${tag.name} into`}
-                    >
-                      <option value="">Choose tag…</option>
-                      {tagsByFacet[tag.facet]
-                        .filter((option) => option.id !== tag.id)
-                        .map((option) => (
-                          <option key={option.id} value={String(option.id)}>
-                            {option.name} ({option.usageCount})
-                          </option>
-                        ))}
-                    </select>
+                    <TagPicker
+                      options={tagsByFacet[tag.facet]}
+                      excludeId={tag.id}
+                      value={tagsById.get(Number(mergeTargets[tag.id])) ?? null}
+                      onChange={(target) => setMergeTargets((prev) => ({ ...prev, [tag.id]: String(target.id) }))}
+                      ariaLabel={`Tag to merge ${tag.name} into`}
+                    />
                     <Button
                       type="button"
                       size="sm"
