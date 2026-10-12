@@ -34,3 +34,10 @@ ares-launch --device <device-name> no.esotericgames.quotes
 
 `..\..\scripts\deploy-webos.ps1 [-Device <device-name>]` runs all of the above in one go (build, package, install,
 launch). The device defaults to `mammas`.
+
+## Screensaver
+
+webOS has no public API to keep the screen on, so on webOS the app vetoes the screensaver the way Kodi does: it
+subscribes to `com.webos.service.tvpower/power/registerScreenSaverRequest` and answers each request on
+`responseScreenSaverRequest` with `ack: false` (`src/platform/webos.ts`), but only while the app is visible. It is
+not an official API: if a firmware denies the call, the console logs the failure and the screensaver comes on as usual.

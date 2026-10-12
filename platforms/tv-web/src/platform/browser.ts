@@ -1,3 +1,4 @@
 import type { PlatformAdapter } from './types'
 
-export const browserAdapter: PlatformAdapter = { name: 'browser' }
+// A browser has no TV screensaver to hold off.
+export const browserAdapter: PlatformAdapter = { name: 'browser', keepScreenOn: () => {} }
