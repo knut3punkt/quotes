@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chooseIconStyle,
   chooseTextStyle,
+  ICON_RING_CONTRAST,
   MAX_BACKDROP_OPACITY,
+  MAX_ICON_GLASS_OPACITY,
   MIN_BACKDROP_OPACITY,
+  MIN_ICON_GLASS_OPACITY,
   QUIET_MEAN_DETAIL,
   QUIET_PEAK_DETAIL,
   TARGET_CONTRAST,
@@ -96,5 +100,28 @@ describe('regionStats', () => {
     expect(regionStats(field, wholeStage).peakDetail).toBe(0.01)
     // Columns 0-1 of 4: half the area is the busy column.
     expect(regionStats(field, { x: 0, y: 0, width: 2 / 16, height: 1 }).peakDetail).toBe(0.5)
+  })
+})
+
+describe('chooseIconStyle', () => {
+  it('rings the icons in a tone that stands out from every uniform grey, over glass within its range', () => {
+    for (let luminance = 0; luminance <= 1; luminance += 0.05) {
+      const style = chooseIconStyle(fieldFrom(() => ({ luminance, detail: 0.01 })), colors, wholeStage)
+      expect(style.contrast, `luminance ${luminance}`).toBeGreaterThanOrEqual(ICON_RING_CONTRAST)
+      expect(style.opacity).toBeGreaterThanOrEqual(MIN_ICON_GLASS_OPACITY)
+      expect(style.opacity).toBeLessThanOrEqual(MAX_ICON_GLASS_OPACITY)
+    }
+  })
+
+  it('uses a light ring on a dark background and a dark one on a light background', () => {
+    expect(chooseIconStyle(fieldFrom(() => ({ luminance: 0.03, detail: 0 })), colors, wholeStage).tone).toBe('light')
+    expect(chooseIconStyle(fieldFrom(() => ({ luminance: 0.85, detail: 0 })), colors, wholeStage).tone).toBe('dark')
+  })
+
+  it('makes the glass more opaque the busier the scene around the icons', () => {
+    const quiet = chooseIconStyle(fieldFrom(() => ({ luminance: 0.1, detail: 0 })), colors, wholeStage)
+    const busy = chooseIconStyle(fieldFrom(() => ({ luminance: 0.1, detail: 0.2 })), colors, wholeStage)
+    expect(quiet.opacity).toBe(MIN_ICON_GLASS_OPACITY)
+    expect(busy.opacity).toBe(MAX_ICON_GLASS_OPACITY)
   })
 })

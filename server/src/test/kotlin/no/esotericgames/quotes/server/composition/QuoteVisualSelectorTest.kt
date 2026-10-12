@@ -11,12 +11,6 @@ import kotlin.test.assertTrue
 
 class QuoteVisualSelectorTest {
 
-    // "noir" and "neon" share a group; "pastel" shares none with either.
-    private val testAffinity = StyleAffinity.parse(
-        """{"version": "test-v1", "description": "test", "groups": [{"id": "night", "description": "", "styles": ["noir", "neon"]}]}""",
-        setOf("noir", "neon", "pastel"),
-    )
-
     @Test
     fun `no candidates gives no background and no elements`() {
         val visuals = selector(1).select(QuoteVisualCandidates.EMPTY)
@@ -47,88 +41,46 @@ class QuoteVisualSelectorTest {
     }
 
     @Test
-    fun `there is at most one element, from one of the motif tags`() {
-        val elements = (1..6).flatMap { tagId -> listOf(element(imageId = tagId * 10, tagId), element(tagId * 10 + 1, tagId)) }
-        repeat(100) { seed ->
-            val visuals = selector(seed).select(QuoteVisualCandidates(emptyList(), elements))
-            assertEquals(1, visuals.elements.size)
-            assertTrue(visuals.elements.single() in elements)
-            assertNull(visuals.styleFit)
-        }
-        val withBackground = selector(1).select(QuoteVisualCandidates(listOf(background(1, 10)), elements))
-        assertEquals(1, withBackground.elements.size)
-    }
-
-    @Test
-    fun `the motif tag whose style fits the background wins`() {
-        val backgrounds = listOf(background(imageId = 1, tagId = 10, style = "noir"))
-        val elements = listOf(
-            element(imageId = 2, tagId = 20, style = "pastel"),
-            element(imageId = 3, tagId = 21, style = "neon"),
-            element(imageId = 4, tagId = 22, style = null),
-        )
+    fun `every motif tag gets one of its images, in candidate order`() {
+        val elements = listOf(element(imageId = 1, tagId = 30), element(2, 20), element(3, 20), element(4, 10))
         repeat(50) { seed ->
-            val visuals = selector(seed).select(QuoteVisualCandidates(backgrounds, elements))
-            assertEquals(3, visuals.elements.single().imageId)
-            assertEquals(1, visuals.styleFit)
+            val visuals = selector(seed).select(QuoteVisualCandidates(listOf(background(9, 90)), elements))
+            assertEquals(listOf(30, 20, 10), visuals.elements.map { it.tagId })
+            assertTrue(visuals.elements[1].imageId in setOf(2, 3))
         }
     }
 
     @Test
-    fun `the background image that fits a motif best is chosen among the mood tag's images`() {
-        val backgrounds = listOf(
-            background(imageId = 1, tagId = 10, style = "pastel"),
-            background(imageId = 2, tagId = 10, style = "noir"),
-            background(imageId = 3, tagId = 10, style = null),
-        )
-        val elements = listOf(element(imageId = 4, tagId = 20, style = "noir"))
-        repeat(50) { seed ->
-            val visuals = selector(seed).select(QuoteVisualCandidates(backgrounds, elements))
-            assertEquals(2, visuals.background!!.imageId)
-            assertEquals(SAME_STYLE_FIT, visuals.styleFit)
-        }
-    }
-
-    @Test
-    fun `a motif tag's best-fitting image is used`() {
-        val backgrounds = listOf(background(imageId = 1, tagId = 10, style = "noir"))
-        val elements = listOf(element(imageId = 2, tagId = 20, style = null), element(imageId = 3, tagId = 20, style = "neon"))
-        repeat(50) { seed ->
-            assertEquals(3, selector(seed).select(QuoteVisualCandidates(backgrounds, elements)).elements.single().imageId)
-        }
-    }
-
-    @Test
-    fun `an unfitting pair is still shown when nothing fits, spread over the candidates`() {
-        val backgrounds = listOf(background(imageId = 1, tagId = 10, style = "noir"))
-        val elements = listOf(element(imageId = 2, tagId = 20, style = "pastel"), element(imageId = 3, tagId = 21, style = null))
+    fun `a motif tag's images are all used across showings`() {
+        val elements = listOf(element(imageId = 1, tagId = 10), element(2, 10), element(3, 10))
         val picked = (0 until 100).map { seed ->
-            val visuals = selector(seed).select(QuoteVisualCandidates(backgrounds, elements))
-            assertEquals(0, visuals.styleFit)
-            visuals.elements.single().imageId
+            selector(seed).select(QuoteVisualCandidates(emptyList(), elements)).elements.single().imageId
         }
-        assertEquals(setOf(2, 3), picked.toSet())
+        assertEquals(setOf(1, 2, 3), picked.toSet())
     }
 
     @Test
-    fun `equally fitting motif tags share the draws`() {
-        val backgrounds = listOf(background(imageId = 1, tagId = 10, style = "noir"))
-        // Tag 20 has three fitting images, tag 21 one: each tag still gets about half.
-        val elements = (2..4).map { element(imageId = it, tagId = 20, style = "neon") } +
-            element(imageId = 5, tagId = 21, style = "neon")
-        val tag21Share = (0 until 200).count { seed ->
-            selector(seed).select(QuoteVisualCandidates(backgrounds, elements)).elements.single().tagId == 21
-        } / 200.0
-        assertTrue(tag21Share in 0.35..0.65, "tag 21 picked in ${tag21Share * 100}% of draws")
+    fun `motifs are capped, keeping the first tags`() {
+        val elements = (1..6).map { element(imageId = it, tagId = it * 10) }
+        val visuals = selector(1).select(QuoteVisualCandidates(emptyList(), elements))
+        assertEquals((1..MAX_MOTIF_ICONS).map { it * 10 }, visuals.elements.map { it.tagId })
+    }
+
+    @Test
+    fun `motifs are kept without a background`() {
+        val elements = listOf(element(imageId = 1, tagId = 10), element(2, 20))
+        val visuals = selector(1).select(QuoteVisualCandidates(emptyList(), elements))
+        assertNull(visuals.background)
+        assertEquals(listOf(1, 2), visuals.elements.map { it.imageId })
     }
 
     @Test
     fun `grouping keeps an image once per quote and splits backgrounds from elements`() {
         val rows = listOf(
-            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10)),
-            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10)),
-            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 2, tagId = 20)),
-            CandidateRow(quoteId = 2, excerptId = null, element(imageId = 2, tagId = 20)),
+            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10), relevance = 3),
+            CandidateRow(quoteId = 1, excerptId = null, background(imageId = 1, tagId = 10), relevance = 3),
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 2, tagId = 20), relevance = 3),
+            CandidateRow(quoteId = 2, excerptId = null, element(imageId = 2, tagId = 20), relevance = 2),
         )
 
         val grouped = groupVisualCandidates(rows, shownExcerpts = mapOf(1 to null, 2 to null))
@@ -142,10 +94,10 @@ class QuoteVisualSelectorTest {
     @Test
     fun `a shown excerpt keeps its own and whole-quotation tags but not other excerpts' tags`() {
         val rows = listOf(
-            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 1, tagId = 10)),
-            CandidateRow(quoteId = 1, excerptId = 100, element(imageId = 2, tagId = 20)),
-            CandidateRow(quoteId = 1, excerptId = 101, element(imageId = 3, tagId = 30)),
-            CandidateRow(quoteId = 2, excerptId = 200, element(imageId = 4, tagId = 40)),
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 1, tagId = 10), relevance = 3),
+            CandidateRow(quoteId = 1, excerptId = 100, element(imageId = 2, tagId = 20), relevance = 3),
+            CandidateRow(quoteId = 1, excerptId = 101, element(imageId = 3, tagId = 30), relevance = 3),
+            CandidateRow(quoteId = 2, excerptId = 200, element(imageId = 4, tagId = 40), relevance = 3),
         )
 
         val grouped = groupVisualCandidates(rows, shownExcerpts = mapOf(1 to 100, 2 to null))
@@ -154,9 +106,24 @@ class QuoteVisualSelectorTest {
         assertEquals(listOf(4), grouped.getValue(2).elements.map { it.imageId })
     }
 
-    private fun selector(seed: Int) = QuoteVisualSelector(Random(seed), testAffinity)
+    @Test
+    fun `elements are ordered by their tag's highest relevance, then by tag name`() {
+        val rows = listOf(
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 1, tagId = 10, tagName = "sea"), relevance = 2),
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 2, tagId = 20, tagName = "lamp"), relevance = 2),
+            // Tag 30 is central through the excerpt, though only significant through the whole quotation.
+            CandidateRow(quoteId = 1, excerptId = null, element(imageId = 3, tagId = 30, tagName = "seed"), relevance = 2),
+            CandidateRow(quoteId = 1, excerptId = 100, element(imageId = 3, tagId = 30, tagName = "seed"), relevance = 3),
+        )
 
-    private fun background(imageId: Int, tagId: Int, style: String? = null) = SelectedBackground(
+        val grouped = groupVisualCandidates(rows, shownExcerpts = mapOf(1 to 100))
+
+        assertEquals(listOf(3, 2, 1), grouped.getValue(1).elements.map { it.imageId })
+    }
+
+    private fun selector(seed: Int) = QuoteVisualSelector(Random(seed))
+
+    private fun background(imageId: Int, tagId: Int) = SelectedBackground(
         imageId = imageId,
         tagId = tagId,
         tagName = "mood $tagId",
@@ -165,18 +132,18 @@ class QuoteVisualSelectorTest {
         meanLuminance = 0.3,
         dominantColors = emptyList(),
         layout = BackgroundLayout(gridColumns = 0, gridRows = 0, cells = emptyList(), calmRegion = null, textTone = "light"),
-        style = style,
+        style = null,
         quoteLayout = null,
     )
 
-    private fun element(imageId: Int, tagId: Int, style: String? = null) = SelectedElement(
+    private fun element(imageId: Int, tagId: Int, tagName: String = "motif $tagId") = SelectedElement(
         imageId = imageId,
         tagId = tagId,
-        tagName = "motif $tagId",
+        tagName = tagName,
         width = 1024,
         height = 1024,
         dominantColors = emptyList(),
         contentBox = NormalizedRect(0.1, 0.1, 0.8, 0.8),
-        style = style,
+        style = null,
     )
 }

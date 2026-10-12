@@ -9,6 +9,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
+import no.esotericgames.quotes.server.composition.MAX_MOTIF_ICONS
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -65,6 +66,9 @@ class ApplicationTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
         val quotes = response.body<List<PublicQuoteResponse>>()
         assertTrue(quotes.size <= 5, "expected at most 5 quotes, got ${quotes.size}")
-        assertTrue(quotes.all { it.visuals.elements.size <= 1 }, "expected at most one motif element per quote")
+        assertTrue(
+            quotes.all { it.visuals.elements.size <= MAX_MOTIF_ICONS },
+            "expected at most $MAX_MOTIF_ICONS motif elements per quote",
+        )
     }
 }

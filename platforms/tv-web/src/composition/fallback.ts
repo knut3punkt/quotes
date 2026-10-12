@@ -30,7 +30,7 @@ function toHex(rgb: Rgb): string {
 
 /**
  * A deep gradient for a quote without a mood image (docs/features/quote-composition.md, "Fallback").
- * Its hue comes from the collage elements when there are any, so the screen still feels of a piece.
+ * Its hue comes from the motif elements when there are any, so the screen still feels of a piece.
  * It also yields a luminance field, so layout and contrast run exactly as over a real background.
  */
 export function fallbackBackground(elements: SelectedElement[], rng: Rng): FallbackBackground {

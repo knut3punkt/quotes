@@ -77,10 +77,9 @@ text as `prompt`, so provenance never depends on the generator staying the same 
 * `quoteLayouts` is optional. When a recipe has them, one is picked by weight and supplies both `{{composition}}`
   and `{{quoteInstruction}}`.
 * `prompt_ingredients` holds `style`, one entry per list (`medium`, `look`, `texture`, or `medium`, `treatment`,
-  `edgeTreatment`), and `quoteLayout` (the layout id) when there is one. Composition reads `style` to pair
-  backgrounds with motifs, and `quoteLayout` to place the quote (`quote-composition.md`). So style and layout ids
-  are part of that contract: renaming one in a new recipe version means updating `style-affinity` and the TV
-  layouts too.
+  `edgeTreatment`), and `quoteLayout` (the layout id) when there is one. Composition reads `quoteLayout` to place
+  the quote (`quote-composition.md`), and shows `style` in the TV's `?debug`. So layout ids are part of that
+  contract: renaming one in a new recipe version means updating the TV layouts too.
 * `StyledPromptRecipe.parse` refuses a recipe that:
   * doesn't name exactly one input, or never uses it;
   * uses a placeholder it doesn't fill, or never uses one of its style lists;

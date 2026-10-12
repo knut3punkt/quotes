@@ -36,7 +36,8 @@ speculatively — only when a specific platform is explicitly requested.
   a random batch of quotes from the server's `/api/quotes/random` endpoint and displays one at a
   time, full-screen, with conditional author/source fields, 30s auto-advance, and D-pad/arrow-key
   navigation with wrap-around. Each screen is composed by `src/composition/` from the server-chosen
-  mood background and motif element (layout from the background's quote layout, text contrast, fallback gradient), rendered by
+  mood background and motifs (quote placed by the background's quote layout, motifs as round icons in the
+  calmest corner dock, text contrast, fallback gradient), rendered by
   `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. `src/platform/` provides `webos`/`browser` detection for future
   platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
@@ -45,8 +46,8 @@ speculatively — only when a specific platform is explicitly requested.
   `GET /api/quotes/random` endpoint (random quotes with author/source, for TV frontends; a quote with
   qualifying excerpts is shown as one of them, and a quote longer than `publicQuotes.maxFullQuoteWords`
   without one is skipped rather than shown in full),
-  each with `visuals` chosen by `composition/` (a mood background and at most one motif element, paired
-  by style affinity).
+  each with `visuals` chosen by `composition/` (a mood background and one element per motif tag, which the
+  TV shows as a row of round icons).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
   `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
   stages results in `imported_quotes`. `extraction/`, `interpretation/` and `tagging/` are the
@@ -189,9 +190,11 @@ contrast), first read:
 
 Important principles:
 
-* The server chooses *which* images a showing gets (`server/.../composition/`, pairing background and motif by the
-  style-affinity mapping in `resources/composition/`); the TV app decides *where* they go and
-  how the text is coloured (`platforms/tv-web/src/composition/`). Keep that split.
+* The server chooses *which* images a showing gets (`server/.../composition/`: a random background of a random mood
+  tag, and every motif tag's image); the TV app decides *where* they go and how the text and motif icons are
+  coloured (`platforms/tv-web/src/composition/`). Keep that split.
+* Motifs are shown as orderly icons in a dock from a corner, chosen deterministically (calmest clear dock), never
+  scattered over the background.
 * Composition code is pure with an injected random source, so it is tested deterministically.
 * Text must reach the contrast target against the worst part of the background under it. On a quiet region keep bare,
   tinted text (with a halo when marginal). Where the region is textured (by `detail`) or low-contrast, use the frosted,

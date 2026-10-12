@@ -56,7 +56,12 @@ fun selectVisualCandidates(shownExcerpts: Map<Int, Int?>): Map<Int, QuoteVisualC
         }
         .mapNotNull { row ->
             row.toCandidateImage()?.let {
-                CandidateRow(row[QuoteTagAssignments.quoteId], row[QuoteTagAssignments.excerptId], it)
+                CandidateRow(
+                    quoteId = row[QuoteTagAssignments.quoteId],
+                    excerptId = row[QuoteTagAssignments.excerptId],
+                    image = it,
+                    relevance = row[QuoteTagAssignments.relevance],
+                )
             }
         }
     return groupVisualCandidates(rows, shownExcerpts)

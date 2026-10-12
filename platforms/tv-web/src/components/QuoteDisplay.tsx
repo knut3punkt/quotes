@@ -4,6 +4,7 @@ import type { TextAlign } from '../composition/layout'
 import type { TextStyle } from '../composition/contrast'
 import { useFitText } from '../hooks/use-fit-text'
 import type { NormalizedRect, PublicQuote } from '../types'
+import { FrostedGlass } from './FrostedGlass'
 import { percentRect } from './percent-rect'
 
 /** The backdrop's padding around the text, in em of the fitted quote font, so it scales with it. */
@@ -65,32 +66,28 @@ export function QuoteDisplay({ quote, box, align, text, background, backdropShad
     >
       <div ref={contentRef} className="relative" style={{ ...contentStyle, ...cardStyle }}>
         {backdrop && (
-          // Clipped here rather than on the card, so the stage-sized copy never counts as card overflow when
-          // the font is fitted.
-          <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: 'inherit' }}>
-            {background.kind === 'image' && (
-              <img
-                src={background.url}
-                alt=""
-                className="ken-burns absolute max-w-none object-cover"
-                style={{
-                  // Mounted at once, so its zoom starts with the background's; shown once lined up.
-                  visibility: placement ? 'visible' : 'hidden',
-                  left: -(placement?.left ?? 0),
-                  top: -(placement?.top ?? 0),
-                  width: placement?.stageWidth ?? 0,
-                  height: placement?.stageHeight ?? 0,
-                  transformOrigin: background.zoomOrigin,
-                  filter: `blur(${stageHeight * BACKDROP_BLUR}px) saturate(1.1)`,
-                }}
-              />
-            )}
-            <div className="absolute inset-0" style={{ backgroundColor: backdrop.tint, opacity: backdrop.opacity }} />
+          // The glass clips its own copy of the background, so the stage-sized copy never counts as card
+          // overflow when the font is fitted.
+          <>
+            <FrostedGlass
+              background={background}
+              copyPlacement={
+                placement && {
+                  left: -placement.left,
+                  top: -placement.top,
+                  width: placement.stageWidth,
+                  height: placement.stageHeight,
+                }
+              }
+              blurPx={stageHeight * BACKDROP_BLUR}
+              tint={backdrop.tint}
+              opacity={backdrop.opacity}
+            />
             <div
               className="absolute inset-0"
               style={{ borderRadius: 'inherit', boxShadow: `inset 0 0 0 1px ${backdrop.hairline}` }}
             />
-          </div>
+          </>
         )}
         <div className="relative">
           <p className="leading-snug font-medium">“{quote.text}”</p>
