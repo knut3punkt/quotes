@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { CompositionIcon } from '../composition/compose'
-import type { NormalizedRect, QuoteQuality, QuoteRating, RunQuality } from '../types'
 import { boundingRect, SAFE_MARGIN } from '../composition/layout'
+import type { NormalizedRect, QuoteQuality, QuoteRating, RunQuality } from '../types'
 import { chooseOverlayCorner } from './overlay-placement'
 import { verdictColor } from './verdict-colors'
 
@@ -90,7 +90,6 @@ export function QualityOverlay({ quality, rating, quoteRect, icons, stageWidth, 
       {quality && quality.precheckFlags.length > 0 && (
         <span className="col-span-3 text-neutral-300">prechecks: {flagText(quality.precheckFlags)}</span>
       )}
-      {rating && <span className="col-span-3 text-neutral-400">OK rate · 1–5 quick rate · ← → previous/next</span>}
     </div>
   )
 }
