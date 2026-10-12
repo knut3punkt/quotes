@@ -45,7 +45,8 @@ speculatively — only when a specific platform is explicitly requested.
   response types and the hard-coded sample quotes. `PublicQuoteService.kt` backs the public
   `GET /api/quotes/random` endpoint (random quotes with author/source, for TV frontends; a quote with
   qualifying excerpts is shown as one of them, and a quote longer than `publicQuotes.maxFullQuoteWords`
-  without one is skipped rather than shown in full),
+  without one is skipped rather than shown in full; while an admin-set TV preview filter exists,
+  `TvFilterService.kt`, only quotes and excerpts matching it are returned),
   each with `visuals` chosen by `composition/` (a mood background and one element per motif tag, which the
   TV shows as a row of round icons).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
@@ -55,7 +56,7 @@ speculatively — only when a specific platform is explicitly requested.
   triggered from the admin. `quality/` is the advisory quote quality job: it gives each quote and accepted
   excerpt a verdict in a `quote_quality_runs` run (by the local model, or uploaded by an external runner
   such as a frontier model), keeps every run so runs can be compared, and never changes what the TV
-  shows. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
+  shows unless a human sets the opt-in TV preview filter. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
   mood tags, transparent collage elements for motif tags) as an admin-started background job, stores
   the PNGs under `imageGeneration.storageDir` and records them in `tag_images`; `TagImageFileService`
   serves them, downscaled and cached, at `GET /api/tag-images/{id}?width=`. `admin/` (package, not to be confused with the top-level
@@ -160,7 +161,9 @@ When implementing or modifying the quote quality job, or the TV's full-quote len
 
 Important principles:
 
-* Advisory only: verdicts are for a human to filter and act on (bulk unapprove), never a TV-facing gate.
+* Advisory only: verdicts are for a human to filter and act on (bulk unapprove), never a TV-facing gate. The only
+  exception is the TV preview filter, which a human sets and clears from the admin. It changes no data, and its
+  quality conditions match the text the TV actually shows.
 * Runs are never replaced; assessments outlive deleted quotes and excerpts (SET NULL plus a text snapshot), and runs
   are compared on `(subject_kind, subject_hash)`.
 * Model output and external uploads go through the same `QualityValidator`; prechecks are computed by the server and

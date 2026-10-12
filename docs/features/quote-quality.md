@@ -26,8 +26,9 @@ Most of the bad material came from the import itself:
 The quality job gives every quote, and every accepted excerpt, a verdict on how well it works as a TV quote. A human
 can then filter on those verdicts and act.
 
-It is **advisory only**. It never changes what the TV shows. The admin acts on verdicts with the existing bulk
-unapprove action.
+It is **advisory only**. It never changes what the TV shows by itself. The admin acts on verdicts with the existing
+bulk unapprove action. The one exception is opt-in: a human can set a TV preview filter, which limits the TV to
+matching quotes until it is cleared (see "TV preview filter").
 
 ## Subjects
 
@@ -171,6 +172,29 @@ The quotes list accepts these filters, which match the whole-quote assessment:
 
 With a run selected, each row shows the verdicts for the quote and its excerpts. The intended workflow is to filter a
 run to `reject` (then `weak`), skim, and bulk-unapprove.
+
+## TV preview filter
+
+To judge a run in the real output, the admin's approved-quotes page can send its current filters to the TV ("Show
+these on TV"). While that filter is set, `GET /api/quotes/random` returns only what matches it. Nothing is unapproved
+or otherwise changed, and clearing the filter restores the full pool. The TV app needs no change, so a packaged webOS
+app follows the filter as it is.
+
+- **Storage.** One row in `tv_quote_filter`, holding the filter as the quote list's query string, without paging.
+  `PUT /admin/tv-filter` with `{"query": "..."}` validates and sets it, `GET /admin/tv-filter` returns it (204 when
+  none), and `DELETE /admin/tv-filter` clears it. Responses include the run's label and the pool size: how many
+  quotes the TV can show, and how many of them as an excerpt.
+- **Quote-level filters** (author, source, language, search, provider, confidence, length, tag, enrichment status)
+  apply to the quote, as in the list.
+- **Quality filters apply to the shown text**, not the whole quote as in the list. An accepted excerpt is shown only if
+  its own assessment in the run matches. A quote without accepted excerpts is shown in full only if it is within the
+  length cap and its whole-quote assessment matches. A quote with accepted excerpts is never shown in full, so one
+  whose excerpts all fail is not shown. The TV's pool can therefore differ from the list's count.
+- A stored filter that no longer parses, because the filter parameters changed, is ignored with a warning rather
+  than breaking the TV.
+
+The logic is `ShowableQuotes` in `PublicQuoteService.kt`. The quality conditions shared with the list are in
+`admin/QualityFilterConditions.kt`.
 
 ## Related: the TV length cap
 

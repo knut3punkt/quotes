@@ -234,6 +234,17 @@ export interface QuoteFilter {
   qualityFlags: string[]
 }
 
+/** The TV preview filter: the TV shows only quotes, and excerpts, matching it (docs/features/quote-quality.md). */
+export interface TvFilter {
+  /** The quote list's filter parameters, as a URL query string. */
+  query: string
+  updatedAt: string
+  qualityRunLabel: string | null
+  /** How many quotes the TV can show under it, and how many of those as an excerpt. */
+  poolQuotes: number
+  poolAsExcerpt: number
+}
+
 export interface QuoteSelectionItem {
   id: number
   wordCount: number

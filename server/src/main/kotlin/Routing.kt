@@ -12,6 +12,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import io.ktor.server.util.getOrFail
 import io.ktor.server.websocket.webSocket
@@ -64,6 +65,7 @@ private val imageGenerationJson = Json { encodeDefaults = true }
 
 fun Application.configureRouting(
     publicQuoteService: PublicQuoteService,
+    tvFilterService: TvFilterService,
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
     quoteAdminService: QuoteAdminService,
@@ -179,6 +181,17 @@ fun Application.configureRouting(
         }
         get("/admin/quotes/filter-options") {
             call.respond(quoteAdminService.filterOptions())
+        }
+        get("/admin/tv-filter") {
+            val filter = tvFilterService.get()
+            if (filter == null) call.respond(HttpStatusCode.NoContent) else call.respond(filter)
+        }
+        put("/admin/tv-filter") {
+            call.respond(tvFilterService.set(call.receive<TvFilterRequest>().query))
+        }
+        delete("/admin/tv-filter") {
+            tvFilterService.clear()
+            call.respond(HttpStatusCode.NoContent)
         }
         post("/admin/quotes/bulk/unapprove") {
             val request = call.receive<BulkUnapproveQuotesRequest>()

@@ -63,6 +63,7 @@ fun Application.module() {
         anyHost()
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Patch)
         allowMethod(HttpMethod.Delete)
         allowHeader(HttpHeaders.ContentType)
@@ -88,8 +89,10 @@ fun Application.module() {
     val publicQuoteConfig = loadPublicQuoteConfig(environment.config)
     // Background work outlives the admin request that starts it, but not the application.
     val backgroundScope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
+    val publicQuoteService = PublicQuoteService(publicQuoteConfig)
     configureRouting(
-        publicQuoteService = PublicQuoteService(publicQuoteConfig),
+        publicQuoteService = publicQuoteService,
+        tvFilterService = TvFilterService(publicQuoteService),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
         quoteAdminService = QuoteAdminService(),

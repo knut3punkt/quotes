@@ -270,3 +270,14 @@ object QuoteQualityAssessments : Table("quote_quality_assessments") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+/** The TV preview filter: at most one row (id 1), an admin quote-filter query string. */
+object TvQuoteFilters : Table("tv_quote_filter") {
+    const val SINGLE_ROW_ID: Short = 1
+
+    val id = short("id")
+    val query = text("query")
+    val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone)
+
+    override val primaryKey = PrimaryKey(id)
+}

@@ -32,6 +32,7 @@ import type {
   SourceType,
   TagFacet,
   TagSummary,
+  TvFilter,
   UpdateTagRequest,
   WikiquoteAuthorSearchResponse,
   WikiquoteImportRequest,
@@ -122,6 +123,24 @@ export function fetchQuoteSelection(filter: QuoteFilter): Promise<QuoteSelection
 
 export function fetchQuoteFilterOptions(): Promise<QuoteFilterOptions> {
   return request('/admin/quotes/filter-options')
+}
+
+/** The filter as the quote list's query string, which is also how the TV filter is stored. */
+export function quoteFilterQuery(filter: QuoteFilter): string {
+  return quoteParams(filter).toString()
+}
+
+/** The active TV preview filter, or null when the TV shows every quote. */
+export async function fetchTvFilter(): Promise<TvFilter | null> {
+  return (await request<TvFilter | undefined>('/admin/tv-filter')) ?? null
+}
+
+export function saveTvFilter(query: string): Promise<TvFilter> {
+  return request('/admin/tv-filter', { method: 'PUT', body: JSON.stringify({ query }) })
+}
+
+export function clearTvFilter(): Promise<void> {
+  return request('/admin/tv-filter', { method: 'DELETE' })
 }
 
 export function fetchAuthors(): Promise<Author[]> {

@@ -44,6 +44,39 @@ export function isDefaultQuoteFilters(filters: QuoteFilterState): boolean {
   return isDefaultFilterState(filters, DEFAULT_QUOTE_FILTERS)
 }
 
+const ENRICHMENT_VALUES: readonly string[] = ['has', 'none', 'notRun']
+
+function enrichmentValues(params: URLSearchParams, name: string): Set<EnrichmentFilter> {
+  return new Set(params.getAll(name).filter((value) => ENRICHMENT_VALUES.includes(value)) as EnrichmentFilter[])
+}
+
+/**
+ * Control values for a stored filter query (as made by `quoteFilterQuery` in api.ts), the inverse of
+ * `toQuoteFilter` plus that query.
+ */
+export function quoteFilterStateFromQuery(query: string): QuoteFilterState {
+  const params = new URLSearchParams(query)
+  const minLength = params.get('minLength')
+  const maxLength = params.get('maxLength')
+  return {
+    search: params.get('search') ?? '',
+    authors: new Set(params.getAll('author')),
+    sources: new Set(params.getAll('source')),
+    languages: new Set(params.getAll('language')),
+    providers: new Set(params.getAll('provider')),
+    confidences: new Set(params.getAll('sourceConfidence')),
+    lengthOp: maxLength !== null && minLength === null ? 'below' : 'above',
+    lengthValue: minLength ?? maxLength ?? '',
+    tag: params.get('tag') ?? '',
+    excerpts: enrichmentValues(params, 'excerpts'),
+    interpretations: enrichmentValues(params, 'interpretations'),
+    tags: enrichmentValues(params, 'tags'),
+    qualityRun: params.get('qualityRun') ?? '',
+    qualityVerdicts: new Set(params.getAll('qualityVerdict')),
+    qualityFlags: new Set(params.getAll('qualityFlag')),
+  }
+}
+
 /** The server query for the given control values. Pass `search`, `lengthValue` and `tag` already debounced. */
 export function toQuoteFilter(filters: QuoteFilterState): QuoteFilter {
   const lengthThreshold = filters.lengthValue.trim() === '' ? undefined : Number(filters.lengthValue)

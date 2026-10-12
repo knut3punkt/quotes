@@ -13,6 +13,7 @@ import {
   fetchTags,
   generateQuoteInterpretations,
   generateQuoteTags,
+  quoteFilterQuery,
 } from '../api'
 import { useBulkSelection } from '../hooks/use-bulk-selection'
 import { useChunkedRun } from '../hooks/use-chunked-run'
@@ -41,6 +42,7 @@ import { QuoteBulkActions } from './QuoteBulkActions'
 import { QuotesFilterBar } from './QuotesFilterBar'
 import { QuoteTagsCell } from './QuoteTagsCell'
 import { SelectionToolbar } from './SelectionToolbar'
+import { TvFilterPanel } from './TvFilterPanel'
 
 const FILTER_DEBOUNCE_MILLIS = 250
 
@@ -185,6 +187,8 @@ export function QuotesPage() {
       debouncedTag,
     ],
   )
+
+  const currentQuery = useMemo(() => quoteFilterQuery(queryFilter), [queryFilter])
 
   const list = usePagedList({ fetchPage: fetchQuotes, filters: queryFilter, getId: quoteId })
   const selection = useBulkSelection<QuoteSelectionItem>(queryFilter)
@@ -502,6 +506,8 @@ export function QuotesPage() {
           <AlertDescription>{list.error}</AlertDescription>
         </Alert>
       )}
+
+      <TvFilterPanel currentQuery={currentQuery} options={filterOptions} onLoad={setFilters} />
 
       <QuotesFilterBar
         filters={filters}

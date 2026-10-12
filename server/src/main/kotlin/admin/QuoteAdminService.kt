@@ -18,7 +18,6 @@ import no.esotericgames.quotes.server.extraction.CONTEXT_SIGNAL_SEPARATOR
 import no.esotericgames.quotes.server.quality.toAssessmentResponse
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
-import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -36,7 +35,6 @@ import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.core.stringParam
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -273,58 +271,11 @@ private fun Query.applyFilter(filter: QuoteFilter): Query {
     }
     if (filter.tags.isNotEmpty()) query = query.andWhere { anyOf(filter.tags.map(::taggingCondition)) }
     filter.qualityRunId?.let { runId ->
-        if (filter.qualityVerdicts.isNotEmpty()) {
-            query = query.andWhere { anyOf(filter.qualityVerdicts.map { qualityVerdictCondition(runId, it) }) }
-        }
-        if (filter.qualityFlags.isNotEmpty()) {
-            query = query.andWhere {
-                exists(
-                    wholeQuoteAssessment(runId).andWhere {
-                        anyOf(
-                            filter.qualityFlags.flatMap { flag ->
-                                listOf(
-                                    ArrayContains(QuoteQualityAssessments.problems, flag),
-                                    ArrayContains(QuoteQualityAssessments.precheckFlags, flag),
-                                )
-                            },
-                        )
-                    },
-                )
-            }
-        }
+        qualityMatches(filter.qualityVerdicts, filter.qualityFlags) { wholeQuoteAssessment(runId) }
+            ?.let { condition -> query = query.andWhere { condition } }
     }
     return query
 }
-
-private const val QUALITY_SUBJECT_QUOTE = "quote"
-const val QUALITY_NOT_ASSESSED = "notAssessed"
-const val QUALITY_FAILED = "failed"
-
-/** `value = ANY(column)` for a text-array column. */
-private class ArrayContains(private val column: Column<List<String>>, private val value: String) : Op<Boolean>() {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-        queryBuilder.append(stringParam(value))
-        queryBuilder.append(" = ANY(")
-        queryBuilder.append(column)
-        queryBuilder.append(")")
-    }
-}
-
-/** The outer query's whole-quote assessment in [runId], for use in a correlated `EXISTS`. */
-private fun wholeQuoteAssessment(runId: Int): Query =
-    QuoteQualityAssessments.select(QuoteQualityAssessments.id).where {
-        (QuoteQualityAssessments.runId eq runId) and
-            (QuoteQualityAssessments.quoteId eq Quotes.id) and
-            (QuoteQualityAssessments.subjectKind eq QUALITY_SUBJECT_QUOTE)
-    }
-
-private fun qualityVerdictCondition(runId: Int, verdict: String): Op<Boolean> = when (verdict) {
-    QUALITY_NOT_ASSESSED -> notExists(wholeQuoteAssessment(runId))
-    QUALITY_FAILED -> exists(wholeQuoteAssessment(runId).andWhere { QuoteQualityAssessments.status eq "failed" })
-    else -> exists(wholeQuoteAssessment(runId).andWhere { QuoteQualityAssessments.verdict eq verdict })
-}
-
-private fun anyOf(conditions: List<Op<Boolean>>): Op<Boolean> = conditions.reduce { acc, op -> acc or op }
 
 private fun idCondition(column: Column<Int?>, keys: Set<IdKey>): Op<Boolean> {
     val ids = keys.filterIsInstance<IdKey.Id>().map { it.id }
