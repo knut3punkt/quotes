@@ -77,22 +77,29 @@ function App() {
   // flicker off between quotes. While it is on, quotes only change when you rate them or step on.
   const [rating, setRating] = useState<{ quoteKey: string; rating: QuoteRating } | null>(null)
   const ratingMode = rating !== null
-  const { currentIndex, currentQuote, next, previous } = useQuoteCarousel(quotes, !ratingMode)
+  const { currentIndex, currentQuote, next, previous, restart } = useQuoteCarousel(quotes, !ratingMode)
   const stage = useStageSize()
+  // Bumped for every batch loaded with Down, so the new batch's first quote cross-fades in like any other.
+  const [batch, setBatch] = useState(0)
+  // In rating mode the batch is topped up as it runs out (see below); a new batch may have more to top up with.
+  const refilling = useRef(false)
+  const exhausted = useRef(false)
+
+  const showBatch = useCallback((fetched: PublicQuote[]) => {
+    setQuotes(fetched)
+    // Composing is cheap arithmetic; doing every quote up front lets their images preload.
+    setCompositions(fetched.map((quote) => ({ version: 0, composition: compose(quote.visuals) })))
+    setStatus('ready')
+  }, [])
 
   useEffect(() => {
     fetchRandomQuotes(BATCH_SIZE)
-      .then((fetched) => {
-        setQuotes(fetched)
-        // Composing is cheap arithmetic; doing every quote up front lets their images preload.
-        setCompositions(fetched.map((quote) => ({ version: 0, composition: compose(quote.visuals) })))
-        setStatus('ready')
-      })
+      .then(showBatch)
       .catch((err) => {
         setStatus('error')
         console.error(err)
       })
-  }, [])
+  }, [showBatch])
 
   // Preload the neighbours' images, so stepping either way doesn't wait on the network.
   useEffect(() => {
@@ -110,7 +117,7 @@ function App() {
   // A new current composition goes on top of the layer stack. This adjusts state during render, as
   // React recommends for state derived from other state, instead of in an effect.
   const current = compositions[currentIndex]
-  const currentKey = current ? `${currentIndex}:${current.version}` : null
+  const currentKey = current ? `${batch}:${currentIndex}:${current.version}` : null
   if (currentQuote && current && currentKey && layers[layers.length - 1]?.key !== currentKey) {
     setLayers([...layers.slice(-1), { key: currentKey, quote: currentQuote, composition: current.composition }])
   }
@@ -219,6 +226,29 @@ function App() {
     return () => clearTimeout(timer)
   }, [advanceFrom, currentIndex, next])
 
+  // Down replaces the batch with a fresh random one; if that fails, the current batch stays on screen.
+  const reloading = useRef(false)
+  const reloadQuotes = useCallback(() => {
+    if (reloading.current) return
+    reloading.current = true
+    fetchRandomQuotes(BATCH_SIZE)
+      .then((fetched) => {
+        if (fetched.length === 0) {
+          showToast('No quotes came back', 'error')
+          return
+        }
+        showBatch(fetched)
+        setBatch((previousBatch) => previousBatch + 1)
+        restart()
+        setAdvanceFrom(null)
+        exhausted.current = false
+      })
+      .catch((err: Error) => showToast(`Couldn't load new quotes: ${err.message}`, 'error'))
+      .finally(() => {
+        reloading.current = false
+      })
+  }, [showBatch, restart, showToast])
+
   const saveRating = useCallback(
     (verdict: string, problems: string[]) => {
       if (!currentQuote || !currentQuoteKey) return
@@ -306,6 +336,7 @@ function App() {
         else previous()
       }
       if (key === 'up') reroll()
+      if (key === 'down') reloadQuotes()
       if (key === 'ok') {
         event.preventDefault()
         openRatingPanel()
@@ -316,7 +347,7 @@ function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [next, previous, reroll, shownPanel, shownRating, saving, saveRating, updatePanel, openRatingPanel])
+  }, [next, previous, reroll, reloadQuotes, shownPanel, shownRating, saving, saveRating, updatePanel, openRatingPanel])
 
   // The Magic Remote's wheel (or a mouse wheel) steps through the panel, one step per notch, however fine-grained
   // the events it sends.
@@ -346,8 +377,6 @@ function App() {
 
   // In rating mode the batch is topped up before it runs out, with what is still unrated; when nothing new comes
   // back, the carousel simply wraps around.
-  const refilling = useRef(false)
-  const exhausted = useRef(false)
   useEffect(() => {
     if (!ratingMode || refilling.current || exhausted.current || quotes.length === 0) return
     if (currentIndex < quotes.length - 2) return

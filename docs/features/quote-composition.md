@@ -226,6 +226,7 @@ Images are served downscaled: backgrounds at 1920 px wide (JPEG), elements at 64
 Keys and switches for judging compositions:
 
 * **ArrowUp** re-rolls the current quotation: a new server selection and a new layout.
+* **ArrowDown** fetches a fresh random batch of quotes and starts again from its first one.
 * `?debug` in the URL shows:
   * the mood and the motifs, with their styles;
   * the dock, the ring's tone and contrast, and the glass opacity;

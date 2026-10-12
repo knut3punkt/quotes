@@ -18,6 +18,9 @@ export function useQuoteCarousel(quotes: PublicQuote[], autoAdvance: boolean = t
     setCurrentIndex((index) => (index - 1 + count) % count)
   }, [count])
 
+  /** Back to the first quote, for a freshly loaded batch. */
+  const restart = useCallback(() => setCurrentIndex(0), [])
+
   useEffect(() => {
     if (count === 0 || !autoAdvance) return
     // Restarts on every currentIndex change (auto-advance or manual nav), so a manual
@@ -31,5 +34,6 @@ export function useQuoteCarousel(quotes: PublicQuote[], autoAdvance: boolean = t
     currentQuote: count > 0 ? quotes[currentIndex] : undefined,
     next,
     previous,
+    restart,
   }
 }

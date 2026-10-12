@@ -38,7 +38,7 @@ speculatively — only when a specific platform is explicitly requested.
   navigation with wrap-around. Each screen is composed by `src/composition/` from the server-chosen
   mood background and motifs (quote placed by the background's quote layout, motifs as round icons in the
   calmest corner dock, text contrast, fallback gradient), rendered by
-  `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. In admin-switched rating mode, OK
+  `QuoteStage` with crossfades; ArrowUp re-rolls the visuals, ArrowDown fetches a fresh batch, `?debug` shows what was chosen. In admin-switched rating mode, OK
   opens `RatingPanel` to rate the shown text with the remote (`src/rating/`). `src/platform/` provides `webos`/`browser` detection for future
   platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
