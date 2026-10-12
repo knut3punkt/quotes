@@ -48,6 +48,7 @@ object Quotes : Table("quotes") {
     val sourceDetail = text("source_detail").nullable()
     val language = text("language").default("en")
     val normalizedText = text("normalized_text")
+    val wordCount = integer("word_count").databaseGenerated()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -223,6 +224,49 @@ object QuoteTagAssignments : Table("quote_tag_assignments") {
     val relevance = integer("relevance")
     val basis = text("basis")
     val rejected = bool("rejected").default(false)
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object QuoteQualityRuns : Table("quote_quality_runs") {
+    val id = integer("id").autoIncrement()
+    val label = text("label")
+    val runner = text("runner")
+    val methodVersion = text("method_version")
+    val promptVersion = text("prompt_version")
+    val modelId = text("model_id").nullable()
+    val settings = jsonb<JsonElement>("settings", Json.Default).nullable()
+    val notes = text("notes").nullable()
+    val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone)
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+/** Levels are SMALLINT in the database; read and written as Int here. See V26 for why the links are SET NULL. */
+object QuoteQualityAssessments : Table("quote_quality_assessments") {
+    val id = integer("id").autoIncrement()
+    val runId = integer("run_id").references(QuoteQualityRuns.id, onDelete = ReferenceOption.CASCADE)
+    val quoteId = integer("quote_id").references(Quotes.id, onDelete = ReferenceOption.SET_NULL).nullable()
+    val excerptId = integer("excerpt_id").references(QuoteExcerpts.id, onDelete = ReferenceOption.SET_NULL).nullable()
+    val subjectKind = text("subject_kind")
+    val subjectText = text("subject_text")
+    val subjectHash = text("subject_hash")
+    val wordCount = integer("word_count")
+    val status = text("status")
+    val errorMessage = text("error_message").nullable()
+    val modelId = text("model_id").nullable()
+    val reading = text("reading").nullable()
+    val insight = text("insight").nullable()
+    val assessment = text("assessment").nullable()
+    val unresolvedReferences = array<String>("unresolved_references")
+    val problems = array<String>("problems")
+    val standsAlone = integer("stands_alone").nullable()
+    val completeness = integer("completeness").nullable()
+    val substance = integer("substance").nullable()
+    val expression = integer("expression").nullable()
+    val verdict = text("verdict").nullable()
+    val precheckFlags = array<String>("precheck_flags")
+    val assessedAt = timestampWithTimeZone("assessed_at").defaultExpression(CurrentTimestampWithTimeZone)
 
     override val primaryKey = PrimaryKey(id)
 }

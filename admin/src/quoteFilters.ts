@@ -16,6 +16,10 @@ export interface QuoteFilterState {
   excerpts: Set<EnrichmentFilter>
   interpretations: Set<EnrichmentFilter>
   tags: Set<EnrichmentFilter>
+  /** A quality run id, or '' for none. */
+  qualityRun: string
+  qualityVerdicts: Set<string>
+  qualityFlags: Set<string>
 }
 
 export const DEFAULT_QUOTE_FILTERS: QuoteFilterState = {
@@ -31,6 +35,9 @@ export const DEFAULT_QUOTE_FILTERS: QuoteFilterState = {
   excerpts: new Set(),
   interpretations: new Set(),
   tags: new Set(),
+  qualityRun: '',
+  qualityVerdicts: new Set(),
+  qualityFlags: new Set(),
 }
 
 export function isDefaultQuoteFilters(filters: QuoteFilterState): boolean {
@@ -54,5 +61,9 @@ export function toQuoteFilter(filters: QuoteFilterState): QuoteFilter {
     excerpts: [...filters.excerpts],
     interpretations: [...filters.interpretations],
     tags: [...filters.tags],
+    // Verdict and flag filters only mean something within a run.
+    qualityRun: filters.qualityRun ? Number(filters.qualityRun) : undefined,
+    qualityVerdicts: filters.qualityRun ? [...filters.qualityVerdicts] : [],
+    qualityFlags: filters.qualityRun ? [...filters.qualityFlags] : [],
   }
 }

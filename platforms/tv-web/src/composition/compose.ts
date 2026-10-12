@@ -1,4 +1,4 @@
-import type { DominantColor, NormalizedRect, QuoteVisuals } from '../types'
+import { parseQuoteLayout, type DominantColor, type NormalizedRect, type QuoteVisuals } from '../types'
 import { hexToRgb, relativeLuminance, rgbToCss } from './color'
 import { chooseTextStyle, type TextStyle } from './contrast'
 import { fallbackBackground } from './fallback'
@@ -32,9 +32,16 @@ export interface Composition {
   text: TextStyle
   /** CSS `filter` that seats the elements in the scene with a shadow in the background's darkest colour. */
   elementFilter: string
+  /** CSS `box-shadow` that lifts the quote's backdrop off the scene, in the background's darkest colour. */
+  backdropShadow: string
   debug: {
     mood: string | null
-    motifs: string[]
+    moodStyle: string | null
+    motif: string | null
+    motifStyle: string | null
+    styleFit: number | null
+    /** The layout the background's prompt asked for, whether or not it was used. */
+    quoteLayout: string | null
     arrangement: Arrangement
   }
 }
@@ -48,15 +55,17 @@ function darkestColor(colors: DominantColor[]): string {
 
 /**
  * Turns the server's chosen images into a screen (docs/features/quote-composition.md): the background
- * (or a fallback gradient), the element layout, and the text styling for the quote box.
+ * (or a fallback gradient), where the quote and the motif go, and the text styling for the quote box.
  */
 export function composeQuote(visuals: QuoteVisuals, imageUrl: ImageUrl, rng: Rng): Composition {
   const { background } = visuals
+  const motif = visuals.elements[0] ?? null
   const scene = background
     ? {
         field: { columns: background.layout.gridColumns, rows: background.layout.gridRows, cells: background.layout.cells },
         dominantColors: background.dominantColors,
         calmRegion: background.layout.calmRegion,
+        quoteLayout: parseQuoteLayout(background.quoteLayout),
         layer: {
           kind: 'image' as const,
           url: imageUrl(background.imageId, BACKGROUND_IMAGE_WIDTH),
@@ -64,17 +73,20 @@ export function composeQuote(visuals: QuoteVisuals, imageUrl: ImageUrl, rng: Rng
         },
       }
     : (() => {
-        const fallback = fallbackBackground(visuals.elements, rng)
+        const fallback = fallbackBackground(motif ? [motif] : [], rng)
         return {
           field: fallback.field,
           dominantColors: fallback.dominantColors,
           calmRegion: null,
+          quoteLayout: null,
           layer: { kind: 'gradient' as const, css: fallback.css },
         }
       })()
 
-  const layout = computeLayout(scene.field, scene.calmRegion, visuals.elements, rng)
-  const text = chooseTextStyle(scene.field, scene.dominantColors, layout.quoteBox)
+  const layout = computeLayout(scene.field, scene.calmRegion, scene.quoteLayout, motif, rng)
+  // An `overlay` background reserved no room, on the promise that the quote brings "its own contrasting
+  // background or translucent panel".
+  const text = chooseTextStyle(scene.field, scene.dominantColors, layout.quoteBox, layout.arrangement === 'overlay')
   const shadow = hexToRgb(darkestColor(scene.dominantColors))
 
   return {
@@ -89,9 +101,14 @@ export function composeQuote(visuals: QuoteVisuals, imageUrl: ImageUrl, rng: Rng
     align: layout.align,
     text,
     elementFilter: `drop-shadow(0 0.6vh 1.4vh ${rgbToCss(shadow, 0.5)})`,
+    backdropShadow: `0 1.5vh 5vh ${rgbToCss(shadow, 0.45)}`,
     debug: {
       mood: background?.tagName ?? null,
-      motifs: layout.elements.map((placed) => placed.element.tagName),
+      moodStyle: background?.style ?? null,
+      motif: motif?.tagName ?? null,
+      motifStyle: motif?.style ?? null,
+      styleFit: visuals.styleFit,
+      quoteLayout: background?.quoteLayout ?? null,
       arrangement: layout.arrangement,
     },
   }

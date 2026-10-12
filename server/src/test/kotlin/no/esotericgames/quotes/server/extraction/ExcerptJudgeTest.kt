@@ -99,15 +99,51 @@ class ExcerptJudgeTest {
     }
 
     @Test
-    fun `an unresolved reference fails the excerpt even with top levels, and skips the fidelity call`() = runBlocking<Unit> {
+    fun `a corroborated unresolved reference fails the excerpt even with top levels, and skips the fidelity call`() = runBlocking<Unit> {
         val client = FakeJudgeClient(JudgeOutcome.Success(standalone(unresolvedReferences = listOf("this")), "judge"))
 
-        val judged = assertIs<ExcerptJudgment.Judged>(judgeWith(client).judge(SOURCE_TEXT, CANDIDATE))
+        val judged = assertIs<ExcerptJudgment.Judged>(
+            judgeWith(client).judge(SOURCE_TEXT, CANDIDATE.copy(contextSignals = listOf("This"))),
+        )
 
         assertFalse(judged.excerpt.meetsThresholds)
         assertNull(judged.excerpt.contextualFidelity)
         assertTrue(client.fidelityRequests.isEmpty())
         assertTrue("Unresolved: this" in judged.excerpt.judgeNotes)
+    }
+
+    @Test
+    fun `an uncorroborated unresolved reference is left to the standsAlone level`() = runBlocking<Unit> {
+        val listedButClear = FakeJudgeClient(JudgeOutcome.Success(standalone(unresolvedReferences = listOf("the thing we wait for")), "judge"))
+        val listedAndUnclear = FakeJudgeClient(
+            JudgeOutcome.Success(standalone(unresolvedReferences = listOf("the thing we wait for"), standsAlone = 3), "judge"),
+        )
+
+        val passing = assertIs<ExcerptJudgment.Judged>(judgeWith(listedButClear).judge(SOURCE_TEXT, CANDIDATE))
+        val failing = assertIs<ExcerptJudgment.Judged>(judgeWith(listedAndUnclear).judge(SOURCE_TEXT, CANDIDATE))
+
+        assertTrue(passing.excerpt.meetsThresholds)
+        assertFalse(failing.excerpt.meetsThresholds)
+    }
+
+    @Test
+    fun `references corroborate a signal as whole words or phrases only`() {
+        assertEquals(listOf("the same lines"), ExcerptJudge.corroboratedReferences(listOf("the same lines"), listOf("the same")))
+        assertEquals(listOf("It"), ExcerptJudge.corroboratedReferences(listOf("It"), listOf("it")))
+        assertEquals(emptyList(), ExcerptJudge.corroboratedReferences(listOf("the spirit"), listOf("it")))
+        assertEquals(emptyList(), ExcerptJudge.corroboratedReferences(listOf("Vivisection"), emptyList()))
+    }
+
+    @Test
+    fun `the fidelity call compares the excerpt with the source, not with the blind reading`() = runBlocking<Unit> {
+        val client = FakeJudgeClient(JudgeOutcome.Success(standalone(), "judge"))
+
+        judgeWith(client).judge(SOURCE_TEXT, CANDIDATE)
+
+        val fidelityContent = client.fidelityRequests.single().userContent
+        assertTrue(CANDIDATE.text in fidelityContent)
+        assertFalse("Patience." in fidelityContent.substringAfter("EXCERPT"))
+        assertFalse("UNDERSTANDING" in fidelityContent)
     }
 
     @Test

@@ -1,0 +1,7 @@
+{
+  "id": "14-scripture-reference",
+  "description": "Segmentation check: a long sentence with a chapter:verse reference must not be split at the colon inside 23:11, and the clause split at the real colon must leave no unit ending in a dangling colon.",
+  "sourceText": "On the last morning before the feast he told the large and restless crowd gathered in the outer courtyard of the temple a saying that the scribes standing at the back would remember for a long time afterwards, as Matthew 23:11 records it: the greatest among you will be your servant. Whoever exalts himself will be humbled, and whoever humbles himself will be exalted. The scribes did not take the saying kindly, and no reply from them is recorded on that day or on any day after it.",
+  "goodRanges": [{"start": 3, "end": 3}],
+  "badRanges": [{"start": 2, "end": 2, "why": "lowercase continuation of the split sentence"}, {"start": 4, "end": 4, "why": "narration"}]
+}

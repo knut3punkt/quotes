@@ -1,0 +1,98 @@
+{
+  "version": "style-affinity-v1",
+
+  "description": "Which background style profiles (background-v4) and motif style profiles (motif-v2) look right together on one quote screen. Each style belongs to several overlapping groups of shared visual traits; a background and a motif fit when their styles share a group, and fit better the more they share. See docs/features/quote-composition.md, 'Style affinity'.",
+
+  "groups": [
+    {
+      "id": "neon-night",
+      "description": "Darkness lit by saturated artificial light",
+      "styles": ["neon-noir", "cyberpunk", "synthwave-retrowave", "vaporwave", "glitch-digital-decay", "acid-graphics", "gothic-futurism"]
+    },
+    {
+      "id": "digital-signal",
+      "description": "Screen and electronic artefacts",
+      "styles": ["glitch-digital-decay", "vaporwave", "synthwave-retrowave", "acid-graphics", "cyberpunk", "y2k-futurism", "generative-geometry"]
+    },
+    {
+      "id": "psychedelic",
+      "description": "Luminous, recursive, spectral forms",
+      "styles": ["dark-psychedelic-surrealism", "visionary-psychedelic", "acid-graphics", "esoteric-geometry", "bioluminescent-surrealism", "liquid-abstraction", "cosmic-surrealism"]
+    },
+    {
+      "id": "cosmic-mystic",
+      "description": "Celestial scale, sacred geometry, stillness",
+      "styles": ["cosmic-surrealism", "esoteric-geometry", "visionary-psychedelic", "metaphysical-surrealism", "etching-engraving", "afrofuturism"]
+    },
+    {
+      "id": "dream-uncanny",
+      "description": "Quiet strangeness and dream logic",
+      "styles": ["dark-surrealism", "metaphysical-surrealism", "liminal-spaces", "dreamcore", "surreal-photomontage", "vaporwave", "analog-scifi", "dark-psychedelic-surrealism"]
+    },
+    {
+      "id": "low-key-shadow",
+      "description": "Deep blacks and a single light",
+      "styles": ["tenebrist-chiaroscuro", "dark-surrealism", "ink-noir", "dark-fantasy", "brutalist-scifi", "gothic-futurism", "neon-noir", "cyberpunk"]
+    },
+    {
+      "id": "minimal",
+      "description": "Large simple forms and strong negative space",
+      "styles": ["abstract-geometry", "metaphysical-surrealism", "ink-noir", "neon-noir", "brutalist-scifi"]
+    },
+    {
+      "id": "raw-energy",
+      "description": "Aggressive, distorted, high-energy marks",
+      "styles": ["neo-expressionism", "acid-graphics", "glitch-digital-decay", "editorial-collage"]
+    },
+    {
+      "id": "monumental",
+      "description": "Massive stone and metal forms in fog",
+      "styles": ["brutalist-scifi", "gothic-futurism", "metaphysical-surrealism", "dark-fantasy", "dieselpunk"]
+    },
+    {
+      "id": "organic",
+      "description": "Living, translucent, wet matter",
+      "styles": ["bioluminescent-surrealism", "biopunk", "biomechanical-surrealism", "liquid-abstraction", "macro-abstraction", "solarpunk"]
+    },
+    {
+      "id": "mechanical",
+      "description": "Machinery and industry",
+      "styles": ["dieselpunk", "biomechanical-surrealism", "cyberpunk", "brutalist-scifi", "retrofuturism", "biopunk"]
+    },
+    {
+      "id": "retro-future",
+      "description": "Imagined past futures, chrome and analog",
+      "styles": ["retrofuturism", "analog-scifi", "synthwave-retrowave", "y2k-futurism", "dieselpunk", "afrofuturism", "vaporwave"]
+    },
+    {
+      "id": "prismatic",
+      "description": "Glass, chrome and iridescence",
+      "styles": ["holographic-iridescent-futurism", "y2k-futurism", "liquid-abstraction", "macro-abstraction", "low-poly-surrealism"]
+    },
+    {
+      "id": "geometric",
+      "description": "Planes, lines and facets",
+      "styles": ["abstract-geometry", "generative-geometry", "low-poly-surrealism", "esoteric-geometry", "metaphysical-surrealism", "afrofuturism", "holographic-iridescent-futurism"]
+    },
+    {
+      "id": "handmade",
+      "description": "Ink, paint, paper and hatching",
+      "styles": ["ink-noir", "etching-engraving", "neo-expressionism", "editorial-collage"]
+    },
+    {
+      "id": "photographic",
+      "description": "Photographic realism and fragments",
+      "styles": ["surreal-photomontage", "editorial-collage", "dreamcore", "liminal-spaces", "analog-scifi", "tenebrist-chiaroscuro", "macro-abstraction"]
+    },
+    {
+      "id": "warm-metallic",
+      "description": "Gold, brass, amber and crimson",
+      "styles": ["afrofuturism", "dieselpunk", "esoteric-geometry", "dark-fantasy", "tenebrist-chiaroscuro", "retrofuturism"]
+    },
+    {
+      "id": "bright",
+      "description": "High-key daylight and optimism",
+      "styles": ["solarpunk", "y2k-futurism", "retrofuturism"]
+    }
+  ]
+}

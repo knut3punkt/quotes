@@ -3,17 +3,19 @@ import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ImportedQuotesPage } from './components/ImportedQuotesPage'
 import { ImportPage } from './components/ImportPage'
+import { QualityRunsPage } from './components/QualityRunsPage'
 import { QuotesPage } from './components/QuotesPage'
 import { TagsPage } from './components/TagsPage'
 import { Toaster } from './components/Toaster'
 
-type AdminPage = 'review' | 'import' | 'quotes' | 'tags'
+type AdminPage = 'review' | 'import' | 'quotes' | 'tags' | 'quality'
 
 const PAGE_TITLES: Record<AdminPage, string> = {
   review: 'Imported quotes',
   import: 'Import quotes',
   quotes: 'Approved quotes',
   tags: 'Tags',
+  quality: 'Quality runs',
 }
 
 const PAGE_DESCRIPTIONS: Record<AdminPage, string> = {
@@ -21,6 +23,7 @@ const PAGE_DESCRIPTIONS: Record<AdminPage, string> = {
   import: 'Stage quotes into the review queue from Wikiquote, scripture sources, or refresh author metadata.',
   quotes: 'Browse the curated quotes that have been approved into the library.',
   tags: 'Rename, reclassify, and merge the tags generated for quotes, and generate their images.',
+  quality: 'Compare quality assessment runs, for example the local model against a frontier model.',
 }
 
 function App() {
@@ -48,6 +51,9 @@ function App() {
             <Button type="button" variant={page === 'tags' ? 'default' : 'outline'} onClick={() => setPage('tags')}>
               Tags
             </Button>
+            <Button type="button" variant={page === 'quality' ? 'default' : 'outline'} onClick={() => setPage('quality')}>
+              Quality
+            </Button>
           </div>
         </header>
 
@@ -58,6 +64,8 @@ function App() {
         {page === 'quotes' && <QuotesPage />}
 
         {page === 'tags' && <TagsPage />}
+
+        {page === 'quality' && <QualityRunsPage />}
       </div>
     </TooltipProvider>
   )

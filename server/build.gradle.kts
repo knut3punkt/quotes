@@ -62,3 +62,11 @@ tasks.register<JavaExec>("runTaggingEval") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("no.esotericgames.quotes.server.tagging.eval.TaggingEvalRunnerKt")
 }
+
+tasks.register<JavaExec>("runJudgeReplay") {
+    group = "verification"
+    description = "Manually replays the extraction judge on exported candidates, or reports on replays (not part of `test`)."
+    dependsOn("testClasses")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("no.esotericgames.quotes.server.extraction.eval.JudgeReplayRunnerKt")
+}

@@ -13,6 +13,7 @@ import no.esotericgames.quotes.server.extraction.llm.ExcerptSelectionClient
 import no.esotericgames.quotes.server.extraction.llm.ExcerptSelectionRequest
 import no.esotericgames.quotes.server.extraction.llm.GenerationSettings
 import no.esotericgames.quotes.server.extraction.llm.InferenceOutcome
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -26,7 +27,9 @@ private const val ERROR_MESSAGE_MAX_LENGTH = 500
 /** `quote_excerpts.context_signals` stores one flagged phrase per line (see V21). */
 const val CONTEXT_SIGNAL_SEPARATOR = "\n"
 // v1: single selection call that also self-scored. v2: broad selector plus a separate judge pass.
-private const val EXTRACTION_METHOD_VERSION = "v2"
+// v3: clause punctuation between units, lowercase-start candidates rejected, 3-word minimum,
+// truncation retry, and the corroborated-reference acceptance rule (see ExcerptJudge).
+private const val EXTRACTION_METHOD_VERSION = "v3"
 
 private val log = LoggerFactory.getLogger(QuoteExtractionService::class.java)
 
@@ -51,8 +54,9 @@ private data class JudgedCandidates(
  * response that is malformed for one candidate only drops that candidate (noted in the attempt's
  * error message); an unreachable judge fails the whole attempt, since every later call would too.
  *
- * Re-running extraction on a quote replaces its previous attempt/excerpts, including on a failed
- * re-run — the highlighted view always reflects the latest run only.
+ * A successful re-run replaces the quote's previous attempts and excerpts. A failed re-run replaces
+ * only an earlier failed attempt and keeps the last successful one with its excerpts, so an
+ * unreachable model never wipes excerpts the TV is showing.
  */
 class QuoteExtractionService(
     private val inferenceClient: ExcerptSelectionClient,
@@ -92,17 +96,7 @@ class QuoteExtractionService(
 
         return try {
             val units = segmentSourceIntoUnits(quote.text)
-            val request = ExcerptSelectionRequest(
-                systemPrompt = ExtractionPrompts.systemPrompt(),
-                userContent = ExtractionPromptBuilder.buildUserContent(units),
-                generation = GenerationSettings(
-                    model = config.llm.model,
-                    temperature = config.llm.temperature,
-                    maxOutputTokens = config.llm.maxOutputTokens,
-                    reasoningEffort = config.llm.reasoningEffort,
-                ),
-            )
-            when (val outcome = inferenceClient.selectExcerpts(request)) {
+            when (val outcome = selectWithRetry(units)) {
                 is InferenceOutcome.Success -> {
                     val candidates = ExtractionValidator.validate(quote.text, units, outcome.candidates, config.policy)
                     val judged = judgeAll(quote.text, candidates)
@@ -128,6 +122,7 @@ class QuoteExtractionService(
                 is InferenceOutcome.ConnectionFailure ->
                     persistFailure(quoteId, null, "selector unreachable at ${config.llm.baseUrl}: ${outcome.message}")
                 is InferenceOutcome.MalformedResponse -> persistFailure(quoteId, null, "selector: ${outcome.message}")
+                is InferenceOutcome.Truncated -> persistFailure(quoteId, null, "selector: ${outcome.message}")
             }
         } catch (e: Exception) {
             // Last-resort guard: an unforeseen bug in this pipeline must never abort the batch or
@@ -137,6 +132,29 @@ class QuoteExtractionService(
             QuoteExtractionResult(quoteId, outcome = "failed", excerpts = emptyList())
         }
     }
+
+    /**
+     * A long source can have more candidates than the output budget holds. A truncated answer is
+     * retried once with twice the budget; a second truncation is a failure. Nothing else is retried.
+     */
+    private suspend fun selectWithRetry(units: List<SourceUnit>): InferenceOutcome {
+        val firstAttempt = selectionRequest(units, config.llm.maxOutputTokens)
+        val outcome = inferenceClient.selectExcerpts(firstAttempt)
+        if (outcome !is InferenceOutcome.Truncated) return outcome
+        log.info("Excerpt selection truncated at {} tokens, retrying once with {}", config.llm.maxOutputTokens, config.llm.maxOutputTokens * 2)
+        return inferenceClient.selectExcerpts(selectionRequest(units, config.llm.maxOutputTokens * 2))
+    }
+
+    private fun selectionRequest(units: List<SourceUnit>, maxOutputTokens: Int) = ExcerptSelectionRequest(
+        systemPrompt = ExtractionPrompts.systemPrompt(),
+        userContent = ExtractionPromptBuilder.buildUserContent(units),
+        generation = GenerationSettings(
+            model = config.llm.model,
+            temperature = config.llm.temperature,
+            maxOutputTokens = maxOutputTokens,
+            reasoningEffort = config.llm.reasoningEffort,
+        ),
+    )
 
     /** Stops at the first unreachable-judge result, so the caller can fail the attempt as a whole. */
     private suspend fun judgeAll(sourceText: String, candidates: List<ExcerptCandidate>): JudgedCandidates {
@@ -178,7 +196,13 @@ class QuoteExtractionService(
         errorMessage: String?,
     ): List<QuoteExcerptResponse> = withContext(Dispatchers.IO) {
         suspendTransaction {
-            QuoteExtractionAttempts.deleteWhere { QuoteExtractionAttempts.quoteId eq quoteId }
+            if (status == "succeeded") {
+                QuoteExtractionAttempts.deleteWhere { QuoteExtractionAttempts.quoteId eq quoteId }
+            } else {
+                QuoteExtractionAttempts.deleteWhere {
+                    (QuoteExtractionAttempts.quoteId eq quoteId) and (QuoteExtractionAttempts.status eq "failed")
+                }
+            }
 
             val attemptId = QuoteExtractionAttempts.insert {
                 it[QuoteExtractionAttempts.quoteId] = quoteId

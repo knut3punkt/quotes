@@ -30,7 +30,7 @@ class ExtractionConfigTest {
 
         assertEquals("http://192.168.1.50:8888", config.judge.baseUrl)
         assertEquals("selector-model", config.judge.model)
-        assertEquals(500, config.judge.maxOutputTokens)
+        assertEquals(700, config.judge.maxOutputTokens)
     }
 
     @Test

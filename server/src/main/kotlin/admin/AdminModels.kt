@@ -127,6 +127,8 @@ data class QuoteListItemResponse(
     val excerpts: List<QuoteExcerptResponse> = emptyList(),
     val interpretations: List<QuoteInterpretationResponse> = emptyList(),
     val tags: List<QuoteTagResponse> = emptyList(),
+    /** Assessments of the quote and its excerpts in the quality run the list was filtered by, if any. */
+    val quality: List<QualityAssessmentResponse> = emptyList(),
 )
 
 @Serializable

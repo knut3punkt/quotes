@@ -15,6 +15,8 @@ export interface RegionStats {
   /** 90th percentile of luminance by area: the brightest part that matters. */
   highLuminance: number
   meanDetail: number
+  /** 90th percentile of detail by area: a few sharp or bright details that the mean and cell luminance hide. */
+  peakDetail: number
 }
 
 interface WeightedCell {
@@ -54,7 +56,7 @@ function weightedPercentile(values: { value: number; weight: number }[], fractio
 
 export function regionStats(field: LuminanceField, region: NormalizedRect): RegionStats {
   const cells = cellsUnder(field, region)
-  if (cells.length === 0) return { meanLuminance: 0, lowLuminance: 0, highLuminance: 0, meanDetail: 0 }
+  if (cells.length === 0) return { meanLuminance: 0, lowLuminance: 0, highLuminance: 0, meanDetail: 0, peakDetail: 0 }
   const total = cells.reduce((sum, { weight }) => sum + weight, 0)
   const luminances = cells.map(({ cell, weight }) => ({ value: cell.luminance, weight }))
   return {
@@ -62,6 +64,10 @@ export function regionStats(field: LuminanceField, region: NormalizedRect): Regi
     lowLuminance: weightedPercentile(luminances, 0.1),
     highLuminance: weightedPercentile(luminances, 0.9),
     meanDetail: cells.reduce((sum, { cell, weight }) => sum + cell.detail * weight, 0) / total,
+    peakDetail: weightedPercentile(
+      cells.map(({ cell, weight }) => ({ value: cell.detail, weight })),
+      0.9,
+    ),
   }
 }
 

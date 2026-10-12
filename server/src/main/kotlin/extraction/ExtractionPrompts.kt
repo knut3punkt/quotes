@@ -1,6 +1,6 @@
 package no.esotericgames.quotes.server.extraction
 
-private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v5.md"
+private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v6.md"
 
 /**
  * Loads the versioned runtime system prompt as a classpath resource (never an inline Kotlin
@@ -30,10 +30,15 @@ private const val PROMPT_RESOURCE_PATH = "/prompts/quote-extraction-v5.md"
  * also says a quote need not be true, agreeable, or inspirational, so the selector does not favor
  * positive-sounding sayings. Candidate mechanics (units, references, range variants) are unchanged.
  *
+ * v5 -> v6: the selector mostly proposed one sentence per candidate and missed short famous lines.
+ * v6 asks it to consider 2-4 unit ranges that make one argument and the single most striking line
+ * however short, never to start a candidate at a lowercase (mid-sentence) unit, and adds a second
+ * worked example showing both.
+ *
  * Earlier prompt versions are kept for historical reference/provenance, not deleted.
  */
 object ExtractionPrompts {
-    const val PROMPT_VERSION = "quote-extraction-v5"
+    const val PROMPT_VERSION = "quote-extraction-v6"
 
     private val cachedPrompt: String by lazy { loadResource() }
 

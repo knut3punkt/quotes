@@ -42,4 +42,7 @@ sealed interface InferenceOutcome {
     data class Success(val candidates: List<RawExcerptCandidate>, val modelId: String?) : InferenceOutcome
     data class ConnectionFailure(val message: String) : InferenceOutcome
     data class MalformedResponse(val message: String) : InferenceOutcome
+
+    /** The model ran out of output tokens (a long source with many candidates); worth one retry with a larger budget. */
+    data class Truncated(val message: String) : InferenceOutcome
 }

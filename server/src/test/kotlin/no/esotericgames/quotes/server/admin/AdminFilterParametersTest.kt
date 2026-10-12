@@ -34,6 +34,34 @@ class AdminFilterParametersTest {
     }
 
     @Test
+    fun `quality filters parse verdicts and flags for a run`() {
+        val filter = quoteFilterFrom(
+            parametersOf(
+                "qualityRun" to listOf("3"),
+                "qualityVerdict" to listOf("reject", "notAssessed"),
+                "qualityFlag" to listOf("FRAGMENT", "CITATION_ONLY"),
+            ),
+            defaultPageSize = 50,
+        )
+
+        assertEquals(3, filter.qualityRunId)
+        assertEquals(setOf("reject", "notAssessed"), filter.qualityVerdicts)
+        assertEquals(setOf("FRAGMENT", "CITATION_ONLY"), filter.qualityFlags)
+    }
+
+    @Test
+    fun `quality filters reject unknown values and a verdict without a run`() {
+        assertFailsWith<IllegalArgumentException> {
+            quoteFilterFrom(parametersOf("qualityRun" to listOf("3"), "qualityVerdict" to listOf("superb")), 50)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            quoteFilterFrom(parametersOf("qualityRun" to listOf("3"), "qualityFlag" to listOf("BORING")), 50)
+        }
+        assertFailsWith<IllegalArgumentException> { quoteFilterFrom(parametersOf("qualityVerdict" to listOf("reject")), 50) }
+        assertFailsWith<IllegalArgumentException> { quoteFilterFrom(parametersOf("qualityRun" to listOf("latest")), 50) }
+    }
+
+    @Test
     fun `malformed keys are rejected`() {
         assertFailsWith<IllegalArgumentException> { parseAuthorKey("Seneca") }
         assertFailsWith<IllegalArgumentException> { parseAuthorKey("name:") }

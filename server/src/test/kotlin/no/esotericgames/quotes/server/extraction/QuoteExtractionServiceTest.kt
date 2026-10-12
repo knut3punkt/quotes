@@ -7,6 +7,7 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.QuoteExtractionAttempts
 import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.extraction.llm.ExcerptJudgeClient
@@ -30,8 +31,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private class FakeExcerptSelectionClient(private val outcome: InferenceOutcome) : ExcerptSelectionClient {
-    override suspend fun selectExcerpts(request: ExcerptSelectionRequest) = outcome
+/** Answers with [outcomes] in turn (repeating the last one) and records every request it got. */
+private class FakeExcerptSelectionClient(private vararg val outcomes: InferenceOutcome) : ExcerptSelectionClient {
+    val requests = mutableListOf<ExcerptSelectionRequest>()
+
+    override suspend fun selectExcerpts(request: ExcerptSelectionRequest): InferenceOutcome {
+        requests += request
+        return outcomes[minOf(requests.size, outcomes.size) - 1]
+    }
 }
 
 private val STRONG_VERDICT = StandaloneVerdict(
@@ -100,17 +107,35 @@ class QuoteExtractionServiceTest {
 
             // Re-running replaces the previous attempt rather than accumulating a second one. A
             // judge-rejected candidate is still persisted (for tuning), just not as passing.
-            val rejectingJudge = FixedVerdictJudgeClient(JudgeOutcome.Success(STRONG_VERDICT.copy(unresolvedReferences = listOf("it")), "judge-model"))
+            val rejectingJudge = FixedVerdictJudgeClient(
+                JudgeOutcome.Success(STRONG_VERDICT.copy(unresolvedReferences = listOf("it"), standsAlone = 3), "judge-model"),
+            )
             val secondRun = QuoteExtractionService(selector, rejectingJudge, config).extractForQuotes(listOf(quoteId)).results.single()
             assertEquals("noExcerptsFound", secondRun.outcome)
             assertFalse(secondRun.excerpts.single().meetsThresholds)
             assertNull(secondRun.excerpts.single().contextualFidelity)
             assertEquals(1L, countAttemptsFor(quoteId))
 
-            // An unreachable judge fails the whole attempt.
+            // An unreachable judge fails the whole attempt, but keeps the last successful attempt and its
+            // excerpts. A second failure replaces the first failure rather than accumulating.
             val unreachableJudge = FixedVerdictJudgeClient(JudgeOutcome.ConnectionFailure("refused"))
-            val thirdRun = QuoteExtractionService(selector, unreachableJudge, config).extractForQuotes(listOf(quoteId)).results.single()
-            assertEquals("failed", thirdRun.outcome)
+            val strongService = QuoteExtractionService(selector, FixedVerdictJudgeClient(JudgeOutcome.Success(STRONG_VERDICT, "judge-model")), config)
+            strongService.extractForQuotes(listOf(quoteId))
+            val failingService = QuoteExtractionService(selector, unreachableJudge, config)
+            assertEquals("failed", failingService.extractForQuotes(listOf(quoteId)).results.single().outcome)
+            assertEquals("failed", failingService.extractForQuotes(listOf(quoteId)).results.single().outcome)
+            assertEquals(2L, countAttemptsFor(quoteId))
+            assertEquals(1L, countExcerptsFor(quoteId))
+
+            // A truncated selection is retried once with twice the output budget.
+            val truncatingSelector = FakeExcerptSelectionClient(
+                InferenceOutcome.Truncated("cut off"),
+                InferenceOutcome.Success(listOf(candidate), modelId = "test-model"),
+            )
+            val retried = QuoteExtractionService(truncatingSelector, FixedVerdictJudgeClient(JudgeOutcome.Success(STRONG_VERDICT, "judge-model")), config)
+                .extractForQuotes(listOf(quoteId)).results.single()
+            assertEquals("extracted", retried.outcome)
+            assertEquals(listOf(500, 1000), truncatingSelector.requests.map { it.generation.maxOutputTokens })
             assertEquals(1L, countAttemptsFor(quoteId))
         } finally {
             withContext(Dispatchers.IO) {
@@ -118,6 +143,12 @@ class QuoteExtractionServiceTest {
                     Quotes.deleteWhere { Quotes.id eq quoteId } // cascades to quote_extraction_attempts/quote_excerpts
                 }
             }
+        }
+    }
+
+    private suspend fun countExcerptsFor(quoteId: Int): Long = withContext(Dispatchers.IO) {
+        suspendTransaction {
+            QuoteExcerpts.selectAll().where { QuoteExcerpts.quoteId eq quoteId }.count()
         }
     }
 

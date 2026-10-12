@@ -3,7 +3,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { isDefaultQuoteFilters, type QuoteFilterState } from '../quoteFilters'
-import type { EnrichmentFilter, FilterOption, LengthFilterOp, QuoteFilterOptions } from '../types'
+import {
+  PRECHECK_FLAGS,
+  QUALITY_PROBLEMS,
+  QUALITY_VERDICTS,
+  type EnrichmentFilter,
+  type FilterOption,
+  type LengthFilterOp,
+  type QualityRun,
+  type QuoteFilterOptions,
+} from '../types'
 import { FilterField } from './FilterField'
 import { MultiSelectFilter } from './MultiSelectFilter'
 
@@ -13,19 +22,33 @@ const ENRICHMENT_OPTIONS: FilterOption[] = [
   { value: 'notRun', label: 'Not run' },
 ]
 
+const NO_RUN = 'none'
+
+const VERDICT_OPTIONS: FilterOption[] = [
+  ...QUALITY_VERDICTS.map((verdict) => ({ value: verdict, label: verdict.charAt(0).toUpperCase() + verdict.slice(1) })),
+  { value: 'notAssessed', label: 'Not assessed' },
+  { value: 'failed', label: 'Failed' },
+]
+
+const FLAG_OPTIONS: FilterOption[] = [...QUALITY_PROBLEMS, ...PRECHECK_FLAGS].map((flag) => ({
+  value: flag,
+  label: flag.toLowerCase().replaceAll('_', ' '),
+}))
+
 interface QuotesFilterBarProps {
   filters: QuoteFilterState
   onChange: (patch: Partial<QuoteFilterState>) => void
   onReset: () => void
   options: QuoteFilterOptions
   tagNames: string[]
+  qualityRuns: QualityRun[]
 }
 
 function capitalized(options: FilterOption[]): FilterOption[] {
   return options.map((option) => ({ ...option, label: option.label.charAt(0).toUpperCase() + option.label.slice(1) }))
 }
 
-function QuotesFilterBarComponent({ filters, onChange, onReset, options, tagNames }: QuotesFilterBarProps) {
+function QuotesFilterBarComponent({ filters, onChange, onReset, options, tagNames, qualityRuns }: QuotesFilterBarProps) {
   return (
     <div className="mb-5 flex flex-col gap-4 border-b border-border pb-4">
       <div className="flex flex-wrap items-end gap-4">
@@ -162,6 +185,47 @@ function QuotesFilterBarComponent({ filters, onChange, onReset, options, tagName
             selected={filters.tags}
             onChange={(tags) => onChange({ tags: tags as Set<EnrichmentFilter> })}
             className="min-w-[130px] max-w-[180px]"
+          />
+        </FilterField>
+
+        <FilterField id="quotes-quality-run" label="Quality run">
+          <Select
+            value={filters.qualityRun || NO_RUN}
+            onValueChange={(value) => onChange({ qualityRun: value === NO_RUN ? '' : value })}
+          >
+            <SelectTrigger id="quotes-quality-run" size="sm" className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_RUN}>None</SelectItem>
+              {qualityRuns.map((run) => (
+                <SelectItem key={run.id} value={String(run.id)}>
+                  #{run.id} {run.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        <FilterField id="quotes-quality-verdict" label="Verdict">
+          <MultiSelectFilter
+            id="quotes-quality-verdict"
+            options={VERDICT_OPTIONS}
+            selected={filters.qualityVerdicts}
+            onChange={(qualityVerdicts) => onChange({ qualityVerdicts })}
+            className="min-w-[130px] max-w-[180px]"
+            disabled={!filters.qualityRun}
+          />
+        </FilterField>
+
+        <FilterField id="quotes-quality-flag" label="Quality flag">
+          <MultiSelectFilter
+            id="quotes-quality-flag"
+            options={FLAG_OPTIONS}
+            selected={filters.qualityFlags}
+            onChange={(qualityFlags) => onChange({ qualityFlags })}
+            className="min-w-[150px] max-w-[220px]"
+            disabled={!filters.qualityRun}
           />
         </FilterField>
 

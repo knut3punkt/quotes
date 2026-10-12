@@ -9,7 +9,7 @@ export function fieldFrom(cellAt: (row: number, column: number) => LayoutCell): 
   }
 }
 
-export function background(field: LuminanceField, hex = '#335577'): SelectedBackground {
+export function background(field: LuminanceField, hex = '#335577', quoteLayout: string | null = null): SelectedBackground {
   return {
     imageId: 1,
     tagId: 1,
@@ -19,6 +19,8 @@ export function background(field: LuminanceField, hex = '#335577'): SelectedBack
     meanLuminance: 0.2,
     dominantColors: [{ hex, weight: 0.6 }],
     layout: { gridColumns: field.columns, gridRows: field.rows, cells: field.cells, calmRegion: null, textTone: 'light' },
+    style: 'neon-noir',
+    quoteLayout,
   }
 }
 
@@ -31,5 +33,6 @@ export function element(imageId: number, contentBox = { x: 0.2, y: 0.1, width: 0
     height: 1024,
     dominantColors: [{ hex: '#aa6633', weight: 0.5 }],
     contentBox,
+    style: 'cyberpunk',
   }
 }

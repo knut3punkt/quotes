@@ -147,6 +147,8 @@ export interface QuoteListItem {
   excerpts: QuoteExcerpt[]
   interpretations: QuoteInterpretation[]
   tags: QuoteTag[]
+  /** Assessments of the quote and its excerpts in the quality run the list is filtered by. */
+  quality?: QualityAssessment[]
 }
 
 export type TagFacet = 'concept' | 'mood' | 'motif'
@@ -225,6 +227,11 @@ export interface QuoteFilter {
   excerpts: EnrichmentFilter[]
   interpretations: EnrichmentFilter[]
   tags: EnrichmentFilter[]
+  qualityRun?: number
+  /** Verdicts plus 'notAssessed' and 'failed'; needs qualityRun. */
+  qualityVerdicts: string[]
+  /** Model problems or precheck flags; needs qualityRun. */
+  qualityFlags: string[]
 }
 
 export interface QuoteSelectionItem {
@@ -383,4 +390,124 @@ export interface ImageGenerationJobState {
   comfyQueueRemaining?: number | null
   connectionWarning?: string | null
   items: ImageGenerationItem[]
+}
+
+export type QualityVerdict = 'excellent' | 'good' | 'acceptable' | 'weak' | 'reject'
+
+export const QUALITY_VERDICTS: QualityVerdict[] = ['excellent', 'good', 'acceptable', 'weak', 'reject']
+
+export const QUALITY_PROBLEMS = [
+  'FRAGMENT',
+  'CONTEXT_DEPENDENT',
+  'NARRATION_OR_DIALOGUE',
+  'EDITORIAL_OR_META',
+  'POSSIBLY_MISATTRIBUTED',
+  'NON_ENGLISH',
+  'FLAT',
+  'CLICHE',
+  'TOO_LONG',
+  'SENSITIVE_OR_DATED',
+] as const
+
+export const PRECHECK_FLAGS = [
+  'OVER_WORD_LIMIT',
+  'VERY_SHORT',
+  'LOWERCASE_START',
+  'TRAILING_CONTINUATION',
+  'LIST_FRAGMENT',
+  'BRACKETED_INSERTION',
+  'ELLIPSIS',
+  'UNBALANCED_QUOTES',
+  'EDITORIAL_PREFIX',
+  'CITATION_ONLY',
+  'LIKELY_NON_ENGLISH',
+] as const
+
+export interface QualityRun {
+  id: number
+  label: string
+  runner: 'llm' | 'external'
+  methodVersion: string
+  promptVersion: string
+  modelId: string | null
+  notes: string | null
+  createdAt: string
+  assessedCount: number
+  failedCount: number
+  verdictCounts: Partial<Record<QualityVerdict, number>>
+}
+
+export interface QualityAssessment {
+  id: number
+  runId: number
+  quoteId: number | null
+  excerptId: number | null
+  subjectKind: 'quote' | 'excerpt'
+  subjectText: string
+  status: 'succeeded' | 'failed'
+  errorMessage?: string | null
+  reading?: string | null
+  insight?: string | null
+  assessment?: string | null
+  unresolvedReferences: string[]
+  problems: string[]
+  standsAlone?: number | null
+  completeness?: number | null
+  substance?: number | null
+  expression?: number | null
+  verdict?: QualityVerdict | null
+  precheckFlags: string[]
+}
+
+export type QuoteQualityOutcome = 'assessed' | 'failed' | 'notFound'
+
+export interface QuoteQualityResult {
+  quoteId: number
+  outcome: QuoteQualityOutcome
+  assessments: QualityAssessment[]
+}
+
+export interface AssessQualityResponse {
+  results: QuoteQualityResult[]
+}
+
+export interface QualityLevelComparison {
+  name: string
+  meanA: number
+  meanB: number
+  exactAgreement: number
+}
+
+export interface QualityFlagComparison {
+  flag: string
+  onlyA: number
+  onlyB: number
+  both: number
+}
+
+export interface QualityDisagreement {
+  subjectKind: 'quote' | 'excerpt'
+  subjectText: string
+  quoteId: number | null
+  excerptId: number | null
+  a: QualityAssessment
+  b: QualityAssessment
+}
+
+export interface QualityComparison {
+  runA: number
+  runB: number
+  matched: number
+  onlyInA: number
+  onlyInB: number
+  verdicts: QualityVerdict[]
+  verdictMatrix: number[][]
+  exactAgreement: number
+  withinOneAgreement: number
+  weightedKappa: number
+  keepDropMatrix: number[][]
+  keepDropKappa: number
+  levels: QualityLevelComparison[]
+  flags: QualityFlagComparison[]
+  disagreements: QualityDisagreement[]
 }

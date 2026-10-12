@@ -9,6 +9,7 @@ interface QuoteBulkActionsProps {
   onExtractExcerpts: () => void
   onGenerateInterpretations: () => void
   onGenerateTags: () => void
+  onAssessQuality: () => void
   onUnapprove: () => void
 }
 
@@ -23,6 +24,7 @@ function QuoteBulkActionsComponent({
   onExtractExcerpts,
   onGenerateInterpretations,
   onGenerateTags,
+  onAssessQuality,
   onUnapprove,
 }: QuoteBulkActionsProps) {
   return (
@@ -67,6 +69,19 @@ function QuoteBulkActionsComponent({
       </Button>
       <span className="text-xs text-muted-foreground">
         Quotes with excerpts are tagged through their excerpts only; tags you added or removed by hand are kept.
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className={bulkActionClassName}
+        onClick={onAssessQuality}
+        disabled={busy}
+      >
+        Assess quality ({selectedCount})
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        Assesses each quote and its accepted excerpts as the TV shows them. Advisory only.
       </span>
       <Button type="button" variant="destructive" size="sm" onClick={onUnapprove} disabled={busy}>
         Unapprove ({selectedCount})

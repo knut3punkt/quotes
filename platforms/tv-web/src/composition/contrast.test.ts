@@ -1,43 +1,74 @@
 import { describe, expect, it } from 'vitest'
-import { chooseTextStyle, MAX_SCRIM_OPACITY, TARGET_CONTRAST } from './contrast'
+import {
+  chooseTextStyle,
+  MAX_BACKDROP_OPACITY,
+  MIN_BACKDROP_OPACITY,
+  QUIET_MEAN_DETAIL,
+  QUIET_PEAK_DETAIL,
+  TARGET_CONTRAST,
+} from './contrast'
+import { regionStats } from './field'
 import { fieldFrom } from './test-fixtures'
 
 const wholeStage = { x: 0, y: 0, width: 1, height: 1 }
 const colors = [{ hex: '#2f4a6b', weight: 0.7 }]
 
 describe('chooseTextStyle', () => {
-  it('uses light, unassisted text on a dark calm background', () => {
+  it('uses light, bare text on a dark quiet background', () => {
     const style = chooseTextStyle(fieldFrom(() => ({ luminance: 0.03, detail: 0.005 })), colors, wholeStage)
 
     expect(style.tone).toBe('light')
-    expect(style.scrim).toBeNull()
+    expect(style.backdrop).toBeNull()
     expect(style.textShadow).toBeNull()
     expect(style.contrast).toBeGreaterThanOrEqual(TARGET_CONTRAST)
   })
 
-  it('uses dark text on a light calm background', () => {
+  it('uses dark, bare text on a light quiet background', () => {
     const style = chooseTextStyle(fieldFrom(() => ({ luminance: 0.85, detail: 0.005 })), colors, wholeStage)
 
     expect(style.tone).toBe('dark')
-    expect(style.scrim).toBeNull()
+    expect(style.backdrop).toBeNull()
     expect(style.contrast).toBeGreaterThanOrEqual(TARGET_CONTRAST)
   })
 
-  it('adds a halo but no scrim over a dark textured background', () => {
-    const style = chooseTextStyle(fieldFrom(() => ({ luminance: 0.04, detail: 0.06 })), colors, wholeStage)
+  it('puts the quote on a backdrop over texture, even when the luminance contrast is fine', () => {
+    const style = chooseTextStyle(
+      fieldFrom(() => ({ luminance: 0.04, detail: QUIET_MEAN_DETAIL * 2 })),
+      colors,
+      wholeStage,
+    )
 
-    expect(style.textShadow).not.toBeNull()
-    expect(style.scrim).toBeNull()
+    expect(style.backdrop?.reason).toBe('texture')
+    expect(style.backdrop?.opacity).toBe(MIN_BACKDROP_OPACITY)
   })
 
-  it('solves a scrim over a background that mixes bright and dark areas', () => {
-    const mixed = fieldFrom((_, column) => ({ luminance: column % 2 === 0 ? 0.05 : 0.6, detail: 0.05 }))
+  it('puts the quote on a backdrop when a few sharp details cross a quiet region', () => {
+    // Two of sixteen columns carry bright lines; the mean stays quiet.
+    const lines = fieldFrom((_, column) => ({ luminance: 0.03, detail: column % 8 === 0 ? 0.06 : 0.002 }))
+    expect(regionStats(lines, wholeStage).meanDetail).toBeLessThanOrEqual(QUIET_MEAN_DETAIL)
+
+    const style = chooseTextStyle(lines, colors, wholeStage)
+    expect(style.backdrop?.reason).toBe('detail')
+    expect(style.peakDetail).toBeGreaterThan(QUIET_PEAK_DETAIL)
+  })
+
+  it('solves the backdrop opacity over a quiet background that mixes bright and dark areas', () => {
+    const mixed = fieldFrom((_, column) => ({ luminance: column < 8 ? 0.05 : 0.6, detail: 0.005 }))
     const style = chooseTextStyle(mixed, colors, wholeStage)
 
-    expect(style.scrim?.opacity).toBeGreaterThan(0)
-    expect(style.scrim?.opacity).toBeLessThanOrEqual(MAX_SCRIM_OPACITY)
+    expect(style.backdrop?.reason).toBe('contrast')
+    expect(style.backdrop?.opacity).toBeGreaterThanOrEqual(MIN_BACKDROP_OPACITY)
+    expect(style.backdrop?.opacity).toBeLessThanOrEqual(MAX_BACKDROP_OPACITY)
     expect(style.contrast).toBeGreaterThanOrEqual(TARGET_CONTRAST)
-    expect(style.textShadow).not.toBeNull()
+  })
+
+  it('gives a backdrop on request, and only a faint shadow to text on it', () => {
+    const quiet = fieldFrom(() => ({ luminance: 0.03, detail: 0.005 }))
+    const style = chooseTextStyle(quiet, colors, wholeStage, true)
+
+    expect(style.backdrop?.reason).toBe('overlay')
+    expect(style.backdrop?.opacity).toBe(MIN_BACKDROP_OPACITY)
+    expect(style.textShadow).not.toContain('0.6em')
   })
 
   it('reaches the target on every uniform grey', () => {
@@ -48,10 +79,22 @@ describe('chooseTextStyle', () => {
   })
 
   it('only looks at the region under the text', () => {
-    const brightLeft = fieldFrom((_, column) => ({ luminance: column < 8 ? 0.9 : 0.02, detail: 0.005 }))
-    const style = chooseTextStyle(brightLeft, colors, { x: 0.55, y: 0.1, width: 0.4, height: 0.8 })
+    const brightBusyLeft = fieldFrom((_, column) => ({
+      luminance: column < 8 ? 0.9 : 0.02,
+      detail: column < 8 ? 0.1 : 0.005,
+    }))
+    const style = chooseTextStyle(brightBusyLeft, colors, { x: 0.55, y: 0.1, width: 0.4, height: 0.8 })
 
     expect(style.tone).toBe('light')
-    expect(style.scrim).toBeNull()
+    expect(style.backdrop).toBeNull()
+  })
+})
+
+describe('regionStats', () => {
+  it('reports the 90th-percentile detail by area', () => {
+    const field = fieldFrom((_, column) => ({ luminance: 0.1, detail: column === 0 ? 0.5 : 0.01 }))
+    expect(regionStats(field, wholeStage).peakDetail).toBe(0.01)
+    // Columns 0-1 of 4: half the area is the busy column.
+    expect(regionStats(field, { x: 0, y: 0, width: 2 / 16, height: 1 }).peakDetail).toBe(0.5)
   })
 })

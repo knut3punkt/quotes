@@ -30,6 +30,9 @@ import no.esotericgames.quotes.server.imagegen.loadImageGenerationConfig
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
 import no.esotericgames.quotes.server.interpretation.loadInterpretationConfig
 import no.esotericgames.quotes.server.interpretation.llm.LlamaCppInterpretationClient
+import no.esotericgames.quotes.server.quality.QuoteQualityService
+import no.esotericgames.quotes.server.quality.llm.LlamaCppQuoteQualityClient
+import no.esotericgames.quotes.server.quality.loadQualityConfig
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaClient
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.sources.bible.BibleClient
@@ -81,10 +84,12 @@ fun Application.module() {
     val interpretationLlmConfig = loadInterpretationConfig(environment.config)
     val taggingConfig = loadTaggingConfig(environment.config)
     val imageGenerationConfig = loadImageGenerationConfig(environment.config)
+    val qualityLlmConfig = loadQualityConfig(environment.config)
+    val publicQuoteConfig = loadPublicQuoteConfig(environment.config)
     // Background work outlives the admin request that starts it, but not the application.
     val backgroundScope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
     configureRouting(
-        publicQuoteService = PublicQuoteService(),
+        publicQuoteService = PublicQuoteService(publicQuoteConfig),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
         quoteAdminService = QuoteAdminService(),
@@ -104,6 +109,11 @@ fun Application.module() {
             interpretationLlmConfig,
         ),
         quoteTaggingService = QuoteTaggingService(LlamaCppTaggingClient(taggingConfig.llm), taggingConfig),
+        quoteQualityService = QuoteQualityService(
+            LlamaCppQuoteQualityClient(qualityLlmConfig),
+            qualityLlmConfig,
+            maxFullQuoteWords = publicQuoteConfig.maxFullQuoteWords,
+        ),
         tagAdminService = TagAdminService(),
         tagImageGenerationJob = TagImageGenerationJob(
             HttpComfyUiClient(imageGenerationConfig.comfyUi),

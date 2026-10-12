@@ -19,6 +19,7 @@ interface MultiSelectFilterProps {
   onChange: (selected: Set<string>) => void
   searchPlaceholder?: string
   className?: string
+  disabled?: boolean
 }
 
 function MultiSelectFilterComponent({
@@ -28,6 +29,7 @@ function MultiSelectFilterComponent({
   onChange,
   searchPlaceholder = 'Find…',
   className = 'min-w-[160px] max-w-[240px]',
+  disabled = false,
 }: MultiSelectFilterProps) {
   const [term, setTerm] = useState('')
 
@@ -59,7 +61,8 @@ function MultiSelectFilterComponent({
         <button
           id={id}
           type="button"
-          className={`flex h-7 items-center justify-between gap-1.5 rounded-[min(var(--radius-md),10px)] border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 ${className}`}
+          disabled={disabled}
+          className={`flex h-7 disabled:cursor-not-allowed disabled:opacity-50 items-center justify-between gap-1.5 rounded-[min(var(--radius-md),10px)] border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 ${className}`}
         >
           <span className="truncate">{triggerLabel}</span>
           <ChevronDownIcon className="pointer-events-none size-4 shrink-0 text-muted-foreground" />

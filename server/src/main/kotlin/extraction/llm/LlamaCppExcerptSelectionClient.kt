@@ -75,8 +75,19 @@ class LlamaCppExcerptSelectionClient(
             return InferenceOutcome.MalformedResponse("invalid chat-completion envelope: ${e.message}")
         }
 
-        val content = envelope.choices.firstOrNull()?.message?.content
+        val choice = envelope.choices.firstOrNull()
             ?: return InferenceOutcome.MalformedResponse("no choices in chat-completion response")
+
+        if (choice.finishReason == "length") {
+            // Truncated JSON may still parse (a cut-off array of complete candidates), so it is never
+            // accepted as if it were the whole answer.
+            return InferenceOutcome.Truncated(
+                "model response truncated: finish_reason=length at max_tokens=${request.generation.maxOutputTokens}",
+            )
+        }
+
+        val content = choice.message.content
+            ?: return InferenceOutcome.MalformedResponse("no content in chat-completion response")
 
         val parsed = try {
             contentJson.decodeFromString(ExcerptSelectionResponseDto.serializer(), content)

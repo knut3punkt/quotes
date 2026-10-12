@@ -22,11 +22,11 @@ private val DEFAULT_LLM_CONFIG = ExtractionLlmConfig(
     baseUrl = "http://localhost:8888",
     model = "local-model",
     temperature = 0.1,
-    maxOutputTokens = 800,
+    maxOutputTokens = 2000,
     requestTimeoutMillis = 30_000,
     reasoningEffort = null,
 )
-private val DEFAULT_JUDGE_CONFIG = DEFAULT_LLM_CONFIG.copy(maxOutputTokens = 500, requestTimeoutMillis = 60_000)
+private val DEFAULT_JUDGE_CONFIG = DEFAULT_LLM_CONFIG.copy(maxOutputTokens = 700, requestTimeoutMillis = 60_000)
 private val DEFAULT_POLICY = ExtractionPolicy()
 
 /**

@@ -17,7 +17,7 @@ export function fetchRandomQuotes(count: number = DEFAULT_COUNT): Promise<Public
   return request(`/api/quotes/random?count=${count}`)
 }
 
-/** A fresh server-side choice of background and collage elements for one quote, or the excerpt of it shown. */
+/** A fresh server-side choice of background and motif element for one quote, or the excerpt of it shown. */
 export function fetchQuoteVisuals(quoteId: number, excerptId: number | null): Promise<QuoteVisuals> {
   const query = excerptId === null ? '' : `?excerptId=${excerptId}`
   return request(`/api/quotes/${quoteId}/visuals${query}`)

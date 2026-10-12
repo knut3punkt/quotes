@@ -16,9 +16,21 @@ import { regionStats, type LuminanceField } from './field'
  * WCAG's 3:1 for large text, because a TV is read from across the room, over an image.
  */
 export const TARGET_CONTRAST = 4.5
-/** A scrim is a last resort; past this it stops looking like light and starts looking like a box. */
-export const MAX_SCRIM_OPACITY = 0.7
-/** Mean detail above this means texture under the text, which a soft halo helps against. */
+/**
+ * Above this mean detail under the quote, the background is textured enough to fight the letters, whatever
+ * the luminance contrast says, and the quote gets a backdrop.
+ */
+export const QUIET_MEAN_DETAIL = 0.015
+/**
+ * Above this 90th-percentile detail, a few sharp or bright details (neon lines, filaments, hatching) cross
+ * the quote. Cell means average them away, so they are caught by detail instead.
+ */
+export const QUIET_PEAK_DETAIL = 0.022
+/** A backdrop fainter than this looks like an accident rather than a pane of glass. */
+export const MIN_BACKDROP_OPACITY = 0.4
+/** Past this the glass stops showing the background and becomes a box. */
+export const MAX_BACKDROP_OPACITY = 0.8
+/** Mean detail above this means texture under bare text, which a soft halo helps against. */
 const HALO_DETAIL = 0.02
 
 const LIGHT_TEXT = { start: 0.96, extreme: 0.99, chroma: 0.025 }
@@ -27,10 +39,17 @@ const LIGHTNESS_STEP = 0.01
 
 export type TextTone = 'light' | 'dark'
 
-export interface Scrim {
-  /** Opaque colour of the scrim; [opacity] is applied separately so it can be feathered. */
-  color: string
+/** Why the quote got a backdrop: texture, a few sharp details, too little contrast, or an `overlay` background. */
+export type BackdropReason = 'texture' | 'detail' | 'contrast' | 'overlay'
+
+/** A frosted, hue-tinted pane of glass behind the quote. */
+export interface Backdrop {
+  /** Opaque tint over the blurred background; [opacity] is applied to it separately. */
+  tint: string
   opacity: number
+  /** The 1 px inner edge that makes the pane read as glass. */
+  hairline: string
+  reason: BackdropReason
 }
 
 export interface TextStyle {
@@ -38,9 +57,12 @@ export interface TextStyle {
   color: string
   attributionColor: string
   textShadow: string | null
-  scrim: Scrim | null
-  /** The contrast reached against the worst part of the region, after any scrim. */
+  backdrop: Backdrop | null
+  /** The contrast reached against the worst part of the region, after any backdrop. */
   contrast: number
+  /** Detail under the quote, for `?debug`. */
+  meanDetail: number
+  peakDetail: number
 }
 
 /**
@@ -50,13 +72,16 @@ export interface TextStyle {
  * 1. light or dark text, whichever contrasts better with the worst part of the region;
  * 2. a colour tinted with the background's own hue rather than pure white or black;
  * 3. lightness pushed toward the extreme if the target isn't met;
- * 4. a soft halo when the region is textured or contrast is marginal;
- * 5. a feathered scrim in the background's hue, at the lowest opacity that meets the target.
+ * 4. on a quiet region, bare text, with a soft halo when contrast is marginal;
+ * 5. on a textured region, when the target still isn't met, or when [forceBackdrop] is set, a frosted backdrop
+ *    in the background's hue, at the lowest opacity that meets the target within the backdrop's range.
  */
 export function chooseTextStyle(
   field: LuminanceField,
   dominantColors: DominantColor[],
   region: NormalizedRect,
+  /** For a background that reserved no room for the quote. */
+  forceBackdrop = false,
 ): TextStyle {
   const stats = regionStats(field, region)
   const hue = dominantHue(dominantColors)
@@ -89,27 +114,35 @@ export function chooseTextStyle(
   const text = textRgb(tone, lightness)
   const textLuminance = relativeLuminance(text)
 
-  // The opposite tone in the same hue: what the halo and scrim are made of.
+  // The opposite tone in the same hue: what the halo and the backdrop's tint are made of.
   const shade = oklchToRgb(
     tone === 'light' ? { l: 0.14, c: Math.min(sourceChroma, 0.04), h } : { l: 0.95, c: Math.min(sourceChroma, 0.03), h },
   )
 
+  const reason = backdropReason(
+    forceBackdrop,
+    stats.meanDetail,
+    stats.peakDetail,
+    contrastOver(text, worstBackground) >= TARGET_CONTRAST,
+  )
   let effectiveBackground: Rgb = greyWithLuminance(worstBackground)
-  let scrim: Scrim | null = null
-  if (contrastOver(text, worstBackground) < TARGET_CONTRAST) {
-    const opacity = solveScrimOpacity(effectiveBackground, shade, textLuminance)
-    // A little extra, because the scrim's feathered edge is thinner than its middle.
-    const applied = Math.min(MAX_SCRIM_OPACITY, opacity + 0.05)
-    scrim = { color: rgbToCss(shade), opacity: applied }
-    effectiveBackground = blendRgb(effectiveBackground, shade, applied)
+  let backdrop: Backdrop | null = null
+  if (reason) {
+    const solved = solveBackdropOpacity(effectiveBackground, shade, textLuminance)
+    const opacity = Math.min(MAX_BACKDROP_OPACITY, Math.max(MIN_BACKDROP_OPACITY, solved))
+    backdrop = { tint: rgbToCss(shade), opacity, hairline: rgbToCss(text, 0.1), reason }
+    effectiveBackground = blendRgb(effectiveBackground, shade, opacity)
   }
   const effectiveLuminance = relativeLuminance(effectiveBackground)
   const contrast = contrastRatio(textLuminance, effectiveLuminance)
 
-  const needsHalo = stats.meanDetail > HALO_DETAIL || scrim !== null || contrast < TARGET_CONTRAST * 1.3
-  const textShadow = needsHalo
-    ? `0 0 0.6em ${rgbToCss(shade, tone === 'light' ? 0.5 : 0.6)}, 0 0.04em 0.12em ${rgbToCss(shade, 0.4)}`
-    : null
+  // On glass, only a faint tight shadow; bare text gets the soft halo when texture or contrast call for it.
+  let textShadow: string | null = null
+  if (backdrop) {
+    textShadow = `0 0.03em 0.08em ${rgbToCss(shade, 0.35)}`
+  } else if (stats.meanDetail > HALO_DETAIL || contrast < TARGET_CONTRAST * 1.3) {
+    textShadow = `0 0 0.6em ${rgbToCss(shade, tone === 'light' ? 0.5 : 0.6)}, 0 0.04em 0.12em ${rgbToCss(shade, 0.4)}`
+  }
 
   // The attribution is a step softer, but only when it still meets the target.
   const softer = textRgb(tone, tone === 'light' ? lightness - 0.1 : lightness + 0.12)
@@ -120,18 +153,37 @@ export function chooseTextStyle(
     color: rgbToCss(text),
     attributionColor: rgbToCss(attribution),
     textShadow,
-    scrim,
+    backdrop,
     contrast,
+    meanDetail: stats.meanDetail,
+    peakDetail: stats.peakDetail,
   }
 }
 
-/** The lowest scrim opacity, up to the cap, at which text of [textLuminance] meets the target. */
-function solveScrimOpacity(background: Rgb, scrim: Rgb, textLuminance: number): number {
+/** Why the quote needs a backdrop, or null when the region is quiet and the text alone is readable. */
+function backdropReason(
+  forced: boolean,
+  meanDetail: number,
+  peakDetail: number,
+  textAloneMeetsTarget: boolean,
+): BackdropReason | null {
+  if (forced) return 'overlay'
+  if (meanDetail > QUIET_MEAN_DETAIL) return 'texture'
+  if (peakDetail > QUIET_PEAK_DETAIL) return 'detail'
+  if (!textAloneMeetsTarget) return 'contrast'
+  return null
+}
+
+/**
+ * The lowest backdrop opacity, up to the maximum, at which text of [textLuminance] meets the target over
+ * [background] blended with [tint] (the way CSS composites).
+ */
+function solveBackdropOpacity(background: Rgb, tint: Rgb, textLuminance: number): number {
   const meets = (opacity: number) =>
-    contrastRatio(textLuminance, relativeLuminance(blendRgb(background, scrim, opacity))) >= TARGET_CONTRAST
-  if (!meets(MAX_SCRIM_OPACITY)) return MAX_SCRIM_OPACITY
+    contrastRatio(textLuminance, relativeLuminance(blendRgb(background, tint, opacity))) >= TARGET_CONTRAST
+  if (!meets(MAX_BACKDROP_OPACITY)) return MAX_BACKDROP_OPACITY
   let low = 0
-  let high = MAX_SCRIM_OPACITY
+  let high = MAX_BACKDROP_OPACITY
   for (let i = 0; i < 20; i++) {
     const middle = (low + high) / 2
     if (meets(middle)) high = middle

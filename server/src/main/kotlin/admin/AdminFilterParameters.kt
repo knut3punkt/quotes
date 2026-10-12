@@ -1,6 +1,9 @@
 package no.esotericgames.quotes.server.admin
 
 import io.ktor.http.Parameters
+import no.esotericgames.quotes.server.quality.PrecheckFlag
+import no.esotericgames.quotes.server.quality.QualityProblem
+import no.esotericgames.quotes.server.quality.QualityVerdict
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 
@@ -118,9 +121,27 @@ fun quoteFilterFrom(params: Parameters, defaultPageSize: Int): QuoteFilter = Quo
     excerpts = enrichmentFilters(params, "excerpts"),
     interpretations = enrichmentFilters(params, "interpretations"),
     tags = enrichmentFilters(params, "tags"),
+    qualityRunId = params["qualityRun"]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("qualityRun must be a run id: $it") },
+    qualityVerdicts = qualityVerdicts(params),
+    qualityFlags = qualityFlags(params),
     page = params["page"]?.toIntOrNull() ?: 1,
     pageSize = params["pageSize"]?.toIntOrNull() ?: defaultPageSize,
-)
+).also { filter ->
+    require(filter.qualityRunId != null || (filter.qualityVerdicts.isEmpty() && filter.qualityFlags.isEmpty())) {
+        "qualityVerdict and qualityFlag need a qualityRun"
+    }
+}
+
+private val QUALITY_VERDICT_VALUES = QualityVerdict.entries.map { it.dbValue }.toSet() + setOf(QUALITY_NOT_ASSESSED, QUALITY_FAILED)
+private val QUALITY_FLAG_VALUES = QualityProblem.entries.map { it.name }.toSet() + PrecheckFlag.entries.map { it.name }.toSet()
+
+private fun qualityVerdicts(params: Parameters): Set<String> = params.getAll("qualityVerdict").orEmpty().map { value ->
+    value.also { require(it in QUALITY_VERDICT_VALUES) { "unknown qualityVerdict: $it" } }
+}.toSet()
+
+private fun qualityFlags(params: Parameters): Set<String> = params.getAll("qualityFlag").orEmpty().map { value ->
+    value.also { require(it in QUALITY_FLAG_VALUES) { "unknown qualityFlag: $it" } }
+}.toSet()
 
 private fun enrichmentFilters(params: Parameters, name: String): Set<EnrichmentFilter> =
     params.getAll(name).orEmpty().map(EnrichmentFilter::fromQueryValue).toSet()

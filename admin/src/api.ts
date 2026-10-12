@@ -1,5 +1,8 @@
 import type {
   AddQuoteTagRequest,
+  AssessQualityResponse,
+  QualityComparison,
+  QualityRun,
   Author,
   AuthorEnrichmentResponse,
   ApproveImportedQuoteRequest,
@@ -98,6 +101,11 @@ function quoteParams(filter: QuoteFilter): URLSearchParams {
   for (const status of filter.excerpts) params.append('excerpts', status)
   for (const status of filter.interpretations) params.append('interpretations', status)
   for (const status of filter.tags) params.append('tags', status)
+  if (filter.qualityRun !== undefined) {
+    params.set('qualityRun', String(filter.qualityRun))
+    for (const verdict of filter.qualityVerdicts) params.append('qualityVerdict', verdict)
+    for (const flag of filter.qualityFlags) params.append('qualityFlag', flag)
+  }
   return params
 }
 
@@ -229,6 +237,25 @@ export function generateQuoteTags(quoteIds: number[]): Promise<GenerateQuoteTags
     method: 'POST',
     body: JSON.stringify({ quoteIds }),
   })
+}
+
+export function fetchQualityRuns(): Promise<QualityRun[]> {
+  return request('/admin/quality-runs')
+}
+
+export function createQualityRun(body: { label: string; runner: 'llm' | 'external'; modelId?: string; notes?: string }): Promise<QualityRun> {
+  return request('/admin/quality-runs', { method: 'POST', body: JSON.stringify(body) })
+}
+
+export function assessQuoteQuality(runId: number, quoteIds: number[]): Promise<AssessQualityResponse> {
+  return request(`/admin/quality-runs/${runId}/assess`, {
+    method: 'POST',
+    body: JSON.stringify({ quoteIds }),
+  })
+}
+
+export function fetchQualityComparison(runA: number, runB: number, limit = 200): Promise<QualityComparison> {
+  return request(`/admin/quality-runs/compare?a=${runA}&b=${runB}&limit=${limit}`)
 }
 
 export function addQuoteTag(quoteId: number, body: AddQuoteTagRequest): Promise<QuoteTag> {

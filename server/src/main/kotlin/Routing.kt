@@ -24,6 +24,9 @@ import no.esotericgames.quotes.server.admin.BulkDeleteImportedQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUnapproveQuotesRequest
 import no.esotericgames.quotes.server.admin.BulkUpdateImportedQuoteStatusRequest
 import no.esotericgames.quotes.server.admin.AddQuoteTagRequest
+import no.esotericgames.quotes.server.admin.AssessQualityRequest
+import no.esotericgames.quotes.server.admin.CreateQualityRunRequest
+import no.esotericgames.quotes.server.admin.UploadAssessmentsRequest
 import no.esotericgames.quotes.server.admin.ExtractQuoteExcerptsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteInterpretationsRequest
 import no.esotericgames.quotes.server.admin.GenerateQuoteTagsRequest
@@ -41,6 +44,7 @@ import no.esotericgames.quotes.server.extraction.QuoteExtractionService
 import no.esotericgames.quotes.server.imagegen.TagImageFileService
 import no.esotericgames.quotes.server.imagegen.TagImageGenerationJob
 import no.esotericgames.quotes.server.interpretation.QuoteInterpretationService
+import no.esotericgames.quotes.server.quality.QuoteQualityService
 import no.esotericgames.quotes.server.sources.bhagavadgita.BhagavadGitaImportService
 import no.esotericgames.quotes.server.sources.bible.BibleImportService
 import no.esotericgames.quotes.server.sources.dhammapada.DhammapadaImportService
@@ -72,6 +76,7 @@ fun Application.configureRouting(
     quoteExtractionService: QuoteExtractionService,
     quoteInterpretationService: QuoteInterpretationService,
     quoteTaggingService: QuoteTaggingService,
+    quoteQualityService: QuoteQualityService,
     tagAdminService: TagAdminService,
     tagImageGenerationJob: TagImageGenerationJob,
     tagImageFileService: TagImageFileService,
@@ -206,6 +211,38 @@ fun Application.configureRouting(
         post("/admin/quotes/generate-tags") {
             val request = call.receive<GenerateQuoteTagsRequest>()
             call.respond(quoteTaggingService.generateForQuotes(request.quoteIds))
+        }
+        get("/admin/quality/prompt") {
+            call.respond(quoteQualityService.promptInfo())
+        }
+        get("/admin/quality-runs") {
+            call.respond(quoteQualityService.listRuns())
+        }
+        post("/admin/quality-runs") {
+            val request = call.receive<CreateQualityRunRequest>()
+            call.respond(HttpStatusCode.Created, quoteQualityService.createRun(request))
+        }
+        get("/admin/quality-runs/compare") {
+            val runA = call.request.queryParameters.getOrFail("a").toInt()
+            val runB = call.request.queryParameters.getOrFail("b").toInt()
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 200
+            call.respond(quoteQualityService.compare(runA, runB, limit))
+        }
+        post("/admin/quality-runs/{id}/assess") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val request = call.receive<AssessQualityRequest>()
+            call.respond(quoteQualityService.assessForQuotes(id, request.quoteIds))
+        }
+        get("/admin/quality-runs/{id}/subjects") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val params = call.request.queryParameters
+            val filter = quoteFilterFrom(params, defaultPageSize = 40)
+            call.respond(quoteQualityService.subjects(id, filter, onlyMissing = params["onlyMissing"] == "true"))
+        }
+        post("/admin/quality-runs/{id}/assessments") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val request = call.receive<UploadAssessmentsRequest>()
+            call.respond(quoteQualityService.upload(id, request.items))
         }
         post("/admin/quotes/{id}/tags") {
             val id = call.parameters.getOrFail("id").toInt()

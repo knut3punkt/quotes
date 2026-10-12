@@ -1,7 +1,7 @@
 package no.esotericgames.quotes.server.extraction
 
-private const val STANDALONE_RESOURCE_PATH = "/prompts/excerpt-judge-standalone-v3.md"
-private const val FIDELITY_RESOURCE_PATH = "/prompts/excerpt-judge-fidelity-v2.md"
+private const val STANDALONE_RESOURCE_PATH = "/prompts/excerpt-judge-standalone-v4.md"
+private const val FIDELITY_RESOURCE_PATH = "/prompts/excerpt-judge-fidelity-v3.md"
 
 /**
  * Loads the judge pass's two versioned system prompts, same resource convention as
@@ -15,9 +15,15 @@ private const val FIDELITY_RESOURCE_PATH = "/prompts/excerpt-judge-fidelity-v2.m
  * (clichés, motivational language, vague lines, context-dependent dialogue). It adds a "would I keep
  * this without knowing the author?" test, a tie-break toward the lower level, and calibration examples
  * for a motivational cliché and a cynical but sharp line. Steps, levels, and hard rules are unchanged.
+ *
+ * v3 -> v4: both prompts changed. The standalone prompt widens the "do not list" guidance (names,
+ * indefinite and generic noun phrases, "I", dummy "it", cleft sentences) and adds mid-level
+ * quotability anchors. The fidelity prompt compares the excerpt itself with the source instead of the
+ * blind reader's paraphrase, and states that leaving things out scores 5. The acceptance rule changed
+ * with it: see [ExcerptJudge.passesStandalone].
  */
 object ExcerptJudgePrompts {
-    const val PROMPT_VERSION = "excerpt-judge-v3"
+    const val PROMPT_VERSION = "excerpt-judge-v4"
 
     private val cachedStandalonePrompt: String by lazy { loadResource(STANDALONE_RESOURCE_PATH) }
     private val cachedFidelityPrompt: String by lazy { loadResource(FIDELITY_RESOURCE_PATH) }
@@ -34,8 +40,8 @@ object ExcerptJudgePrompts {
         return "$quotation\n\nPay particular attention to whether a first-time reader can tell what these refer to: $phrases"
     }
 
-    fun buildFidelityUserContent(sourceText: String, excerptText: String, standaloneReading: String): String =
-        "SOURCE PASSAGE\n\n$sourceText\n\nEXCERPT\n\n$excerptText\n\nSTANDALONE READER'S UNDERSTANDING\n\n$standaloneReading"
+    fun buildFidelityUserContent(sourceText: String, excerptText: String): String =
+        "SOURCE PASSAGE\n\n$sourceText\n\nEXCERPT\n\n$excerptText"
 
     private fun loadResource(path: String): String {
         val stream = javaClass.getResourceAsStream(path) ?: error("bundled resource not found: $path")

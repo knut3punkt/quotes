@@ -6,14 +6,16 @@ import no.esotericgames.quotes.server.imagegen.DominantColor
 import no.esotericgames.quotes.server.imagegen.NormalizedRect
 
 /**
- * The images chosen for one showing of a quote (docs/features/quote-composition.md). The TV app lays
- * them out and picks text colours from the metadata carried here. A null [background] means the quote
- * has no mood image, and the TV renders its fallback.
+ * The images chosen for one showing of a quote (docs/features/quote-composition.md): a background and at
+ * most one motif element. The TV app lays them out and picks text colours from the metadata carried here.
+ * A null [background] means the quote has no mood image, and the TV renders its fallback.
  */
 @Serializable
 data class QuoteVisuals(
     val background: SelectedBackground?,
     val elements: List<SelectedElement>,
+    /** The [StyleAffinity] score of the background and motif styles, or null when there was no pair to score. */
+    val styleFit: Int?,
 )
 
 /** A tag image that can be chosen for a quote; [tagId] groups the images of one tag. */
@@ -32,6 +34,10 @@ data class SelectedBackground(
     val meanLuminance: Double,
     val dominantColors: List<DominantColor>,
     val layout: BackgroundLayout,
+    /** The style profile it was generated in; null for images from recipes without style profiles. */
+    val style: String?,
+    /** The quote layout its prompt reserved room for (`left`, `top`, `overlay`, ...); null when there was none. */
+    val quoteLayout: String?,
 ) : CandidateImage
 
 @Serializable
@@ -43,6 +49,8 @@ data class SelectedElement(
     val height: Int,
     val dominantColors: List<DominantColor>,
     val contentBox: NormalizedRect,
+    /** The style profile it was generated in; null for images from recipes without style profiles. */
+    val style: String?,
 ) : CandidateImage
 
 /** Every image a quote's visual tags offer, each image listed once. */

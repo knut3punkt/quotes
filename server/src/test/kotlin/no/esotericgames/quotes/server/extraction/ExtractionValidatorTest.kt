@@ -110,6 +110,32 @@ class ExtractionValidatorTest {
     }
 
     @Test
+    fun `rejects a candidate that starts lowercase mid-source but not at the source's first unit`() {
+        val clauseSource = "the opening clause is how the author began; the second clause continues the sentence " +
+            "with many more words. A Final sentence stands alone here."
+        val clauseUnits = segmentSourceIntoUnits(clauseSource, SegmentationPolicy(maxSentenceWordsBeforeClauseSplit = 5))
+
+        val result = ExtractionValidator.validate(
+            clauseSource,
+            clauseUnits,
+            listOf(candidate(1, 1), candidate(2, 2), candidate(3, 3)),
+            POLICY,
+        )
+
+        assertEquals(listOf(1 to 1, 3 to 3), result.map { it.startUnit to it.endUnit })
+    }
+
+    @Test
+    fun `accepts a very short standalone line`() {
+        val shortSource = "The struggle itself is enough. One must imagine Sisyphus happy."
+        val shortUnits = segmentSourceIntoUnits(shortSource)
+
+        val result = ExtractionValidator.validate(shortSource, shortUnits, listOf(candidate(2, 2)), POLICY)
+
+        assertEquals("One must imagine Sisyphus happy.", result.single().text)
+    }
+
+    @Test
     fun `resolveOverlaps prefers a passing excerpt over a higher-scoring failing one`() {
         val failing = judged(1, 2, score = 100, meetsThresholds = false)
         val passing = judged(2, 2, score = 75, meetsThresholds = true)

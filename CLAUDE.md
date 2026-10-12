@@ -36,20 +36,25 @@ speculatively — only when a specific platform is explicitly requested.
   a random batch of quotes from the server's `/api/quotes/random` endpoint and displays one at a
   time, full-screen, with conditional author/source fields, 30s auto-advance, and D-pad/arrow-key
   navigation with wrap-around. Each screen is composed by `src/composition/` from the server-chosen
-  mood background and motif elements (layout, text contrast, fallback gradient), rendered by
+  mood background and motif element (layout from the background's quote layout, text contrast, fallback gradient), rendered by
   `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. `src/platform/` provides `webos`/`browser` detection for future
   platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
   entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
   response types and the hard-coded sample quotes. `PublicQuoteService.kt` backs the public
   `GET /api/quotes/random` endpoint (random quotes with author/source, for TV frontends; a quote with
-  qualifying excerpts is shown as one of them),
-  each with `visuals` chosen by `composition/` (a mood background and up to four motif elements).
+  qualifying excerpts is shown as one of them, and a quote longer than `publicQuotes.maxFullQuoteWords`
+  without one is skipped rather than shown in full),
+  each with `visuals` chosen by `composition/` (a mood background and at most one motif element, paired
+  by style affinity).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
   `sources`, `quotes`, `tags`, `imported_quotes`). `wikiquote/` is the Wikiquote importer, which
   stages results in `imported_quotes`. `extraction/`, `interpretation/` and `tagging/` are the
   LLM-backed enrichment pipelines (excerpts, interpretations, and faceted tags respectively), each
-  triggered from the admin. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
+  triggered from the admin. `quality/` is the advisory quote quality job: it gives each quote and accepted
+  excerpt a verdict in a `quote_quality_runs` run (by the local model, or uploaded by an external runner
+  such as a frontier model), keeps every run so runs can be compared, and never changes what the TV
+  shows. `imagegen/` generates per-tag images on a ComfyUI server (backgrounds for
   mood tags, transparent collage elements for motif tags) as an admin-started background job, stores
   the PNGs under `imageGeneration.storageDir` and records them in `tag_images`; `TagImageFileService`
   serves them, downscaled and cached, at `GET /api/tag-images/{id}?width=`. `admin/` (package, not to be confused with the top-level
@@ -146,6 +151,20 @@ Important principles:
   normalization, and admin merges (merged tags stay as aliases). Don't bypass `TagVocabulary` when creating tags.
 * Admin edits are durable: a re-run never removes admin-added tags or re-adds admin-rejected ones.
 
+### Quote quality
+
+When implementing or modifying the quote quality job, or the TV's full-quote length cap, first read:
+
+`docs/features/quote-quality.md`
+
+Important principles:
+
+* Advisory only: verdicts are for a human to filter and act on (bulk unapprove), never a TV-facing gate.
+* Runs are never replaced; assessments outlive deleted quotes and excerpts (SET NULL plus a text snapshot), and runs
+  are compared on `(subject_kind, subject_hash)`.
+* Model output and external uploads go through the same `QualityValidator`; prechecks are computed by the server and
+  never shown to the model.
+
 ### Tag images
 
 When implementing or modifying tag image generation, or anything that consumes `tag_images` (the collage
@@ -170,11 +189,13 @@ contrast), first read:
 
 Important principles:
 
-* The server chooses *which* images a showing gets (`server/.../composition/`); the TV app decides *where* they go and
+* The server chooses *which* images a showing gets (`server/.../composition/`, pairing background and motif by the
+  style-affinity mapping in `resources/composition/`); the TV app decides *where* they go and
   how the text is coloured (`platforms/tv-web/src/composition/`). Keep that split.
 * Composition code is pure with an injected random source, so it is tested deterministically.
-* Text must reach the contrast target against the worst part of the background under it. Prefer the gentlest means
-  (tint, halo, then a solved, feathered scrim) and never a hard-edged box.
+* Text must reach the contrast target against the worst part of the background under it. On a quiet region keep bare,
+  tinted text (with a halo when marginal). Where the region is textured (by `detail`) or low-contrast, use the frosted,
+  hue-tinted, semi-transparent backdrop card with a solved opacity, never an opaque or neutral box.
 
 ## Build commands
 

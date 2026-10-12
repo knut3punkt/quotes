@@ -76,6 +76,9 @@ object ExtractionValidator {
         val text = source.substring(startUnit.startOffset, endUnit.endOffset)
         val wordCount = text.trim().split(WHITESPACE_REGEX).count { it.isNotEmpty() }
         if (wordCount !in policy.acceptableMinWords..policy.acceptableMaxWords) return null
+        // A unit that starts lowercase continues a sentence cut at clause punctuation, so it would show
+        // as a fragment. The source's own first unit is exempt: that is how the author wrote it.
+        if (candidate.startUnit != 1 && startsLowercase(text)) return null
 
         val reason = listOfNotNull(
             candidate.coreIdea.trim().takeIf { it.isNotEmpty() }?.let { "Core idea: $it" },
@@ -93,6 +96,8 @@ object ExtractionValidator {
             contextSignals = ContextDependencySignals.detect(text, candidate.startUnit, candidate.endUnit, candidate.references),
         )
     }
+
+    private fun startsLowercase(text: String): Boolean = text.firstOrNull { it.isLetter() }?.isLowerCase() == true
 
     /**
      * Ranks judged excerpts — passing ones first, then by summed score (a skipped fidelity check

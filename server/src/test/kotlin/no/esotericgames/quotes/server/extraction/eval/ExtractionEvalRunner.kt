@@ -76,13 +76,13 @@ fun main() = runBlocking {
         baseUrl = System.getenv("EXTRACTION_LLM_BASE_URL") ?: "http://localhost:8888",
         model = System.getenv("EXTRACTION_LLM_MODEL") ?: "local-model",
         temperature = 0.1,
-        maxOutputTokens = 800,
+        maxOutputTokens = 2000,
         requestTimeoutMillis = 60_000,
     )
     val judgeConfig = selectorConfig.copy(
         baseUrl = System.getenv("EXTRACTION_JUDGE_LLM_BASE_URL") ?: selectorConfig.baseUrl,
         model = System.getenv("EXTRACTION_JUDGE_LLM_MODEL") ?: selectorConfig.model,
-        maxOutputTokens = 500,
+        maxOutputTokens = 700,
     )
     val policy = ExtractionPolicy()
     val selector = LlamaCppExcerptSelectionClient(selectorConfig)
@@ -120,6 +120,11 @@ fun main() = runBlocking {
             }
             is InferenceOutcome.MalformedResponse -> {
                 println("Selector malformed response: ${outcome.message}")
+                tally.failures++
+                continue
+            }
+            is InferenceOutcome.Truncated -> {
+                println("Selector response truncated: ${outcome.message}")
                 tally.failures++
                 continue
             }

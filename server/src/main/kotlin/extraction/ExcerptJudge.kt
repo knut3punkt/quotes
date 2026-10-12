@@ -10,6 +10,7 @@ import no.esotericgames.quotes.server.extraction.llm.StandaloneVerdict
 private const val MIN_LEVEL = 1
 private const val MAX_LEVEL = 5
 private const val SCORE_PER_LEVEL = 25
+private val NON_WORD_REGEX = Regex("""[^\p{L}\p{N}']+""")
 
 sealed interface ExcerptJudgment {
     data class Judged(val excerpt: ValidatedExcerpt, val modelId: String?) : ExcerptJudgment
@@ -29,7 +30,9 @@ sealed interface ExcerptJudgment {
  * read the surrounding passage always "knows" what "this" refers to, so it cannot judge whether a
  * first-time reader would; that curse of knowledge was the main reason excerpts with dangling
  * references scored high on independence when the selector graded itself. The fidelity call, which
- * does need the source, only runs for candidates that pass the blind call.
+ * does need the source, only runs for candidates that pass the blind call. It compares the excerpt
+ * itself with the source, not the blind reader's paraphrase of it: a generalising paraphrase invited
+ * "the excerpt is really about X" objections that rejected faithful aphorisms.
  */
 class ExcerptJudge(
     private val client: ExcerptJudgeClient,
@@ -48,13 +51,13 @@ class ExcerptJudge(
             is JudgeOutcome.MalformedResponse -> return ExcerptJudgment.Malformed(outcome.message)
         }
 
-        if (!passesStandalone(standalone.verdict, policy)) {
+        if (!passesStandalone(standalone.verdict, candidate.contextSignals, policy)) {
             return ExcerptJudgment.Judged(combineVerdicts(candidate, standalone.verdict, null, policy), standalone.modelId)
         }
 
         val fidelityRequest = JudgeRequest(
             systemPrompt = ExcerptJudgePrompts.fidelitySystemPrompt(),
-            userContent = ExcerptJudgePrompts.buildFidelityUserContent(sourceText, candidate.text, standalone.verdict.whatItIsAbout),
+            userContent = ExcerptJudgePrompts.buildFidelityUserContent(sourceText, candidate.text),
             generation = generation,
         )
         return when (val outcome = client.judgeFidelity(fidelityRequest)) {
@@ -70,16 +73,34 @@ class ExcerptJudge(
         fun levelToScore(level: Int): Int = (level.coerceIn(MIN_LEVEL, MAX_LEVEL) - MIN_LEVEL) * SCORE_PER_LEVEL
 
         /**
-         * Hard rules on top of the levels: any reference the blind reader could not resolve fails
-         * independence, and an empty insight fails quotability, regardless of the levels given —
-         * those free-text fields are the model's actual reading, and are harder to inflate than a number.
+         * Rules on top of the levels. An empty insight fails quotability regardless of the levels: it
+         * is the model's actual reading, and harder to inflate than a number.
+         *
+         * An unresolved reference fails the excerpt only when it is corroborated: the judge listed it
+         * and the deterministic context check flagged the same phrase ([ExcerptCandidate.contextSignals]:
+         * a backward-pointing opener, a phrase like "the latter", or a reference the selector placed
+         * outside the range). Small judges list ordinary nouns, names and "I" as unresolved, so an
+         * uncorroborated listing counts only through the standsAlone level the prompt ties it to.
          */
-        fun passesStandalone(verdict: StandaloneVerdict, policy: ExtractionPolicy): Boolean =
-            verdict.unresolvedReferences.none { it.isNotBlank() } &&
+        fun passesStandalone(verdict: StandaloneVerdict, contextSignals: List<String>, policy: ExtractionPolicy): Boolean =
+            corroboratedReferences(verdict.unresolvedReferences, contextSignals).isEmpty() &&
                 verdict.insight.isNotBlank() &&
                 levelToScore(verdict.standsAlone) >= policy.minIndependence &&
                 levelToScore(verdict.completeness) >= policy.minCompleteness &&
                 levelToScore(verdict.quotability) >= policy.minQuotability
+
+        /** The listed references that match a context signal as a whole word or phrase, either way round. */
+        fun corroboratedReferences(unresolvedReferences: List<String>, contextSignals: List<String>): List<String> {
+            val signals = contextSignals.map(::normalizePhrase).filter { it.isNotEmpty() }
+            return unresolvedReferences.filter { reference ->
+                val phrase = normalizePhrase(reference)
+                phrase.isNotEmpty() && signals.any { signal -> containsPhrase(phrase, signal) || containsPhrase(signal, phrase) }
+            }
+        }
+
+        private fun normalizePhrase(phrase: String): String = phrase.lowercase().replace(NON_WORD_REGEX, " ").trim()
+
+        private fun containsPhrase(text: String, phrase: String): Boolean = " $text ".contains(" $phrase ")
 
         fun combineVerdicts(
             candidate: ExcerptCandidate,
@@ -88,7 +109,7 @@ class ExcerptJudge(
             policy: ExtractionPolicy,
         ): ValidatedExcerpt {
             val fidelityScore = fidelity?.let { levelToScore(it.fidelity) }
-            val meetsThresholds = passesStandalone(standalone, policy) &&
+            val meetsThresholds = passesStandalone(standalone, candidate.contextSignals, policy) &&
                 fidelityScore != null && fidelityScore >= policy.minContextualFidelity
 
             return ValidatedExcerpt(

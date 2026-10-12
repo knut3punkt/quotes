@@ -33,8 +33,8 @@ tag's images sit next to each other in the queue. Failed images leave no row, so
 tag with only some of its images is topped up. A run never regenerates an image that exists.
 
 Images from older recipe versions don't count. So when a recipe gets a new version, every tag of that kind gets a
-full new set on the next run. The old rows stay in `tag_images` and are still candidates for composition, which
-picks one image per tag at random.
+full new set on the next run. The old rows stay in `tag_images` and are still candidates for composition (see
+`quote-composition.md`).
 
 When an admin merges tag A into tag B, A's images move to B. An image that finishes generating after its tag was
 merged is stored on the canonical tag.
@@ -77,7 +77,10 @@ text as `prompt`, so provenance never depends on the generator staying the same 
 * `quoteLayouts` is optional. When a recipe has them, one is picked by weight and supplies both `{{composition}}`
   and `{{quoteInstruction}}`.
 * `prompt_ingredients` holds `style`, one entry per list (`medium`, `look`, `texture`, or `medium`, `treatment`,
-  `edgeTreatment`), and `quoteLayout` (the layout id) when there is one.
+  `edgeTreatment`), and `quoteLayout` (the layout id) when there is one. Composition reads `style` to pair
+  backgrounds with motifs, and `quoteLayout` to place the quote (`quote-composition.md`). So style and layout ids
+  are part of that contract: renaming one in a new recipe version means updating `style-affinity` and the TV
+  layouts too.
 * `StyledPromptRecipe.parse` refuses a recipe that:
   * doesn't name exactly one input, or never uses it;
   * uses a placeholder it doesn't fill, or never uses one of its style lists;

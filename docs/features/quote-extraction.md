@@ -36,7 +36,8 @@ Suggested initial defaults:
 
 * Extract only when the source exceeds approximately 55 words.
 * Preferred excerpt length: 12–45 words.
-* Acceptable excerpt length: 6–60 words.
+* Acceptable excerpt length: 3–60 words. (Originally 6, which dropped "One must imagine Sisyphus happy." before the
+  judge ever saw it.)
 
 There is no hard cap on the number of excerpts returned from one source. Deterministic
 duplicate/overlap resolution (see below) already prevents redundant or overlapping excerpts, and the
@@ -77,6 +78,20 @@ If an individual sentence is itself too long for a useful TV quotation, it may a
 Avoid aggressive comma-based splitting unless clearly necessary.
 
 Each unit should retain character offsets into the original source.
+
+Segmentation details (method v3):
+
+* **No split after abbreviations or initials.** A period after an initial ("J.", "C.S.", "(C."), a common title or
+  rank ("Mr.", "Adm.", "Capt."), a bibliographic abbreviation ("Ch.", "Bk.", "Vol.") or a scripture book ("Matt.")
+  does not end a sentence. Abbreviations that are also ordinary sentence-final words ("no.", "Tim.") are left out.
+* **Colons.** A colon is a clause boundary only when followed by whitespace, so "Matthew 23:12" and "3:30" are never
+  split.
+* **Clause punctuation belongs to no unit.** The `;`, `:` or `—` where a long sentence is split falls in the gap
+  between two units. A single-unit excerpt therefore never ends on a dangling semicolon. A range spanning the boundary
+  still contains it verbatim, because excerpts are reconstructed from the first unit's start to the last unit's end.
+* **Lowercase starts.** A unit that starts with a lowercase letter continues a sentence cut at clause punctuation.
+  Validation rejects a candidate that starts with such a unit, unless it is the source's first unit. Such fragments
+  were accepted before.
 
 Example:
 
@@ -217,12 +232,21 @@ For each candidate:
   It returns, in this order: what the quotation is about, the references it cannot resolve, the general insight
   (empty if none), and then anchored 1-5 levels for `standsAlone`, `completeness`, and `quotability`. Phrases
   flagged by the deterministic context check (below) are included as targeted questions.
-* **Fidelity call.** This runs only if the blind call passed. The judge sees the full source, the excerpt, and the
-  blind reading, and rates on a 1-5 level whether the standalone reading preserves the excerpt's meaning in the
-  source.
+* **Fidelity call.** This runs only if the blind call passed. The judge sees the full source and the excerpt, and
+  rates on a 1-5 level whether the excerpt, read alone under the author's name, keeps its meaning in the source.
 
-Hard rules applied in code, regardless of the levels: any unresolved reference fails independence, and an empty
-insight fails quotability.
+  Up to judge v3, the call also received the blind reading and compared the source against that paraphrase. A
+  generalising paraphrase invited "the excerpt is really about X" objections, which rejected faithful aphorisms.
+
+Rules applied in code, regardless of the levels:
+
+* An empty insight fails quotability.
+* An unresolved reference fails the excerpt only when it is **corroborated**: the deterministic context check
+  (below) flagged the same phrase, as a whole word or phrase. Up to method v2, any listed reference failed the
+  excerpt.
+
+Small judges list ordinary nouns, names, "I" and generic "we" as unresolved. Under the corroboration rule, such an
+uncorroborated listing counts only through the `standsAlone` level the prompt ties it to.
 
 A malformed judge response drops only that candidate, and this is recorded in the attempt's error message. An
 unreachable judge fails the whole attempt.
@@ -434,6 +458,85 @@ standalone prompt adds:
 The steps, the anchored levels, and the hard rules in code are unchanged, so acceptance thresholds still apply as
 before.
 
+## Runtime system prompt — selector version 6 and judge prompts v4 (method v3)
+
+These versions came out of the October 2026 quality review and a controlled judge replay. The replay data and full
+report are in `server/src/test/resources/judge-replay/`.
+
+### What the review found
+
+On the stored v3 verdicts:
+
+* About 35-40% of rejections for an unresolved reference listed ordinary nouns, names, "I" or generic "we".
+* Most fidelity rejections said "the excerpt omits X", although the prompt says omission alone is not a problem.
+* Quotability was effectively binary: flat lines passed at 5/5/5.
+* Accepted excerpts started with a dangling "It", "This" or "But".
+* The selector rarely proposed multi-sentence ranges, and missed famous short lines.
+
+### Prompt changes
+
+Selector v6:
+
+* asks for 2-4 unit ranges that make one argument;
+* asks for the single most striking line, however short;
+* forbids starting at a lowercase (mid-sentence) unit;
+* adds a second worked example.
+
+Standalone judge v4:
+
+* Widens the "do not list" guidance to cover names, generic and indefinite noun phrases, generic roles, "I", dummy
+  "it", cleft sentences, and lead-ins such as "Of course" or "Now".
+* Only a reference that blocks the point caps `standsAlone`.
+* Completeness gets all five anchors.
+* A witty remark counts as having an insight.
+* Adds quotability anchors for flat lines (level 3) and short paradoxes (level 5), and says that most passing quotes
+  are a 4.
+
+Fidelity judge v3:
+
+* Compares the excerpt itself with the source, instead of comparing against the blind paraphrase.
+* States that omission and generalisation are faithful.
+* Adds calibration examples, including a character speaking against the author's view (level 2).
+
+### Rule change
+
+The acceptance rule changed with the prompts: an unresolved reference must be corroborated before it fails the
+excerpt (see "Judge pass").
+
+### Judge replay
+
+The replay used 130 stored candidates, stratified across accepted, dangling-opener, fidelity-rejected,
+quotability-rejected and reference-rejected. It ran the judge with both prompt versions, on Ministral 3 8B and on
+Claude Opus 5.5 (the latter through sub-agents following the same prompt files).
+
+* **Noise floor.** Ministral, re-run on its own v3 prompt, reproduces its stored decisions 88% of the time.
+* **Changing the model.** With the same prompt, Ministral and Claude disagree on about 30% of decisions, with v3 and
+  with v4 alike.
+* **Changing the prompt.**
+  * Claude changed only 8% of its decisions from v3 to v4.
+  * Ministral changed 30%.
+  * Against Claude v4 as the reference, Ministral's agreement rose from 65% to 70%. Missed good excerpts fell from 24
+    to 11, but false accepts rose from 21 to 28.
+* **Fidelity.** The fidelity changes worked: agreement on fidelity ≥ 4 rose from 66% to 80%.
+* **Quotability.** Quotability agreement stayed low (58% → 64%), because Ministral still answers level 5 for about
+  half of the candidates.
+
+Conclusion: in the judge, roughly a third of the decisions depend on the model whatever the prompt. The remaining
+prompt-level problems were concentrated in fidelity, and are fixed.
+
+v4 makes Ministral accept more, including more weak excerpts. Before re-extracting the library with it, either:
+
+* run the judge on a stronger model (`extraction.judge` can point elsewhere), or
+* rely on the quality job (docs/features/quote-quality.md) to catch the weak excerpts that get through.
+
+Re-extraction also deletes excerpt interpretations and admin-edited excerpt tags, which cascade from the excerpts.
+Re-run interpretation and tagging afterwards.
+
+### Replay tooling
+
+`JudgeReplayRunner` (`./gradlew :server:runJudgeReplay`) replays stored candidates through the local judge (`llm`
+mode) and compares replays (`report` mode). External verdict files in the same shape can be compared too.
+
 ---
 
 ## Structured model response
@@ -549,6 +652,16 @@ Preserve enough error information for diagnostics.
 Retry behavior should be conservative and explicit.
 
 Do not retry deterministic validation failures indefinitely.
+
+Current behavior:
+
+* **Truncation.** A selector response cut off at the token limit (`finish_reason == "length"`) is retried once with
+  twice the budget. A second truncation fails the attempt. Truncated JSON is never accepted, even when it happens to
+  parse. Before this retry existed, six long sources failed outright on truncated JSON.
+* **Token budgets.** The defaults are 2000 tokens for the selector and 700 for the judge.
+* **No other retries.** Nothing else is retried.
+* **Failed re-runs.** A failed re-run replaces only an earlier failed attempt. It keeps the last successful attempt
+  and its excerpts, so an unreachable model never removes excerpts the TV is showing.
 
 ---
 

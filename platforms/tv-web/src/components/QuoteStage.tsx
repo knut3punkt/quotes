@@ -4,10 +4,6 @@ import type { PublicQuote } from '../types'
 import { percentRect } from './percent-rect'
 import { QuoteDisplay } from './QuoteDisplay'
 
-/** How much the scrim reaches past the quote box before its feathered edge starts, per side. */
-const SCRIM_INSET_X = 0.02
-const SCRIM_INSET_Y = 0.03
-
 interface QuoteStageProps {
   quote: PublicQuote
   composition: Composition
@@ -18,11 +14,11 @@ interface QuoteStageProps {
 
 /**
  * One composed quote screen, in three layers (docs/features/quote-composition.md): the mood
- * background (slowly zooming), the collage elements, and the quote, with any scrim between the
- * background and the text.
+ * background (slowly zooming), the motif element, and the quote, on a frosted backdrop when the
+ * background under it is busy.
  */
 export function QuoteStage({ quote, composition, stageHeight, onReady }: QuoteStageProps) {
-  const { background, elements, quoteBox, align, text, elementFilter } = composition
+  const { background, elements, quoteBox, align, text, elementFilter, backdropShadow } = composition
   const [failedElements, setFailedElements] = useState<ReadonlySet<number>>(new Set())
 
   useEffect(() => {
@@ -44,23 +40,6 @@ export function QuoteStage({ quote, composition, stageHeight, onReady }: QuoteSt
         <div className="absolute inset-0" style={{ background: background.css }} />
       )}
 
-      {text.scrim && (
-        <div
-          className="absolute rounded-[6vh]"
-          style={{
-            ...percentRect({
-              x: quoteBox.x + SCRIM_INSET_X,
-              y: quoteBox.y + SCRIM_INSET_Y,
-              width: quoteBox.width - 2 * SCRIM_INSET_X,
-              height: quoteBox.height - 2 * SCRIM_INSET_Y,
-            }),
-            backgroundColor: text.scrim.color,
-            boxShadow: `0 0 10vh 7vh ${text.scrim.color}`,
-            opacity: text.scrim.opacity,
-          }}
-        />
-      )}
-
       {elements
         .filter((element) => !failedElements.has(element.imageId))
         .map((element) => (
@@ -74,7 +53,15 @@ export function QuoteStage({ quote, composition, stageHeight, onReady }: QuoteSt
           />
         ))}
 
-      <QuoteDisplay quote={quote} box={quoteBox} align={align} text={text} stageHeight={stageHeight} />
+      <QuoteDisplay
+        quote={quote}
+        box={quoteBox}
+        align={align}
+        text={text}
+        background={background}
+        backdropShadow={backdropShadow}
+        stageHeight={stageHeight}
+      />
     </div>
   )
 }

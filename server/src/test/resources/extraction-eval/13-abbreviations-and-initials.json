@@ -1,0 +1,6 @@
+{
+  "id": "13-abbreviations-and-initials",
+  "description": "Segmentation check: initials without spaces (C.S.), spaced initials (W. K.), a rank (Adm.) and a bibliographic abbreviation (Ch.) must not end a sentence. Expect exactly five units.",
+  "sourceText": "In a letter to Adm. Fisher, written in the spring of 1904, Mr. W. K. Lewis observed that the navy had grown fat on a long peace. C.S. Lewis, no relation, would later write that courage is not simply one of the virtues but the form of every virtue at the testing point. The editor's note, in Ch. 4 of the collected letters, adds nothing to this. The rest of the letter complains about the weather and the price of coal. Nothing else in it has survived.",
+  "badRanges": [{"start": 3, "end": 3, "why": "editorial housekeeping"}, {"start": 4, "end": 4, "why": "narration about the letter"}, {"start": 5, "end": 5, "why": "it: dangling, and no idea"}]
+}

@@ -67,6 +67,17 @@ class LlamaCppExcerptSelectionClientTest {
     }
 
     @Test
+    fun `a response cut off at the token limit maps to Truncated even when its content parses`() = runBlocking<Unit> {
+        val client = clientRespondingWith {
+            """{"model":"test-model","choices":[{"finish_reason":"length","message":{"role":"assistant","content":"{\"excerpts\":[]}"}}]}"""
+        }
+
+        val outcome = client.selectExcerpts(requestFor())
+
+        assertIs<InferenceOutcome.Truncated>(outcome)
+    }
+
+    @Test
     fun `a non-2xx status maps to MalformedResponse`() = runBlocking {
         val mockEngine = MockEngine { respond(content = "server error", status = HttpStatusCode.InternalServerError) }
         val client = LlamaCppExcerptSelectionClient(TEST_CONFIG, testHttpClient(mockEngine))

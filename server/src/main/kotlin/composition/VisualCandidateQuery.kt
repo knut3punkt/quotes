@@ -1,6 +1,9 @@
 package no.esotericgames.quotes.server.composition
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import no.esotericgames.quotes.server.db.QuoteTagAssignments
 import no.esotericgames.quotes.server.db.TagImages
@@ -61,6 +64,8 @@ fun selectVisualCandidates(shownExcerpts: Map<Int, Int?>): Map<Int, QuoteVisualC
 
 private fun ResultRow.toCandidateImage(): CandidateImage? {
     val imageId = this[TagImages.id]
+    val ingredients = this[TagImages.promptIngredients] as? JsonObject
+    val style = ingredients.stringOrNull("style")
     val dominantColors = runCatching {
         layoutJson.decodeFromJsonElement<List<DominantColor>>(this[TagImages.dominantColors])
     }.getOrElse {
@@ -83,6 +88,8 @@ private fun ResultRow.toCandidateImage(): CandidateImage? {
                 meanLuminance = this[TagImages.meanLuminance].toDouble(),
                 dominantColors = dominantColors,
                 layout = layout,
+                style = style,
+                quoteLayout = ingredients.stringOrNull("quoteLayout"),
             )
         }
         else -> {
@@ -98,7 +105,12 @@ private fun ResultRow.toCandidateImage(): CandidateImage? {
                 height = this[TagImages.height],
                 dominantColors = dominantColors,
                 contentBox = contentBox,
+                style = style,
             )
         }
     }
 }
+
+/** A string ingredient of a tag image's prompt, or null when it is absent (older recipes) or not a string. */
+private fun JsonObject?.stringOrNull(key: String): String? =
+    (this?.get(key) as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

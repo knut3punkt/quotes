@@ -3,8 +3,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  assessQuoteQuality,
   bulkUnapproveQuotes,
   extractQuoteExcerpts,
+  fetchQualityRuns,
   fetchQuoteFilterOptions,
   fetchQuotes,
   fetchQuoteSelection,
@@ -19,10 +21,12 @@ import { usePagedList } from '../hooks/use-paged-list'
 import { toast } from '../hooks/use-toast'
 import { DEFAULT_QUOTE_FILTERS, toQuoteFilter, type QuoteFilterState } from '../quoteFilters'
 import type {
+  QualityRun,
   QuoteExtractionOutcome,
   QuoteFilterOptions,
   QuoteInterpretationOutcome,
   QuoteListItem,
+  QuoteQualityOutcome,
   QuoteSelectionItem,
   QuoteTag,
   QuoteTaggingOutcome,
@@ -31,6 +35,8 @@ import type {
 import { ConfirmDialog } from './ConfirmDialog'
 import { DataTable, type DataTableColumn } from './data-table/DataTable'
 import { HighlightedQuoteText } from './HighlightedQuoteText'
+import { QualityRunDialog } from './QualityRunDialog'
+import { QualityVerdictBadges } from './QualityVerdictBadges'
 import { QuoteBulkActions } from './QuoteBulkActions'
 import { QuotesFilterBar } from './QuotesFilterBar'
 import { QuoteTagsCell } from './QuoteTagsCell'
@@ -41,6 +47,8 @@ const FILTER_DEBOUNCE_MILLIS = 250
 // Each LLM run takes seconds per quote, so enrichment requests stay small; unapprove is a plain delete.
 const ENRICHMENT_CHUNK_SIZE = 10
 const UNAPPROVE_CHUNK_SIZE = 200
+// A quality assessment is one model call per quote plus one per accepted excerpt.
+const QUALITY_CHUNK_SIZE = 5
 
 // The server's actual EXTRACTION_MIN_SOURCE_WORDS-driven check is authoritative; this only estimates
 // which selected quotes will be skipped so the button can show a helpful count before submitting.
@@ -64,6 +72,12 @@ const TAGGING_OUTCOME_LABELS: Record<QuoteTaggingOutcome, string> = {
 const INTERPRETATION_OUTCOME_LABELS: Record<QuoteInterpretationOutcome, string> = {
   generated: 'generated',
   noInterpretationsFound: 'no interpretation found',
+  failed: 'failed',
+  notFound: 'not found',
+}
+
+const QUALITY_OUTCOME_LABELS: Record<QuoteQualityOutcome, string> = {
+  assessed: 'assessed',
   failed: 'failed',
   notFound: 'not found',
 }
@@ -117,8 +131,23 @@ export function QuotesPage() {
   const [unapproveRequest, setUnapproveRequest] = useState<number[] | null>(null)
   const [unapproving, setUnapproving] = useState(false)
   const [unapproveError, setUnapproveError] = useState<string | null>(null)
+  const [qualityRuns, setQualityRuns] = useState<QualityRun[]>([])
+  const [qualityRequest, setQualityRequest] = useState<number[] | null>(null)
 
-  const { authors, sources, languages, providers, confidences, lengthOp, excerpts, interpretations, tags } = filters
+  const {
+    authors,
+    sources,
+    languages,
+    providers,
+    confidences,
+    lengthOp,
+    excerpts,
+    interpretations,
+    tags,
+    qualityRun,
+    qualityVerdicts,
+    qualityFlags,
+  } = filters
   const queryFilter = useMemo(
     () =>
       toQuoteFilter({
@@ -131,6 +160,9 @@ export function QuotesPage() {
         excerpts,
         interpretations,
         tags,
+        qualityRun,
+        qualityVerdicts,
+        qualityFlags,
         search: debouncedSearch,
         lengthValue: debouncedLengthValue,
         tag: debouncedTag,
@@ -145,6 +177,9 @@ export function QuotesPage() {
       excerpts,
       interpretations,
       tags,
+      qualityRun,
+      qualityVerdicts,
+      qualityFlags,
       debouncedSearch,
       debouncedLengthValue,
       debouncedTag,
@@ -163,6 +198,16 @@ export function QuotesPage() {
   useEffect(() => {
     fetchQuoteFilterOptions().then(setFilterOptions).catch(() => undefined)
   }, [])
+
+  const loadQualityRuns = useCallback(() => {
+    fetchQualityRuns().then(setQualityRuns).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    loadQualityRuns()
+  }, [loadQualityRuns])
+
+  const llmQualityRuns = useMemo(() => qualityRuns.filter((run) => run.runner === 'llm'), [qualityRuns])
 
   const tagNames = useMemo(
     () => Array.from(new Set([...vocabulary.concept, ...vocabulary.mood, ...vocabulary.motif])).sort(),
@@ -219,16 +264,18 @@ export function QuotesPage() {
       merge,
       outcomeLabels,
       title,
+      chunkSize = ENRICHMENT_CHUNK_SIZE,
     }: {
       progressLabel: string
       ids: number[]
+      chunkSize?: number
       request: (chunk: number[]) => Promise<R[]>
       merge: (quote: QuoteListItem, result: R) => QuoteListItem
       outcomeLabels: Record<O, string>
       title: { success: string; partialFailure: string }
     }) => {
       if (ids.length === 0) return
-      const { results, failedItems, cancelledItems } = await runChunked(progressLabel, ids, ENRICHMENT_CHUNK_SIZE, request)
+      const { results, failedItems, cancelledItems } = await runChunked(progressLabel, ids, chunkSize, request)
       const resultsById = new Map(results.map((result) => [result.quoteId, result]))
       patchRows((prev) =>
         prev.map((quote) => {
@@ -293,6 +340,31 @@ export function QuotesPage() {
     })
     loadVocabulary()
   }, [runEnrichment, selectedIds, loadVocabulary])
+
+  const requestAssessQuality = useCallback(() => {
+    if (selectedIds.length > 0) setQualityRequest(selectedIds)
+  }, [selectedIds])
+
+  const startAssessQuality = useCallback(
+    async (run: QualityRun) => {
+      const ids = qualityRequest ?? []
+      setQualityRequest(null)
+      // Only rows listed for this run show its verdicts; other runs' badges stay as they are.
+      const showsRun = qualityRun === String(run.id)
+      await runEnrichment({
+        progressLabel: `Assessing quality (run #${run.id})`,
+        ids,
+        chunkSize: QUALITY_CHUNK_SIZE,
+        request: async (chunk) => (await assessQuoteQuality(run.id, chunk)).results,
+        merge: (quote, result) =>
+          showsRun && result.outcome !== 'notFound' ? { ...quote, quality: result.assessments } : quote,
+        outcomeLabels: QUALITY_OUTCOME_LABELS,
+        title: { success: 'Quality assessment complete', partialFailure: 'Some quality assessments failed' },
+      })
+      loadQualityRuns()
+    },
+    [qualityRequest, qualityRun, runEnrichment, loadQualityRuns],
+  )
 
   const handleTagsChange = useCallback(
     (id: number, quoteTags: QuoteTag[]) => {
@@ -407,8 +479,20 @@ export function QuotesPage() {
         ),
       },
       { id: 'language', header: 'Language', track: '88px', minWidth: 88, cell: (quote) => quote.language },
+      ...(qualityRun
+        ? [
+            {
+              id: 'quality',
+              header: 'Quality',
+              track: 'minmax(140px,1fr)',
+              minWidth: 140,
+              className: 'whitespace-normal',
+              cell: (quote: QuoteListItem) => <QualityVerdictBadges assessments={quote.quality ?? []} />,
+            },
+          ]
+        : []),
     ],
-    [vocabulary, busy, handleTagsChange],
+    [vocabulary, busy, handleTagsChange, qualityRun],
   )
 
   return (
@@ -425,6 +509,7 @@ export function QuotesPage() {
         onReset={resetFilters}
         options={filterOptions}
         tagNames={tagNames}
+        qualityRuns={qualityRuns}
       />
 
       {!list.loading && (
@@ -447,9 +532,19 @@ export function QuotesPage() {
             onExtractExcerpts={handleExtractExcerpts}
             onGenerateInterpretations={handleGenerateInterpretations}
             onGenerateTags={handleGenerateTags}
+            onAssessQuality={requestAssessQuality}
             onUnapprove={requestUnapprove}
           />
         </SelectionToolbar>
+      )}
+
+      {qualityRequest && (
+        <QualityRunDialog
+          quoteCount={qualityRequest.length}
+          llmRuns={llmQualityRuns}
+          onCancel={() => setQualityRequest(null)}
+          onStart={startAssessQuality}
+        />
       )}
 
       {unapproveRequest && (

@@ -53,6 +53,21 @@ class LlamaCppExcerptJudgeClientTest {
     }
 
     @Test
+    fun `a verdict cut off at the token limit maps to MalformedResponse`() = runBlocking<Unit> {
+        val mockEngine = MockEngine {
+            respond(
+                content = """{"model":"judge-model","choices":[{"finish_reason":"length","message":{"role":"assistant","content":"{\"meaningInSource\":\"same\",\"fidelity\":5,\"reason\":\"faithful\"}"}}]}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val client = LlamaCppExcerptJudgeClient(TEST_CONFIG, testHttpClient(mockEngine))
+
+        val result = assertIs<JudgeOutcome.MalformedResponse>(client.judgeFidelity(REQUEST))
+        assertTrue(result.message.contains("truncated"))
+    }
+
+    @Test
     fun `content missing a required level maps to MalformedResponse`() = runBlocking<Unit> {
         val client = clientRespondingWithContent("""{\"whatItIsAbout\":\"patience\",\"insight\":\"x\"}""")
 

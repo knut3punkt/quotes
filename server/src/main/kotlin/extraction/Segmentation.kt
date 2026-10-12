@@ -10,10 +10,25 @@ private typealias Span = Pair<Int, Int> // startInclusive, endExclusive
 
 private val ABBREVIATIONS = setOf(
     "mr", "mrs", "ms", "dr", "prof", "st", "vs", "etc", "e.g", "i.e", "sr", "jr",
+    // titles and ranks
+    "adm", "gen", "col", "capt", "lt", "sgt", "rev", "hon", "gov", "sen", "rep", "mt", "ft",
+    // bibliographic references
+    "vol", "ch", "bk", "pp", "cf", "viz", "ca", "trans",
+    // scripture books, as quote sources cite them ("Matt. 23:12"). Abbreviations that are also
+    // ordinary sentence-final words ("Tim.", "pet.", "Phil.") are left out.
+    "lev", "deut", "matt", "mk", "lk", "jn", "rom", "cor", "eph", "thess",
+    "heb", "jas", "ps", "prov", "eccl", "isa", "jer", "ezek",
 )
 
 private val SENTENCE_BOUNDARY_REGEX = Regex("""[.!?]+["')\]]*""")
-private val CLAUSE_BOUNDARY_REGEX = Regex("""[;:]|—|--""")
+
+// A colon only counts when followed by whitespace, so a reference like "23:12" or a time like "3:30"
+// is never split.
+private val CLAUSE_BOUNDARY_REGEX = Regex(""";|:(?=\s)|—|--""")
+
+// Initials written without spaces, such as "C.S" or "W.K" (the final period is trimmed first).
+private val INITIALS_REGEX = Regex("""^(\p{L}\.)+\p{L}$""")
+private const val LEADING_WORD_PUNCTUATION = "([\"'“‘—-"
 private val WHITESPACE_REGEX = Regex("""\s+""")
 
 /**
@@ -80,8 +95,11 @@ private fun splitIntoSentenceSpans(source: String): List<Span> {
 private fun isGenuineSentenceBoundary(source: String, punctuationStart: Int, afterPunctuation: Int): Boolean {
     var wordStart = punctuationStart
     while (wordStart > 0 && !source[wordStart - 1].isWhitespace()) wordStart--
-    val precedingWord = source.substring(wordStart, punctuationStart).trimEnd('.', '!', '?', '\'', '"', ')', ']')
+    val precedingWord = source.substring(wordStart, punctuationStart)
+        .trimStart { it in LEADING_WORD_PUNCTUATION }
+        .trimEnd('.', '!', '?', '\'', '"', ')', ']')
     if (precedingWord.length == 1 && precedingWord[0].isUpperCase()) return false // an initial, e.g. "J."
+    if (INITIALS_REGEX.matches(precedingWord)) return false // initials without spaces, e.g. "C.S."
     if (precedingWord.lowercase() in ABBREVIATIONS) return false
 
     var next = afterPunctuation
@@ -91,6 +109,12 @@ private fun isGenuineSentenceBoundary(source: String, punctuationStart: Int, aft
     return nextChar.isUpperCase() || nextChar == '"' || nextChar == '\'' || nextChar == '“'
 }
 
+/**
+ * The clause punctuation itself falls in the gap between two units, belonging to neither. A range
+ * that spans the boundary still contains it verbatim (excerpts are reconstructed from the first
+ * unit's start to the last unit's end), while a range that ends at the boundary no longer ends on a
+ * dangling ";" or "—".
+ */
 private fun splitLongSpanAtClauseBoundaries(source: String, span: Span): List<Span> {
     val (spanStart, spanEnd) = span
     val matches = CLAUSE_BOUNDARY_REGEX.findAll(source, spanStart).takeWhile { it.range.first < spanEnd }.toList()
@@ -99,12 +123,12 @@ private fun splitLongSpanAtClauseBoundaries(source: String, span: Span): List<Sp
     val subSpans = mutableListOf<Span>()
     var start = spanStart
     for (match in matches) {
-        val end = match.range.last + 1 // keep the punctuation attached to the preceding sub-unit
+        val end = match.range.first
         if (end > start) {
             val trimmed = trimSpan(source, start to end)
             if (trimmed.second > trimmed.first) subSpans += trimmed
         }
-        start = end
+        start = match.range.last + 1
     }
     if (start < spanEnd) {
         val trimmed = trimSpan(source, start to spanEnd)

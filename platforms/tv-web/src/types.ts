@@ -26,6 +26,16 @@ export interface BackgroundLayout {
   textTone: 'light' | 'dark'
 }
 
+/** The region a background-v4 image's prompt kept calm for the quote; `overlay` kept none. */
+export type QuoteLayoutId = 'left' | 'right' | 'top' | 'center' | 'bottom' | 'overlay'
+
+const QUOTE_LAYOUT_IDS: readonly string[] = ['left', 'right', 'top', 'center', 'bottom', 'overlay']
+
+/** The layout as a known id, or null for none or one this app doesn't know. */
+export function parseQuoteLayout(value: string | null | undefined): QuoteLayoutId | null {
+  return value != null && QUOTE_LAYOUT_IDS.includes(value) ? (value as QuoteLayoutId) : null
+}
+
 export interface SelectedBackground {
   imageId: number
   tagId: number
@@ -35,6 +45,10 @@ export interface SelectedBackground {
   meanLuminance: number
   dominantColors: DominantColor[]
   layout: BackgroundLayout
+  /** The style profile it was generated in; null for images from recipes without style profiles. */
+  style: string | null
+  /** The quote layout its prompt reserved room for; null for older images. See `parseQuoteLayout`. */
+  quoteLayout: string | null
 }
 
 export interface SelectedElement {
@@ -46,12 +60,19 @@ export interface SelectedElement {
   dominantColors: DominantColor[]
   /** The box around the element's visible pixels, in fractions of its canvas. */
   contentBox: NormalizedRect
+  /** The style profile it was generated in; null for images from recipes without style profiles. */
+  style: string | null
 }
 
-/** The images the server chose for one showing of a quote; a null background asks for the fallback. */
+/**
+ * The images the server chose for one showing of a quote: a background (null asks for the fallback) and at
+ * most one motif element.
+ */
 export interface QuoteVisuals {
   background: SelectedBackground | null
   elements: SelectedElement[]
+  /** How well the background and motif styles fit (0-3), or null when there was no pair to score. */
+  styleFit: number | null
 }
 
 export interface PublicQuote {

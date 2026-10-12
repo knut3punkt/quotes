@@ -37,6 +37,6 @@ class ExtractionPromptBuilderTest {
 
     @Test
     fun `prompt version matches the resource filename stem`() {
-        assertEquals("quote-extraction-v5", ExtractionPrompts.PROMPT_VERSION)
+        assertEquals("quote-extraction-v6", ExtractionPrompts.PROMPT_VERSION)
     }
 }

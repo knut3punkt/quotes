@@ -83,8 +83,17 @@ class LlamaCppExcerptJudgeClient(
             return JudgeOutcome.MalformedResponse("invalid chat-completion envelope: ${e.message}")
         }
 
-        val content = envelope.choices.firstOrNull()?.message?.content
+        val choice = envelope.choices.firstOrNull()
             ?: return JudgeOutcome.MalformedResponse("no choices in chat-completion response")
+
+        if (choice.finishReason == "length") {
+            return JudgeOutcome.MalformedResponse(
+                "model response truncated: finish_reason=length (increase extraction.judge.maxOutputTokens)",
+            )
+        }
+
+        val content = choice.message.content
+            ?: return JudgeOutcome.MalformedResponse("no content in chat-completion response")
 
         val parsed = try {
             contentJson.decodeFromString(deserializer, content)
