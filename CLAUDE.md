@@ -46,7 +46,8 @@ speculatively — only when a specific platform is explicitly requested.
   `GET /api/quotes/random` endpoint (random quotes with author/source, for TV frontends; a quote with
   qualifying excerpts is shown as one of them, and a quote longer than `publicQuotes.maxFullQuoteWords`
   without one is skipped rather than shown in full; while an admin-set TV preview filter exists,
-  `TvFilterService.kt`, only quotes and excerpts matching it are returned),
+  `TvFilterService.kt`, only quotes and excerpts matching it are returned; `TvDisplayService.kt` backs the
+  admin-switched quality overlay the TV fetches per quote from `GET /api/quotes/{id}/quality`),
   each with `visuals` chosen by `composition/` (a mood background and one element per motif tag, which the
   TV shows as a row of round icons).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
@@ -163,7 +164,8 @@ Important principles:
 
 * Advisory only: verdicts are for a human to filter and act on (bulk unapprove), never a TV-facing gate. The only
   exception is the TV preview filter, which a human sets and clears from the admin. It changes no data, and its
-  quality conditions match the text the TV actually shows.
+  quality conditions match the text the TV actually shows. The TV quality overlay, also switched from the admin, only
+  displays the shown text's verdict and flags.
 * Runs are never replaced; assessments outlive deleted quotes and excerpts (SET NULL plus a text snapshot), and runs
   are compared on `(subject_kind, subject_hash)`.
 * Model output and external uploads go through the same `QualityValidator`; prechecks are computed by the server and

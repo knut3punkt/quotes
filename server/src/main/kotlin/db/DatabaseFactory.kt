@@ -3,6 +3,7 @@ package no.esotericgames.quotes.server.db
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.log
 import io.ktor.server.config.ApplicationConfig
 import org.flywaydb.core.Flyway
@@ -15,6 +16,8 @@ fun Application.configureDatabase() {
         return
     }
     val dataSource = createDataSource(config)
+    // Tests start an application per DB-backed test; without this, each leaves its pool's connections open.
+    monitor.subscribe(ApplicationStopped) { dataSource.close() }
     Flyway.configure()
         .dataSource(dataSource)
         .load()

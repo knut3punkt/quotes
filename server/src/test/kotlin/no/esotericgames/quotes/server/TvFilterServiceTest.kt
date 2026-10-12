@@ -6,21 +6,11 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.esotericgames.quotes.server.admin.IdKey
-import no.esotericgames.quotes.server.db.Authors
-import no.esotericgames.quotes.server.db.QuoteExcerpts
-import no.esotericgames.quotes.server.db.QuoteExtractionAttempts
-import no.esotericgames.quotes.server.db.QuoteQualityAssessments
-import no.esotericgames.quotes.server.db.QuoteQualityRuns
-import no.esotericgames.quotes.server.db.Quotes
 import no.esotericgames.quotes.server.db.TvQuoteFilters
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.deleteAll
-import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -59,7 +49,7 @@ class TvFilterServiceTest {
         val fixture = withContext(Dispatchers.IO) { suspendTransaction { insertFixture() } }
         val publicQuoteService = PublicQuoteService(PublicQuoteConfig(maxFullQuoteWords = 55))
         val tvFilterService = TvFilterService(publicQuoteService)
-        val byAuthor = "author=id%3A${fixture.authorId}"
+        val byAuthor = "author=id%3A${fixture.data.authorId}"
 
         try {
             val all = tvFilterService.set(byAuthor)
@@ -67,10 +57,10 @@ class TvFilterServiceTest {
             assertEquals(4, all.poolQuotes)
             assertEquals(2, all.poolAsExcerpt)
 
-            val good = tvFilterService.set("$byAuthor&qualityRun=${fixture.runId}&qualityVerdict=good&qualityVerdict=excellent")
+            val good = tvFilterService.set("$byAuthor&qualityRun=${fixture.data.runId}&qualityVerdict=good&qualityVerdict=excellent")
             assertEquals(2, good.poolQuotes)
             assertEquals(1, good.poolAsExcerpt)
-            assertEquals(fixture.runLabel, good.qualityRunLabel)
+            assertEquals(fixture.data.runLabel, good.qualityRunLabel)
             repeat(5) {
                 val shown = publicQuoteService.randomQuotes(PublicQuoteService.MAX_COUNT).map { it.id to it.excerptId }.toSet()
                 assertEquals(setOf(fixture.longQuoteId to fixture.goodExcerptId, fixture.excellentQuoteId to null), shown)
@@ -88,19 +78,14 @@ class TvFilterServiceTest {
                             it[TvQuoteFilters.query] = query
                         }
                     }
-                    QuoteQualityRuns.deleteWhere { QuoteQualityRuns.id eq fixture.runId }
-                    Quotes.deleteWhere { Quotes.id inList fixture.quoteIds }
-                    Authors.deleteWhere { Authors.id eq fixture.authorId }
+                    fixture.data.delete()
                 }
             }
         }
     }
 
     private class Fixture(
-        val authorId: Int,
-        val runId: Int,
-        val runLabel: String,
-        val quoteIds: List<Int>,
+        val data: QualityFixtures,
         val longQuoteId: Int,
         val goodExcerptId: Int,
         val excellentQuoteId: Int,
@@ -111,87 +96,17 @@ class TvFilterServiceTest {
      * with only a `reject` excerpt, and short quotes assessed `excellent` and `weak`.
      */
     private fun insertFixture(): Fixture {
-        val marker = UUID.randomUUID().toString()
-        val authorId = Authors.insert {
-            it[name] = "TV filter test $marker"
-            it[normalizedName] = "tv filter test $marker"
-        }[Authors.id]
-        val runLabel = "tv filter test $marker"
-        val runId = QuoteQualityRuns.insert {
-            it[label] = runLabel
-            it[runner] = "external"
-            it[methodVersion] = "test"
-            it[promptVersion] = "test"
-        }[QuoteQualityRuns.id]
-
-        fun quote(text: String): Int = Quotes.insert {
-            it[Quotes.text] = text
-            it[normalizedText] = "$text $marker"
-            it[Quotes.authorId] = authorId
-        }[Quotes.id]
-
-        fun assess(quoteId: Int, excerptId: Int?, text: String, verdict: String) {
-            QuoteQualityAssessments.insert {
-                it[QuoteQualityAssessments.runId] = runId
-                it[QuoteQualityAssessments.quoteId] = quoteId
-                it[QuoteQualityAssessments.excerptId] = excerptId
-                it[subjectKind] = if (excerptId == null) "quote" else "excerpt"
-                it[subjectText] = text
-                it[subjectHash] = "$marker:$text"
-                it[wordCount] = text.split(" ").size
-                it[status] = "succeeded"
-                it[QuoteQualityAssessments.verdict] = verdict
-                it[unresolvedReferences] = emptyList()
-                it[problems] = emptyList()
-                it[precheckFlags] = emptyList()
-            }
-        }
-
-        fun excerpt(quoteId: Int, text: String, verdict: String): Int {
-            val attemptId = QuoteExtractionAttempts.insert {
-                it[QuoteExtractionAttempts.quoteId] = quoteId
-                it[extractionMethodVersion] = "test"
-                it[promptVersion] = "test"
-                it[status] = "succeeded"
-            }[QuoteExtractionAttempts.id]
-            val excerptId = QuoteExcerpts.insert {
-                it[QuoteExcerpts.attemptId] = attemptId
-                it[QuoteExcerpts.quoteId] = quoteId
-                it[QuoteExcerpts.text] = text
-                it[startOffset] = 0
-                it[endOffset] = text.length
-                it[startUnit] = 0
-                it[endUnit] = 0
-                it[wordCount] = text.split(" ").size
-                it[independenceScore] = 90
-                it[completenessScore] = 90
-                it[quotabilityScore] = 90
-                it[contextFidelityScore] = 90
-                it[meetsThresholds] = true
-            }[QuoteExcerpts.id]
-            assess(quoteId, excerptId, text, verdict)
-            return excerptId
-        }
-
+        val data = QualityFixtures()
         val longText = (1..80).joinToString(" ") { "word$it" } + "."
-        val longQuoteId = quote("$longText one")
-        val goodExcerptId = excerpt(longQuoteId, "A good excerpt.", "good")
-        excerpt(longQuoteId, "A rejected excerpt.", "reject")
-        val rejectedOnlyQuoteId = quote("$longText two")
-        excerpt(rejectedOnlyQuoteId, "Another rejected excerpt.", "reject")
-        val excellentQuoteId = quote("An excellent short quote.")
-        assess(excellentQuoteId, null, "An excellent short quote.", "excellent")
-        val weakQuoteId = quote("A weak short quote.")
-        assess(weakQuoteId, null, "A weak short quote.", "weak")
-
-        return Fixture(
-            authorId = authorId,
-            runId = runId,
-            runLabel = runLabel,
-            quoteIds = listOf(longQuoteId, rejectedOnlyQuoteId, excellentQuoteId, weakQuoteId),
-            longQuoteId = longQuoteId,
-            goodExcerptId = goodExcerptId,
-            excellentQuoteId = excellentQuoteId,
-        )
+        val longQuoteId = data.quote("$longText one")
+        val goodExcerptId = data.assessedExcerpt(longQuoteId, "A good excerpt.", "good")
+        data.assessedExcerpt(longQuoteId, "A rejected excerpt.", "reject")
+        val rejectedOnlyQuoteId = data.quote("$longText two")
+        data.assessedExcerpt(rejectedOnlyQuoteId, "Another rejected excerpt.", "reject")
+        val excellentQuoteId = data.quote("An excellent short quote.")
+        data.assess(excellentQuoteId, null, "An excellent short quote.", "excellent")
+        val weakQuoteId = data.quote("A weak short quote.")
+        data.assess(weakQuoteId, null, "A weak short quote.", "weak")
+        return Fixture(data, longQuoteId = longQuoteId, goodExcerptId = goodExcerptId, excellentQuoteId = excellentQuoteId)
     }
 }

@@ -93,6 +93,7 @@ fun Application.module() {
     configureRouting(
         publicQuoteService = publicQuoteService,
         tvFilterService = TvFilterService(publicQuoteService),
+        tvDisplayService = TvDisplayService(),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
         quoteAdminService = QuoteAdminService(),

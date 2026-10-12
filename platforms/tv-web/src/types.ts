@@ -83,3 +83,19 @@ export interface PublicQuote {
   sourceDetail: string | null
   visuals: QuoteVisuals
 }
+
+/** One quality run's assessment of the shown quote or excerpt. */
+export interface RunQuality {
+  runLabel: string
+  status: 'succeeded' | 'failed' | 'notAssessed'
+  verdict: string | null
+  problems: string[]
+}
+
+/** A shown quote's or excerpt's assessments in the admin-chosen quality runs (docs/features/quote-quality.md). */
+export interface QuoteQuality {
+  /** Oldest run first. */
+  runs: RunQuality[]
+  /** Computed from the text, so given once for all runs. */
+  precheckFlags: string[]
+}

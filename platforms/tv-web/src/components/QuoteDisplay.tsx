@@ -22,6 +22,8 @@ interface QuoteDisplayProps {
   background: CompositionBackground
   backdropShadow: string
   stageHeight: number
+  /** Called with where the fitted quote (its card, or its bare text) actually is, in fractions of the stage. */
+  onTextRect?: (rect: NormalizedRect) => void
 }
 
 /** Where the card sits on the stage, and the stage's size, in px; for lining up the blurred copy behind it. */
@@ -36,13 +38,35 @@ interface CardPlacement {
  * The quote and its attribution, sized to fill [box] without overflowing it. When [text] has a backdrop, the
  * quote sits on a frosted card that hugs it (docs/features/quote-composition.md, "Rendering").
  */
-export function QuoteDisplay({ quote, box, align, text, background, backdropShadow, stageHeight }: QuoteDisplayProps) {
+export function QuoteDisplay({
+  quote,
+  box,
+  align,
+  text,
+  background,
+  backdropShadow,
+  stageHeight,
+  onTextRect,
+}: QuoteDisplayProps) {
   const { backdrop } = text
   const { boxRef, contentRef, fontSize } = useFitText<HTMLDivElement, HTMLDivElement>(
     stageHeight,
     `${quote.id}:${box.x}:${box.y}:${box.width}:${box.height}:${backdrop ? 'card' : 'bare'}`,
   )
   const placement = useCardPlacement(boxRef, contentRef, backdrop !== null, fontSize, stageHeight)
+
+  useLayoutEffect(() => {
+    const boxElement = boxRef.current
+    const content = contentRef.current
+    const stage = boxElement?.offsetParent
+    if (!onTextRect || !boxElement || !content || !(stage instanceof HTMLElement) || fontSize <= 0) return
+    onTextRect({
+      x: (boxElement.offsetLeft + content.offsetLeft) / stage.clientWidth,
+      y: (boxElement.offsetTop + content.offsetTop) / stage.clientHeight,
+      width: content.offsetWidth / stage.clientWidth,
+      height: content.offsetHeight / stage.clientHeight,
+    })
+  }, [boxRef, contentRef, fontSize, stageHeight, onTextRect])
 
   const contentStyle: CSSProperties = {
     color: text.color,

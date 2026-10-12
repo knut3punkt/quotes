@@ -281,3 +281,20 @@ object TvQuoteFilters : Table("tv_quote_filter") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+/** TV display settings: at most one row (id 1), for the quality overlay. */
+object TvDisplaySettings : Table("tv_display_settings") {
+    const val SINGLE_ROW_ID: Short = 1
+
+    val id = short("id")
+    val showQuality = bool("show_quality").default(false)
+    val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone)
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object TvDisplayQualityRuns : Table("tv_display_quality_runs") {
+    val runId = integer("run_id").references(QuoteQualityRuns.id, onDelete = ReferenceOption.CASCADE)
+
+    override val primaryKey = PrimaryKey(runId)
+}

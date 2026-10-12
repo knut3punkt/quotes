@@ -32,6 +32,7 @@ import type {
   SourceType,
   TagFacet,
   TagSummary,
+  TvDisplaySettings,
   TvFilter,
   UpdateTagRequest,
   WikiquoteAuthorSearchResponse,
@@ -141,6 +142,14 @@ export function saveTvFilter(query: string): Promise<TvFilter> {
 
 export function clearTvFilter(): Promise<void> {
   return request('/admin/tv-filter', { method: 'DELETE' })
+}
+
+export function fetchTvDisplay(): Promise<TvDisplaySettings> {
+  return request('/admin/tv-display')
+}
+
+export function saveTvDisplay(settings: { showQuality: boolean; qualityRunIds: number[] }): Promise<TvDisplaySettings> {
+  return request('/admin/tv-display', { method: 'PUT', body: JSON.stringify(settings) })
 }
 
 export function fetchAuthors(): Promise<Author[]> {

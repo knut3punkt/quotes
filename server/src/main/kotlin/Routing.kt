@@ -66,6 +66,7 @@ private val imageGenerationJson = Json { encodeDefaults = true }
 fun Application.configureRouting(
     publicQuoteService: PublicQuoteService,
     tvFilterService: TvFilterService,
+    tvDisplayService: TvDisplayService,
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
     quoteAdminService: QuoteAdminService,
@@ -98,6 +99,12 @@ fun Application.configureRouting(
             val id = call.parameters.getOrFail("id").toInt()
             val excerptId = call.request.queryParameters["excerptId"]?.toInt()
             call.respond(publicQuoteService.visualsFor(id, excerptId))
+        }
+        get("/api/quotes/{id}/quality") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val excerptId = call.request.queryParameters["excerptId"]?.toInt()
+            val quality = tvDisplayService.qualityFor(id, excerptId)
+            if (quality == null) call.respond(HttpStatusCode.NoContent) else call.respond(quality)
         }
         get("/api/tag-images/{id}") {
             val id = call.parameters.getOrFail("id").toInt()
@@ -192,6 +199,12 @@ fun Application.configureRouting(
         delete("/admin/tv-filter") {
             tvFilterService.clear()
             call.respond(HttpStatusCode.NoContent)
+        }
+        get("/admin/tv-display") {
+            call.respond(tvDisplayService.settings())
+        }
+        put("/admin/tv-display") {
+            call.respond(tvDisplayService.update(call.receive<TvDisplaySettingsRequest>()))
         }
         post("/admin/quotes/bulk/unapprove") {
             val request = call.receive<BulkUnapproveQuotesRequest>()

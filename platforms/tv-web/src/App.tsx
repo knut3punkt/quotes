@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchQuoteVisuals, fetchRandomQuotes, tagImageUrl } from './api'
+import { fetchQuoteQuality, fetchQuoteVisuals, fetchRandomQuotes, tagImageUrl } from './api'
 import { CompositionDebug } from './components/CompositionDebug'
+import { QualityOverlay } from './components/QualityOverlay'
 import { QuoteStage } from './components/QuoteStage'
 import { composeQuote, compositionImageUrls, type Composition } from './composition/compose'
 import { useQuoteCarousel } from './hooks/use-quote-carousel'
 import { useStageSize } from './hooks/use-stage-size'
-import type { PublicQuote, QuoteVisuals } from './types'
+import type { NormalizedRect, PublicQuote, QuoteQuality, QuoteVisuals } from './types'
 
 /** Show a layer even if its background hasn't loaded by then, rather than holding the old one. */
 const READY_TIMEOUT_MS = 3000
@@ -96,9 +97,34 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [next, previous, reroll])
 
+  // The quality overlay is fetched as each quote comes on screen, so switching it in the admin takes effect on the
+  // next quote. It belongs to the quote it was fetched for, so a slow answer never labels another quote.
+  const [quality, setQuality] = useState<{ quoteKey: string; quality: QuoteQuality } | null>(null)
+  const currentQuoteKey = currentQuote ? `${currentQuote.id}:${currentQuote.excerptId}` : null
+  useEffect(() => {
+    if (!currentQuote || !currentQuoteKey) return
+    let cancelled = false
+    fetchQuoteQuality(currentQuote.id, currentQuote.excerptId)
+      .then((fetched) => {
+        if (!cancelled) setQuality(fetched ? { quoteKey: currentQuoteKey, quality: fetched } : null)
+      })
+      .catch(() => {
+        if (!cancelled) setQuality(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentQuote, currentQuoteKey])
+  const shownQuality = quality && quality.quoteKey === currentQuoteKey ? quality.quality : null
+
   // Once the newest layer has faded in, the ones under it are hidden and can go.
   const dropCoveredLayers = useCallback(() => setLayers((previousLayers) => previousLayers.slice(-1)), [])
   const topLayer = layers[layers.length - 1]
+
+  // Where each layer's quote was fitted, so the quality overlay can keep clear of the real text, not just its box.
+  const [quoteRect, setQuoteRect] = useState<{ layerKey: string; rect: NormalizedRect } | null>(null)
+  const reportQuoteRect = useCallback((layerKey: string, rect: NormalizedRect) => setQuoteRect({ layerKey, rect }), [])
+  const topQuoteRect = topLayer && quoteRect?.layerKey === topLayer.key ? quoteRect.rect : null
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black text-neutral-100">
@@ -107,8 +133,23 @@ function App() {
       {status === 'ready' && (
         <div className="relative overflow-hidden" style={{ width: stage.width, height: stage.height }}>
           {layers.map((layer) => (
-            <StageLayer key={layer.key} layer={layer} stageHeight={stage.height} onShown={dropCoveredLayers} />
+            <StageLayer
+              key={layer.key}
+              layer={layer}
+              stageHeight={stage.height}
+              onShown={dropCoveredLayers}
+              onQuoteRect={reportQuoteRect}
+            />
           ))}
+          {shownQuality && topLayer && (
+            <QualityOverlay
+              quality={shownQuality}
+              quoteRect={topQuoteRect ?? topLayer.composition.quoteBox}
+              icons={topLayer.composition.icons}
+              stageWidth={stage.width}
+              stageHeight={stage.height}
+            />
+          )}
           {showDebug && topLayer && <CompositionDebug composition={topLayer.composition} />}
         </div>
       )}
@@ -120,12 +161,14 @@ interface StageLayerProps {
   layer: Layer
   stageHeight: number
   onShown: () => void
+  onQuoteRect: (layerKey: string, rect: NormalizedRect) => void
 }
 
 /** A composition that stays invisible until its background is ready, then fades in over the previous one. */
-function StageLayer({ layer, stageHeight, onShown }: StageLayerProps) {
+function StageLayer({ layer, stageHeight, onShown, onQuoteRect }: StageLayerProps) {
   const [ready, setReady] = useState(false)
   const markReady = useCallback(() => setReady(true), [])
+  const reportQuoteRect = useCallback((rect: NormalizedRect) => onQuoteRect(layer.key, rect), [onQuoteRect, layer.key])
 
   useEffect(() => {
     const timer = setTimeout(markReady, READY_TIMEOUT_MS)
@@ -139,7 +182,7 @@ function StageLayer({ layer, stageHeight, onShown }: StageLayerProps) {
         if (event.target === event.currentTarget) onShown()
       }}
     >
-      <QuoteStage quote={layer.quote} composition={layer.composition} stageHeight={stageHeight} onReady={markReady} />
+      <QuoteStage quote={layer.quote} composition={layer.composition} stageHeight={stageHeight} onReady={markReady} onQuoteRect={reportQuoteRect} />
     </div>
   )
 }

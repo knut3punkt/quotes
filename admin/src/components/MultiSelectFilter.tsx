@@ -18,6 +18,8 @@ interface MultiSelectFilterProps {
   selected: Set<string>
   onChange: (selected: Set<string>) => void
   searchPlaceholder?: string
+  /** The trigger's text with nothing selected. */
+  emptyLabel?: string
   className?: string
   disabled?: boolean
 }
@@ -28,6 +30,7 @@ function MultiSelectFilterComponent({
   selected,
   onChange,
   searchPlaceholder = 'Find…',
+  emptyLabel = 'All',
   className = 'min-w-[160px] max-w-[240px]',
   disabled = false,
 }: MultiSelectFilterProps) {
@@ -40,13 +43,13 @@ function MultiSelectFilterComponent({
   const visible = matching.slice(0, MAX_VISIBLE_OPTIONS)
 
   const triggerLabel = useMemo(() => {
-    if (selected.size === 0) return 'All'
+    if (selected.size === 0) return emptyLabel
     if (selected.size === 1) {
       const [value] = selected
       return options.find((option) => option.value === value)?.label ?? '1 selected'
     }
     return `${selected.size} selected`
-  }, [options, selected])
+  }, [emptyLabel, options, selected])
 
   const toggle = (value: string) => {
     const next = new Set(selected)

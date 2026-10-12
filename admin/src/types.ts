@@ -245,6 +245,13 @@ export interface TvFilter {
   poolAsExcerpt: number
 }
 
+/** The TV's quality overlay: while on, the TV shows each shown quote's or excerpt's verdict and flags in the run. */
+export interface TvDisplaySettings {
+  showQuality: boolean
+  /** The runs the TV quality overlay shows, oldest first. */
+  qualityRuns: { id: number; label: string }[]
+}
+
 export interface QuoteSelectionItem {
   id: number
   wordCount: number

@@ -196,6 +196,23 @@ app follows the filter as it is.
 The logic is `ShowableQuotes` in `PublicQuoteService.kt`. The quality conditions shared with the list are in
 `admin/QualityFilterConditions.kt`.
 
+### TV quality overlay
+
+To see why a quote is on screen, and how runs disagree on it, the same admin bar has a **Show quality on TV** switch
+and a picker for up to five runs. While it is on, the TV shows a small panel in a corner: the one that keeps it farthest from the quote as actually
+fitted on screen and from the motif icons (nearest of the two first, then the other):
+one row per run (oldest first) with the shown text's verdict, the model's problems and the run's label, then the
+text's precheck flags once, since they depend only on the text. Like the filter's quality conditions, it follows the
+shown text: an excerpt's own assessment, or the whole quote's when it is shown in full. A subject a run never assessed
+shows "not assessed" in that run's row.
+
+- **Storage.** One row in `tv_display_settings` (`show_quality`) and the chosen runs in `tv_display_quality_runs`
+  (deleting a run drops it from the overlay). `GET/PUT /admin/tv-display` read and set them, with
+  `{"showQuality": ..., "qualityRunIds": [...]}`. Turning it on needs at least one run.
+- **The TV asks per quote.** `GET /api/quotes/{id}/quality[?excerptId=]` answers 204 while the overlay is off. The TV
+  calls it as each quote comes on screen, so switching takes effect on the next quote, without relaunching the app.
+- It is diagnostic only and changes no data. `TvDisplayService.kt` on the server, `QualityOverlay.tsx` on the TV.
+
 ## Related: the TV length cap
 
 Independently of this job, `PublicQuoteService` no longer shows a quote longer than `publicQuotes.maxFullQuoteWords`

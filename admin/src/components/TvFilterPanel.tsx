@@ -5,13 +5,15 @@ import { useEffect, useState } from 'react'
 import { clearTvFilter, fetchTvFilter, saveTvFilter } from '../api'
 import { toast } from '../hooks/use-toast'
 import { quoteFilterStateFromQuery, type QuoteFilterState } from '../quoteFilters'
-import type { FilterOption, QuoteFilterOptions, TvFilter } from '../types'
+import type { FilterOption, QualityRun, QuoteFilterOptions, TvFilter } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
+import { TvQualityOverlayControl } from './TvQualityOverlayControl'
 
 interface TvFilterPanelProps {
   /** The page's current filters, as the query `saveTvFilter` stores. */
   currentQuery: string
   options: QuoteFilterOptions
+  qualityRuns: QualityRun[]
   onLoad: (filters: QuoteFilterState) => void
 }
 
@@ -65,7 +67,7 @@ function poolSummary(filter: TvFilter): string {
  * The TV preview filter (docs/features/quote-quality.md, "TV preview filter"): shows what the TV is limited to,
  * if anything, and sends the page's current filters there. Quality verdicts apply to the text the TV shows.
  */
-export function TvFilterPanel({ currentQuery, options, onLoad }: TvFilterPanelProps) {
+export function TvFilterPanel({ currentQuery, options, qualityRuns, onLoad }: TvFilterPanelProps) {
   const [tvFilter, setTvFilter] = useState<TvFilter | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)
@@ -78,7 +80,8 @@ export function TvFilterPanel({ currentQuery, options, onLoad }: TvFilterPanelPr
       .catch(() => undefined)
   }, [])
 
-  const matchesCurrent = tvFilter !== null && canonicalQuery(tvFilter.query) === canonicalQuery(currentQuery)
+  const tvFilterRunId = tvFilter ? quoteFilterStateFromQuery(tvFilter.query).qualityRun : ''
+  const matchesCurrent =tvFilter !== null && canonicalQuery(tvFilter.query) === canonicalQuery(currentQuery)
 
   async function showOnTv() {
     setSaving(true)
@@ -139,6 +142,13 @@ export function TvFilterPanel({ currentQuery, options, onLoad }: TvFilterPanelPr
         {saving && <Loader2 className="animate-spin" />}
         Show these on TV
       </Button>
+
+      <div className="basis-full border-t border-border pt-2">
+        <TvQualityOverlayControl
+          qualityRuns={qualityRuns}
+          tvFilterRunId={tvFilterRunId ? Number(tvFilterRunId) : null}
+        />
+      </div>
 
       {confirmingClear && (
         <ConfirmDialog

@@ -120,7 +120,7 @@ function dockCircles(dock: Dock, count: number, diameter: number): NormalizedRec
   })
 }
 
-function boundingRect(rects: NormalizedRect[]): NormalizedRect {
+export function boundingRect(rects: NormalizedRect[]): NormalizedRect {
   const left = Math.min(...rects.map((rect) => rect.x))
   const top = Math.min(...rects.map((rect) => rect.y))
   const right = Math.max(...rects.map((rect) => rect.x + rect.width))
