@@ -7,7 +7,7 @@ const SEARCH_STEPS = 8
 
 /**
  * Finds the largest font size, in px, at which the content fits its box, so a long quote shrinks
- * instead of spilling over the collage. [stageHeight] scales the bounds with the screen; the search
+ * instead of spilling over the motif icons. [stageHeight] scales the bounds with the screen; the search
  * reruns when it or [contentKey] (anything that identifies the text and box) changes.
  */
 export function useFitText<Box extends HTMLElement, Content extends HTMLElement>(

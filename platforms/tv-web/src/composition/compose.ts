@@ -1,8 +1,8 @@
 import { parseQuoteLayout, type DominantColor, type NormalizedRect, type QuoteVisuals } from '../types'
 import { hexToRgb, relativeLuminance, rgbToCss } from './color'
-import { chooseTextStyle, type TextStyle } from './contrast'
+import { chooseIconStyle, chooseTextStyle, type IconStyle, type TextStyle } from './contrast'
 import { fallbackBackground } from './fallback'
-import { computeLayout, type Arrangement, type TextAlign } from './layout'
+import { computeLayout, type Arrangement, type Dock, type TextAlign } from './layout'
 import { randomBetween, type Rng } from './random'
 
 /** Pixel widths asked of the server; it snaps them to its cached derivative sizes. */
@@ -15,34 +15,36 @@ export type CompositionBackground =
   | { kind: 'image'; url: string; zoomOrigin: string }
   | { kind: 'gradient'; css: string }
 
-export interface CompositionElement {
+export interface CompositionIcon {
   imageId: number
   url: string
-  /** The element's whole canvas, in fractions of the stage. */
-  rect: NormalizedRect
-  rotation: number
+  /** The icon's circle, in fractions of the stage. */
+  circle: NormalizedRect
+  /** The element's whole canvas, in fractions of [circle]. */
+  canvas: NormalizedRect
 }
 
 /** Everything the stage needs to draw one quote screen, in fractions of a 16:9 stage. */
 export interface Composition {
   background: CompositionBackground
-  elements: CompositionElement[]
+  /** The motifs as a row of icons; [iconStyle] is null when there are none. */
+  icons: CompositionIcon[]
+  iconStyle: IconStyle | null
   quoteBox: NormalizedRect
   align: TextAlign
   text: TextStyle
-  /** CSS `filter` that seats the elements in the scene with a shadow in the background's darkest colour. */
-  elementFilter: string
-  /** CSS `box-shadow` that lifts the quote's backdrop off the scene, in the background's darkest colour. */
+  /** CSS `box-shadow` that lifts the quote's backdrop and the icons off the scene, in the background's darkest colour. */
   backdropShadow: string
+  iconShadow: string
   debug: {
     mood: string | null
     moodStyle: string | null
-    motif: string | null
-    motifStyle: string | null
-    styleFit: number | null
+    /** The motifs shown as icons, with their styles. */
+    motifs: { name: string; style: string | null }[]
     /** The layout the background's prompt asked for, whether or not it was used. */
     quoteLayout: string | null
     arrangement: Arrangement
+    dock: Dock | null
   }
 }
 
@@ -55,16 +57,14 @@ function darkestColor(colors: DominantColor[]): string {
 
 /**
  * Turns the server's chosen images into a screen (docs/features/quote-composition.md): the background
- * (or a fallback gradient), where the quote and the motif go, and the text styling for the quote box.
+ * (or a fallback gradient), where the quote and the motif icons go, and how the quote and icons are coloured.
  */
 export function composeQuote(visuals: QuoteVisuals, imageUrl: ImageUrl, rng: Rng): Composition {
-  const { background } = visuals
-  const motif = visuals.elements[0] ?? null
+  const { background, elements } = visuals
   const scene = background
     ? {
         field: { columns: background.layout.gridColumns, rows: background.layout.gridRows, cells: background.layout.cells },
         dominantColors: background.dominantColors,
-        calmRegion: background.layout.calmRegion,
         quoteLayout: parseQuoteLayout(background.quoteLayout),
         layer: {
           kind: 'image' as const,
@@ -73,49 +73,49 @@ export function composeQuote(visuals: QuoteVisuals, imageUrl: ImageUrl, rng: Rng
         },
       }
     : (() => {
-        const fallback = fallbackBackground(motif ? [motif] : [], rng)
+        const fallback = fallbackBackground(elements, rng)
         return {
           field: fallback.field,
           dominantColors: fallback.dominantColors,
-          calmRegion: null,
           quoteLayout: null,
           layer: { kind: 'gradient' as const, css: fallback.css },
         }
       })()
 
-  const layout = computeLayout(scene.field, scene.calmRegion, scene.quoteLayout, motif, rng)
+  const layout = computeLayout(scene.field, scene.quoteLayout, elements)
   // An `overlay` background reserved no room, on the promise that the quote brings "its own contrasting
   // background or translucent panel".
   const text = chooseTextStyle(scene.field, scene.dominantColors, layout.quoteBox, layout.arrangement === 'overlay')
+  const iconStyle = layout.dockRect ? chooseIconStyle(scene.field, scene.dominantColors, layout.dockRect) : null
   const shadow = hexToRgb(darkestColor(scene.dominantColors))
 
   return {
     background: scene.layer,
-    elements: layout.elements.map((placed) => ({
-      imageId: placed.element.imageId,
-      url: imageUrl(placed.element.imageId, ELEMENT_IMAGE_WIDTH),
-      rect: placed.canvasRect,
-      rotation: placed.rotation,
+    icons: layout.icons.map((icon) => ({
+      imageId: icon.element.imageId,
+      url: imageUrl(icon.element.imageId, ELEMENT_IMAGE_WIDTH),
+      circle: icon.circle,
+      canvas: icon.canvas,
     })),
+    iconStyle,
     quoteBox: layout.quoteBox,
     align: layout.align,
     text,
-    elementFilter: `drop-shadow(0 0.6vh 1.4vh ${rgbToCss(shadow, 0.5)})`,
     backdropShadow: `0 1.5vh 5vh ${rgbToCss(shadow, 0.45)}`,
+    iconShadow: `0 0.6vh 2vh ${rgbToCss(shadow, 0.5)}`,
     debug: {
       mood: background?.tagName ?? null,
       moodStyle: background?.style ?? null,
-      motif: motif?.tagName ?? null,
-      motifStyle: motif?.style ?? null,
-      styleFit: visuals.styleFit,
+      motifs: elements.map((element) => ({ name: element.tagName, style: element.style })),
       quoteLayout: background?.quoteLayout ?? null,
       arrangement: layout.arrangement,
+      dock: layout.dock,
     },
   }
 }
 
 /** Every image URL a composition shows, for preloading. */
 export function compositionImageUrls(composition: Composition): string[] {
-  const urls = composition.elements.map((element) => element.url)
+  const urls = composition.icons.map((icon) => icon.url)
   return composition.background.kind === 'image' ? [composition.background.url, ...urls] : urls
 }

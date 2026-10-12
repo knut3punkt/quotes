@@ -3,47 +3,27 @@ package no.esotericgames.quotes.server.composition
 import kotlin.random.Random
 
 /**
- * Chooses the background and the one motif element for a showing of a quote
- * (docs/features/quote-composition.md, "Selection"):
- *
- * 1. a random mood tag among those with images;
- * 2. among that tag's backgrounds and every motif image, the pairs whose styles fit best by [affinity], one
- *    picked at random. Every (background, motif tag) counts once, by its best-fitting image of the tag, so a
- *    tag with many images gets no extra chance. When nothing fits, the pick is among all pairs.
- *
- * Without backgrounds, the motif is a random tag's random image; without motifs, the background is a random
- * image of the mood tag.
+ * At most this many motif icons per showing. Tagging keeps at most three motifs per quotation or excerpt, but a
+ * shown excerpt also carries the whole quotation's tags.
  */
-class QuoteVisualSelector(
-    private val random: Random = Random.Default,
-    private val affinity: StyleAffinity = StyleAffinity.BUNDLED,
-) {
+const val MAX_MOTIF_ICONS = 4
+
+/**
+ * Chooses the images for a showing of a quote (docs/features/quote-composition.md, "Selection"):
+ *
+ * 1. a random mood tag among those with images, and a random background of it;
+ * 2. one random image of every motif tag, in the candidates' order (most relevant first), up to
+ *    [MAX_MOTIF_ICONS].
+ *
+ * Picking a tag before its image gives every tag the same chance, however many images it has.
+ */
+class QuoteVisualSelector(private val random: Random = Random.Default) {
 
     fun select(candidates: QuoteVisualCandidates): QuoteVisuals {
-        val motifTags = candidates.elements.groupBy { it.tagId }.values.toList()
-        val moodImages = candidates.backgrounds.groupBy { it.tagId }.values.randomOrNull(random)
-        if (moodImages == null) {
-            val element = motifTags.randomOrNull(random)?.random(random)
-            return QuoteVisuals(background = null, elements = listOfNotNull(element), styleFit = null)
-        }
-        if (motifTags.isEmpty()) {
-            return QuoteVisuals(background = moodImages.random(random), elements = emptyList(), styleFit = null)
-        }
-
-        val pairs = moodImages.flatMap { background ->
-            motifTags.map { tagImages -> bestPairWith(background, tagImages) }
-        }
-        val bestFit = pairs.maxOf { it.fit }
-        val chosen = pairs.filter { it.fit == bestFit }.random(random)
-        return QuoteVisuals(background = chosen.background, elements = listOf(chosen.element), styleFit = chosen.fit)
+        val background = candidates.backgrounds.groupBy { it.tagId }.values.randomOrNull(random)?.random(random)
+        val elements = candidates.elements.groupBy { it.tagId }.values
+            .take(MAX_MOTIF_ICONS)
+            .map { tagImages -> tagImages.random(random) }
+        return QuoteVisuals(background = background, elements = elements)
     }
-
-    /** The best-fitting of one motif tag's images over [background]; ties go to chance. */
-    private fun bestPairWith(background: SelectedBackground, tagImages: List<SelectedElement>): ScoredPair {
-        val scored = tagImages.map { ScoredPair(background, it, affinity.score(background.style, it.style)) }
-        val bestFit = scored.maxOf { it.fit }
-        return scored.filter { it.fit == bestFit }.random(random)
-    }
-
-    private data class ScoredPair(val background: SelectedBackground, val element: SelectedElement, val fit: Int)
 }

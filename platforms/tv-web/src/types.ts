@@ -65,14 +65,12 @@ export interface SelectedElement {
 }
 
 /**
- * The images the server chose for one showing of a quote: a background (null asks for the fallback) and at
- * most one motif element.
+ * The images the server chose for one showing of a quote: a background (null asks for the fallback) and one
+ * element per motif tag, most relevant first, shown as icons.
  */
 export interface QuoteVisuals {
   background: SelectedBackground | null
   elements: SelectedElement[]
-  /** How well the background and motif styles fit (0-3), or null when there was no pair to score. */
-  styleFit: number | null
 }
 
 export interface PublicQuote {

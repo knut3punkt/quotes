@@ -38,7 +38,7 @@ function App() {
   const stage = useStageSize()
 
   useEffect(() => {
-    fetchRandomQuotes()
+    fetchRandomQuotes(100)
       .then((fetched) => {
         setQuotes(fetched)
         // Composing is cheap arithmetic; doing every quote up front lets their images preload.

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Composition } from '../composition/compose'
 import type { PublicQuote } from '../types'
-import { percentRect } from './percent-rect'
+import { MotifIcons } from './MotifIcons'
 import { QuoteDisplay } from './QuoteDisplay'
 
 interface QuoteStageProps {
@@ -14,12 +14,16 @@ interface QuoteStageProps {
 
 /**
  * One composed quote screen, in three layers (docs/features/quote-composition.md): the mood
- * background (slowly zooming), the motif element, and the quote, on a frosted backdrop when the
+ * background (slowly zooming), the motif icons, and the quote, on a frosted backdrop when the
  * background under it is busy.
  */
 export function QuoteStage({ quote, composition, stageHeight, onReady }: QuoteStageProps) {
-  const { background, elements, quoteBox, align, text, elementFilter, backdropShadow } = composition
-  const [failedElements, setFailedElements] = useState<ReadonlySet<number>>(new Set())
+  const { background, icons, iconStyle, iconShadow, quoteBox, align, text, backdropShadow } = composition
+  const [failedIcons, setFailedIcons] = useState<ReadonlySet<number>>(new Set())
+  const onIconError = useCallback(
+    (imageId: number) => setFailedIcons((failed) => new Set(failed).add(imageId)),
+    [],
+  )
 
   useEffect(() => {
     if (background.kind === 'gradient') onReady()
@@ -40,18 +44,16 @@ export function QuoteStage({ quote, composition, stageHeight, onReady }: QuoteSt
         <div className="absolute inset-0" style={{ background: background.css }} />
       )}
 
-      {elements
-        .filter((element) => !failedElements.has(element.imageId))
-        .map((element) => (
-          <img
-            key={element.imageId}
-            src={element.url}
-            alt=""
-            className="absolute"
-            style={{ ...percentRect(element.rect), transform: `rotate(${element.rotation}deg)`, filter: elementFilter }}
-            onError={() => setFailedElements((failed) => new Set(failed).add(element.imageId))}
-          />
-        ))}
+      {iconStyle && (
+        <MotifIcons
+          icons={icons.filter((icon) => !failedIcons.has(icon.imageId))}
+          style={iconStyle}
+          shadow={iconShadow}
+          background={background}
+          stageHeight={stageHeight}
+          onError={onIconError}
+        />
+      )}
 
       <QuoteDisplay
         quote={quote}

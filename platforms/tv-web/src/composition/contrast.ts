@@ -9,7 +9,7 @@ import {
   type Rgb,
 } from './color'
 import { dominantHue } from './fallback'
-import { regionStats, type LuminanceField } from './field'
+import { regionStats, type LuminanceField, type RegionStats } from './field'
 
 /**
  * Minimum contrast between the text and the *worst* part of the background under it. Stricter than
@@ -84,46 +84,17 @@ export function chooseTextStyle(
   forceBackdrop = false,
 ): TextStyle {
   const stats = regionStats(field, region)
-  const hue = dominantHue(dominantColors)
-  const h = hue?.h ?? 0
-  const sourceChroma = hue?.c ?? 0
-
-  const textRgb = (tone: TextTone, lightness: number): Rgb => {
-    const spec = tone === 'light' ? LIGHT_TEXT : DARK_TEXT
-    // Tint fades out toward the extreme, where any chroma would push the colour out of gamut.
-    const fade = Math.min(1, Math.abs(lightness - spec.extreme) / Math.abs(spec.start - spec.extreme) + 0.3)
-    return oklchToRgb({ l: lightness, c: Math.min(sourceChroma, spec.chroma) * fade, h })
-  }
-  const contrastOver = (rgb: Rgb, backgroundLuminance: number) =>
-    contrastRatio(relativeLuminance(rgb), backgroundLuminance)
-
-  const lightWorst = contrastOver(textRgb('light', LIGHT_TEXT.start), stats.highLuminance)
-  const darkWorst = contrastOver(textRgb('dark', DARK_TEXT.start), stats.lowLuminance)
-  const tone: TextTone = lightWorst >= darkWorst ? 'light' : 'dark'
-  const spec = tone === 'light' ? LIGHT_TEXT : DARK_TEXT
-  const worstBackground = tone === 'light' ? stats.highLuminance : stats.lowLuminance
-
-  let lightness = spec.start
-  const direction = Math.sign(spec.extreme - spec.start)
-  while (
-    contrastOver(textRgb(tone, lightness), worstBackground) < TARGET_CONTRAST &&
-    Math.abs(spec.extreme - lightness) > 1e-9
-  ) {
-    lightness = direction > 0 ? Math.min(spec.extreme, lightness + LIGHTNESS_STEP) : Math.max(spec.extreme, lightness - LIGHTNESS_STEP)
-  }
-  const text = textRgb(tone, lightness)
+  const palette = tintedPalette(dominantColors)
+  const { tone, lightness, rgb: text, worstBackground } = toneFor(stats, palette, TARGET_CONTRAST)
   const textLuminance = relativeLuminance(text)
-
-  // The opposite tone in the same hue: what the halo and the backdrop's tint are made of.
-  const shade = oklchToRgb(
-    tone === 'light' ? { l: 0.14, c: Math.min(sourceChroma, 0.04), h } : { l: 0.95, c: Math.min(sourceChroma, 0.03), h },
-  )
+  // What the halo and the backdrop's tint are made of.
+  const shade = palette.shade(tone)
 
   const reason = backdropReason(
     forceBackdrop,
     stats.meanDetail,
     stats.peakDetail,
-    contrastOver(text, worstBackground) >= TARGET_CONTRAST,
+    contrastRatio(textLuminance, worstBackground) >= TARGET_CONTRAST,
   )
   let effectiveBackground: Rgb = greyWithLuminance(worstBackground)
   let backdrop: Backdrop | null = null
@@ -145,7 +116,7 @@ export function chooseTextStyle(
   }
 
   // The attribution is a step softer, but only when it still meets the target.
-  const softer = textRgb(tone, tone === 'light' ? lightness - 0.1 : lightness + 0.12)
+  const softer = palette.toneRgb(tone, tone === 'light' ? lightness - 0.1 : lightness + 0.12)
   const attribution = contrastRatio(relativeLuminance(softer), effectiveLuminance) >= TARGET_CONTRAST ? softer : text
 
   return {
@@ -172,6 +143,108 @@ function backdropReason(
   if (peakDetail > QUIET_PEAK_DETAIL) return 'detail'
   if (!textAloneMeetsTarget) return 'contrast'
   return null
+}
+
+/** Colours tinted with the background's own hue: text-like tones, and the opposite-tone shade that backs them. */
+interface TintedPalette {
+  /** A light or dark colour at [lightness], tinted less toward the extreme. */
+  toneRgb: (tone: TextTone, lightness: number) => Rgb
+  /** The opposite of [tone] in the same hue: a deep (or pale) shade, never black or white. */
+  shade: (tone: TextTone) => Rgb
+}
+
+function tintedPalette(dominantColors: DominantColor[]): TintedPalette {
+  const hue = dominantHue(dominantColors)
+  const h = hue?.h ?? 0
+  const sourceChroma = hue?.c ?? 0
+  return {
+    toneRgb: (tone, lightness) => {
+      const spec = tone === 'light' ? LIGHT_TEXT : DARK_TEXT
+      // Tint fades out toward the extreme, where any chroma would push the colour out of gamut.
+      const fade = Math.min(1, Math.abs(lightness - spec.extreme) / Math.abs(spec.start - spec.extreme) + 0.3)
+      return oklchToRgb({ l: lightness, c: Math.min(sourceChroma, spec.chroma) * fade, h })
+    },
+    shade: (tone) =>
+      oklchToRgb(
+        tone === 'light' ? { l: 0.14, c: Math.min(sourceChroma, 0.04), h } : { l: 0.95, c: Math.min(sourceChroma, 0.03), h },
+      ),
+  }
+}
+
+interface ToneChoice {
+  tone: TextTone
+  lightness: number
+  rgb: Rgb
+  /** Luminance of the part of the region the colour contrasts worst with. */
+  worstBackground: number
+}
+
+/**
+ * Light or dark, whichever contrasts better with the worst part of the region, with its lightness pushed toward
+ * the extreme until it meets [target] (or reaches the extreme).
+ */
+function toneFor(stats: RegionStats, palette: TintedPalette, target: number): ToneChoice {
+  const lightWorst = contrastRatio(relativeLuminance(palette.toneRgb('light', LIGHT_TEXT.start)), stats.highLuminance)
+  const darkWorst = contrastRatio(relativeLuminance(palette.toneRgb('dark', DARK_TEXT.start)), stats.lowLuminance)
+  const tone: TextTone = lightWorst >= darkWorst ? 'light' : 'dark'
+  const spec = tone === 'light' ? LIGHT_TEXT : DARK_TEXT
+  const worstBackground = tone === 'light' ? stats.highLuminance : stats.lowLuminance
+
+  let lightness = spec.start
+  const direction = Math.sign(spec.extreme - spec.start)
+  while (
+    contrastRatio(relativeLuminance(palette.toneRgb(tone, lightness)), worstBackground) < target &&
+    Math.abs(spec.extreme - lightness) > 1e-9
+  ) {
+    lightness = direction > 0 ? Math.min(spec.extreme, lightness + LIGHTNESS_STEP) : Math.max(spec.extreme, lightness - LIGHTNESS_STEP)
+  }
+  return { tone, lightness, rgb: palette.toneRgb(tone, lightness), worstBackground }
+}
+
+/**
+ * Minimum contrast of the icons' ring against the background around it: WCAG's 3:1 for graphical objects. The
+ * ring is a shape, not text.
+ */
+export const ICON_RING_CONTRAST = 3
+/** The icons' glass: always enough to set the motif off, never an opaque disc. */
+export const MIN_ICON_GLASS_OPACITY = 0.4
+export const MAX_ICON_GLASS_OPACITY = 0.7
+/** At this peak detail around the icons, the glass is at its most opaque, to quiet the scene behind the motifs. */
+const ICON_BUSY_DETAIL = 0.08
+
+/** How the motif icons are drawn; one style for all of them, so they read as a set. */
+export interface IconStyle {
+  tone: TextTone
+  /** The thick ring, in the text's tinted tone. */
+  ring: string
+  /** The thin edges either side of the ring, in the opposite tone, so it reads on any background. */
+  edge: string
+  /** The glass disc's tint and its opacity over the blurred background. */
+  tint: string
+  opacity: number
+  /** Contrast of the ring against the worst part of the background around the icons. */
+  contrast: number
+}
+
+/**
+ * Chooses the icons' colours over [region], the box around them (docs/features/quote-composition.md, "Icon
+ * style"): a ring tinted like the quote text, light or dark by the background around the icons, edged in the
+ * opposite tone; and frosted glass inside the ring, in the opposite tone, more opaque the busier the scene there.
+ */
+export function chooseIconStyle(field: LuminanceField, dominantColors: DominantColor[], region: NormalizedRect): IconStyle {
+  const stats = regionStats(field, region)
+  const palette = tintedPalette(dominantColors)
+  const { tone, rgb: ring, worstBackground } = toneFor(stats, palette, ICON_RING_CONTRAST)
+  const shade = palette.shade(tone)
+  const busyness = Math.min(1, stats.peakDetail / ICON_BUSY_DETAIL)
+  return {
+    tone,
+    ring: rgbToCss(ring),
+    edge: rgbToCss(shade, 0.85),
+    tint: rgbToCss(shade),
+    opacity: MIN_ICON_GLASS_OPACITY + (MAX_ICON_GLASS_OPACITY - MIN_ICON_GLASS_OPACITY) * busyness,
+    contrast: contrastRatio(relativeLuminance(ring), worstBackground),
+  }
 }
 
 /**
