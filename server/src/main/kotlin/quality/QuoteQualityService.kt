@@ -19,6 +19,7 @@ import no.esotericgames.quotes.server.admin.UploadAssessmentItem
 import no.esotericgames.quotes.server.admin.UploadAssessmentsResponse
 import no.esotericgames.quotes.server.admin.applyQuoteFilter
 import no.esotericgames.quotes.server.db.Authors
+import no.esotericgames.quotes.server.db.QualityCustomFlags
 import no.esotericgames.quotes.server.db.QuoteExcerpts
 import no.esotericgames.quotes.server.db.QuoteQualityAssessments
 import no.esotericgames.quotes.server.db.QuoteQualityRuns
@@ -39,6 +40,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -65,8 +67,35 @@ private data class QualitySubject(
 
 private data class RunRecord(val id: Int, val runner: QualityRunner, val promptVersion: String, val modelId: String?)
 
+/** What a succeeded row stores: a model's or uploader's validated answer, or a human rating (verdict and problems only). */
+private data class StoredAssessment(
+    val verdict: QualityVerdict,
+    val problems: List<String>,
+    val reading: String? = null,
+    val insight: String? = null,
+    val assessment: String? = null,
+    val unresolvedReferences: List<String> = emptyList(),
+    val standsAlone: Int? = null,
+    val completeness: Int? = null,
+    val substance: Int? = null,
+    val expression: Int? = null,
+)
+
+private fun ValidatedQualityAssessment.toStored() = StoredAssessment(
+    verdict = verdict,
+    problems = problems.map { it.name },
+    reading = reading,
+    insight = insight,
+    assessment = assessment,
+    unresolvedReferences = unresolvedReferences,
+    standsAlone = standsAlone,
+    completeness = completeness,
+    substance = substance,
+    expression = expression,
+)
+
 private data class AssessmentOutcome(
-    val validated: ValidatedQualityAssessment?,
+    val stored: StoredAssessment?,
     val modelId: String?,
     val errorMessage: String?,
 )
@@ -81,7 +110,8 @@ private val uploadJson = Json { ignoreUnknownKeys = true }
  *
  * A run is either assessed here by the configured local model (`llm`), or uploaded by an external
  * runner that follows the same prompt and schema (`external`). Both go through [QualityValidator] and
- * the same prechecks.
+ * the same prechecks. A `human` run is rated with the TV remote ([rate]): a verdict and problems only,
+ * checked by [HumanRating], with the same prechecks.
  */
 class QuoteQualityService(
     private val client: QuoteQualityClient,
@@ -103,13 +133,15 @@ class QuoteQualityService(
             QualityRunner.LLM -> llmConfig.model
             QualityRunner.EXTERNAL -> request.modelId?.trim()?.takeIf { it.isNotEmpty() }
                 ?: throw IllegalArgumentException("an external run needs the modelId of whoever assesses it")
+            QualityRunner.HUMAN -> request.modelId?.trim()?.takeIf { it.isNotEmpty() }
         }
         val runId = suspendTransaction {
             QuoteQualityRuns.insert {
                 it[QuoteQualityRuns.label] = label
                 it[QuoteQualityRuns.runner] = runner.dbValue
                 it[methodVersion] = QUALITY_METHOD_VERSION
-                it[promptVersion] = QualityPrompts.PROMPT_VERSION
+                // A human rates without the prompt.
+                it[promptVersion] = if (runner == QualityRunner.HUMAN) "none" else QualityPrompts.PROMPT_VERSION
                 it[QuoteQualityRuns.modelId] = modelId
                 it[settings] = if (runner == QualityRunner.LLM) llmSettingsSnapshot() else null
                 it[notes] = request.notes?.trim()?.takeIf { note -> note.isNotEmpty() }
@@ -149,7 +181,7 @@ class QuoteQualityService(
     /** Assesses each quote and its accepted excerpts with the local model, one quote at a time. */
     suspend fun assessForQuotes(runId: Int, quoteIds: List<Int>): AssessQualityResponse {
         val run = loadRun(runId)
-        check(run.runner == QualityRunner.LLM) { "run $runId is an external run; upload its assessments instead" }
+        check(run.runner == QualityRunner.LLM) { "run $runId is ${run.runner.dbValue}, not assessed by the server's model" }
         check(run.promptVersion == QualityPrompts.PROMPT_VERSION && run.modelId == llmConfig.model) {
             "run $runId was made with ${run.promptVersion} on ${run.modelId}; the server now uses " +
                 "${QualityPrompts.PROMPT_VERSION} on ${llmConfig.model}. Create a new run."
@@ -178,7 +210,7 @@ class QuoteQualityService(
         )
         when (val outcome = client.assess(request)) {
             is QualityOutcome.Success -> when (val validation = QualityValidator.validate(outcome.response)) {
-                is QualityValidation.Valid -> AssessmentOutcome(validation.assessment, outcome.modelId, null)
+                is QualityValidation.Valid -> AssessmentOutcome(validation.assessment.toStored(), outcome.modelId, null)
                 is QualityValidation.Invalid -> AssessmentOutcome(null, outcome.modelId, "invalid response: ${validation.reasons.joinToString("; ")}")
             }
             is QualityOutcome.ConnectionFailure -> AssessmentOutcome(null, null, "unreachable at ${llmConfig.baseUrl}: ${outcome.message}")
@@ -239,7 +271,7 @@ class QuoteQualityService(
             }
             when (val validation = QualityValidator.validate(response)) {
                 is QualityValidation.Valid -> {
-                    persist(runId, subject, AssessmentOutcome(validation.assessment, run.modelId, null))
+                    persist(runId, subject, AssessmentOutcome(validation.assessment.toStored(), run.modelId, null))
                     stored++
                 }
                 is QualityValidation.Invalid ->
@@ -248,6 +280,72 @@ class QuoteQualityService(
         }
         return UploadAssessmentsResponse(stored = stored, rejected = rejected)
     }
+
+    /**
+     * Stores a human rating of [quoteId] shown as [excerptId] (or in full when null) in human run [runId], replacing an
+     * earlier rating of the same text in that run (docs/features/quote-quality.md, "Human ratings on TV").
+     */
+    suspend fun rate(runId: Int, quoteId: Int, excerptId: Int?, verdict: String, problems: List<String>): QualityAssessmentResponse {
+        val run = loadRun(runId)
+        check(run.runner == QualityRunner.HUMAN) { "run $runId is ${run.runner.dbValue}; ratings go to a human run" }
+        val subject = loadSubject(quoteId, excerptId)
+        val customCodes = withContext(Dispatchers.IO) { suspendTransaction { customFlagCodes() } }
+        val rating = HumanRating.validate(verdict, problems, customCodes)
+        return persist(runId, subject, AssessmentOutcome(StoredAssessment(rating.verdict, rating.problems), run.modelId, null))
+    }
+
+    /** The rating of [quoteId] shown as [excerptId] in [runId], matched on the text shown, or null when not rated yet. */
+    suspend fun ratingOf(runId: Int, quoteId: Int, excerptId: Int?): QualityAssessmentResponse? {
+        val subject = loadSubject(quoteId, excerptId)
+        return withContext(Dispatchers.IO) {
+            suspendTransaction {
+                QuoteQualityAssessments.selectAll()
+                    .where {
+                        (QuoteQualityAssessments.runId eq runId) and
+                            (QuoteQualityAssessments.subjectKind eq subject.kind.dbValue) and
+                            (QuoteQualityAssessments.subjectHash eq subject.textHash)
+                    }
+                    .firstOrNull()
+                    ?.toAssessmentResponse()
+            }
+        }
+    }
+
+    /** Every flag a rating may use: the model's problems, then those humans added. */
+    suspend fun flags(): List<QualityFlag> = withContext(Dispatchers.IO) {
+        suspendTransaction { HumanRating.allFlags(customFlags()) }
+    }
+
+    /**
+     * The flag for [label], added when it is new. A label that normalises to an existing flag (built-in or custom)
+     * returns that flag, so "cliche" and "Cliché" are one flag.
+     */
+    suspend fun createFlag(label: String): QualityFlag {
+        val code = HumanRating.flagCode(label)
+        QualityProblem.entries.firstOrNull { it.name == code }?.let { return QualityFlag(it.name, it.label, custom = false) }
+        return withContext(Dispatchers.IO) {
+            suspendTransaction {
+                QualityCustomFlags.insertIgnore {
+                    it[QualityCustomFlags.code] = code
+                    it[QualityCustomFlags.label] = HumanRating.flagLabel(label)
+                }
+                customFlags().first { it.code == code }
+            }
+        }
+    }
+
+    private fun customFlags(): List<QualityFlag> =
+        QualityCustomFlags.selectAll().map { QualityFlag(it[QualityCustomFlags.code], it[QualityCustomFlags.label], custom = true) }
+
+    private fun customFlagCodes(): Set<String> =
+        QualityCustomFlags.select(QualityCustomFlags.code).map { it[QualityCustomFlags.code] }.toSet()
+
+    /** The subject the TV shows for [quoteId] as [excerptId]; the excerpt must be an accepted excerpt of that quote. */
+    private suspend fun loadSubject(quoteId: Int, excerptId: Int?): QualitySubject =
+        loadSubjects(listOf(quoteId)).firstOrNull { it.excerptId == excerptId }
+            ?: throw NoSuchElementException(
+                if (excerptId == null) "quote $quoteId not found" else "excerpt $excerptId is not an accepted excerpt of quote $quoteId",
+            )
 
     suspend fun compare(runA: Int, runB: Int, disagreementLimit: Int): QualityComparisonResponse {
         loadRun(runA)
@@ -332,7 +430,7 @@ class QuoteQualityService(
     private suspend fun persist(runId: Int, subject: QualitySubject, outcome: AssessmentOutcome): QualityAssessmentResponse =
         withContext(Dispatchers.IO) {
             val prechecks = QualityPrechecks.detect(subject.text, subject.language, maxFullQuoteWords).map { it.name }
-            val validated = outcome.validated
+            val stored = outcome.stored
             suspendTransaction {
                 QuoteQualityAssessments.deleteWhere {
                     (QuoteQualityAssessments.runId eq runId) and
@@ -347,19 +445,19 @@ class QuoteQualityService(
                     it[subjectText] = subject.text
                     it[subjectHash] = subject.textHash
                     it[wordCount] = QualityPrechecks.countWords(subject.text)
-                    it[status] = if (validated != null) SUCCEEDED else FAILED
+                    it[status] = if (stored != null) SUCCEEDED else FAILED
                     it[errorMessage] = outcome.errorMessage?.take(ERROR_MESSAGE_MAX_LENGTH)
                     it[modelId] = outcome.modelId
-                    it[reading] = validated?.reading
-                    it[insight] = validated?.insight
-                    it[assessment] = validated?.assessment
-                    it[unresolvedReferences] = validated?.unresolvedReferences.orEmpty()
-                    it[problems] = validated?.problems.orEmpty().map { problem -> problem.name }
-                    it[standsAlone] = validated?.standsAlone
-                    it[completeness] = validated?.completeness
-                    it[substance] = validated?.substance
-                    it[expression] = validated?.expression
-                    it[verdict] = validated?.verdict?.dbValue
+                    it[reading] = stored?.reading
+                    it[insight] = stored?.insight
+                    it[assessment] = stored?.assessment
+                    it[unresolvedReferences] = stored?.unresolvedReferences.orEmpty()
+                    it[problems] = stored?.problems.orEmpty()
+                    it[standsAlone] = stored?.standsAlone
+                    it[completeness] = stored?.completeness
+                    it[substance] = stored?.substance
+                    it[expression] = stored?.expression
+                    it[verdict] = stored?.verdict?.dbValue
                     it[precheckFlags] = prechecks
                 }[QuoteQualityAssessments.id]
                 QuoteQualityAssessments.selectAll().where { QuoteQualityAssessments.id eq id }.single().toAssessmentResponse()

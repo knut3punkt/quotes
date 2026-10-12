@@ -31,9 +31,9 @@ class QualityFixtures {
     val runId: Int = newRun(runLabel)
 
     /** Another run, for comparing runs; [delete] removes it too. */
-    fun newRun(label: String): Int = QuoteQualityRuns.insert {
+    fun newRun(label: String, runner: String = "external"): Int = QuoteQualityRuns.insert {
         it[QuoteQualityRuns.label] = label
-        it[runner] = "external"
+        it[QuoteQualityRuns.runner] = runner
         it[methodVersion] = "test"
         it[promptVersion] = "test"
     }[QuoteQualityRuns.id].also(runIds::add)

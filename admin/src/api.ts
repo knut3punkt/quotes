@@ -152,6 +152,11 @@ export function saveTvDisplay(settings: { showQuality: boolean; qualityRunIds: n
   return request('/admin/tv-display', { method: 'PUT', body: JSON.stringify(settings) })
 }
 
+/** Turns the TV's rating mode on with a human run, or off with null. */
+export function saveTvRatingRun(runId: number | null): Promise<TvDisplaySettings> {
+  return request('/admin/tv-rating', { method: 'PUT', body: JSON.stringify({ runId }) })
+}
+
 export function fetchAuthors(): Promise<Author[]> {
   return request('/admin/authors')
 }
@@ -271,7 +276,7 @@ export function fetchQualityRuns(): Promise<QualityRun[]> {
   return request('/admin/quality-runs')
 }
 
-export function createQualityRun(body: { label: string; runner: 'llm' | 'external'; modelId?: string; notes?: string }): Promise<QualityRun> {
+export function createQualityRun(body: { label: string; runner: 'llm' | 'external' | 'human'; modelId?: string; notes?: string }): Promise<QualityRun> {
   return request('/admin/quality-runs', { method: 'POST', body: JSON.stringify(body) })
 }
 

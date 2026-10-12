@@ -18,17 +18,17 @@ enum class QualityVerdict(val dbValue: String, val rank: Int) {
 }
 
 /** Problems the model may report, as defined in prompts/quote-quality-v1.md. */
-enum class QualityProblem {
-    FRAGMENT,
-    CONTEXT_DEPENDENT,
-    NARRATION_OR_DIALOGUE,
-    EDITORIAL_OR_META,
-    POSSIBLY_MISATTRIBUTED,
-    NON_ENGLISH,
-    FLAT,
-    CLICHE,
-    TOO_LONG,
-    SENSITIVE_OR_DATED,
+enum class QualityProblem(val label: String) {
+    FRAGMENT("Fragment"),
+    CONTEXT_DEPENDENT("Needs context"),
+    NARRATION_OR_DIALOGUE("Narration or dialogue"),
+    EDITORIAL_OR_META("Editorial or meta"),
+    POSSIBLY_MISATTRIBUTED("Possibly misattributed"),
+    NON_ENGLISH("Not English"),
+    FLAT("Flat"),
+    CLICHE("Cliché"),
+    TOO_LONG("Too long"),
+    SENSITIVE_OR_DATED("Sensitive or dated"),
 }
 
 enum class SubjectKind(val dbValue: String) {
@@ -42,10 +42,14 @@ enum class SubjectKind(val dbValue: String) {
     }
 }
 
-/** An `llm` run is assessed by the server's configured model; an `external` run is uploaded by another runner. */
+/**
+ * An `llm` run is assessed by the server's configured model; an `external` run is uploaded by another runner; a
+ * `human` run is rated with the TV remote (verdict and problems only).
+ */
 enum class QualityRunner(val dbValue: String) {
     LLM("llm"),
     EXTERNAL("external"),
+    HUMAN("human"),
     ;
 
     companion object {

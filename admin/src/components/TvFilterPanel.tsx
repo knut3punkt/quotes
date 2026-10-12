@@ -8,6 +8,7 @@ import { quoteFilterStateFromQuery, type QuoteFilterState } from '../quoteFilter
 import type { FilterOption, QualityRun, QuoteFilterOptions, TvFilter } from '../types'
 import { ConfirmDialog } from './ConfirmDialog'
 import { TvQualityOverlayControl } from './TvQualityOverlayControl'
+import { TvRatingControl } from './TvRatingControl'
 
 interface TvFilterPanelProps {
   /** The page's current filters, as the query `saveTvFilter` stores. */
@@ -15,6 +16,7 @@ interface TvFilterPanelProps {
   options: QuoteFilterOptions
   qualityRuns: QualityRun[]
   onLoad: (filters: QuoteFilterState) => void
+  onQualityRunCreated: (run: QualityRun) => void
 }
 
 const ENRICHMENT_LABELS: Record<string, string> = { has: 'has', none: 'none found', notRun: 'not run' }
@@ -67,7 +69,7 @@ function poolSummary(filter: TvFilter): string {
  * The TV preview filter (docs/features/quote-quality.md, "TV preview filter"): shows what the TV is limited to,
  * if anything, and sends the page's current filters there. Quality verdicts apply to the text the TV shows.
  */
-export function TvFilterPanel({ currentQuery, options, qualityRuns, onLoad }: TvFilterPanelProps) {
+export function TvFilterPanel({ currentQuery, options, qualityRuns, onLoad, onQualityRunCreated }: TvFilterPanelProps) {
   const [tvFilter, setTvFilter] = useState<TvFilter | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)
@@ -148,6 +150,9 @@ export function TvFilterPanel({ currentQuery, options, qualityRuns, onLoad }: Tv
           qualityRuns={qualityRuns}
           tvFilterRunId={tvFilterRunId ? Number(tvFilterRunId) : null}
         />
+      </div>
+      <div className="basis-full">
+        <TvRatingControl qualityRuns={qualityRuns} onRunCreated={onQualityRunCreated} />
       </div>
 
       {confirmingClear && (

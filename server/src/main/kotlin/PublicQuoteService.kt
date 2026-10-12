@@ -46,16 +46,19 @@ class PublicQuoteService(
      * Random quotes for the TV. A quote with usable excerpts (`meets_thresholds`) is shown as one of
      * them, picked at random; a quote without is shown in full, so it is only eligible when it is
      * short enough to read on screen ([PublicQuoteConfig.maxFullQuoteWords]). While the admin has set a TV
-     * preview filter ([activeTvQuoteFilter]), only what matches it is shown (see [ShowableQuotes]).
+     * preview filter ([activeTvQuoteFilter]), only what matches it is shown (see [ShowableQuotes]). While rating mode is
+     * on ([activeRatingRunId]), what the human run has not rated yet comes first: only when nothing unrated is left are
+     * rated quotes shown again.
      */
     suspend fun randomQuotes(count: Int): List<PublicQuoteResponse> = withContext(Dispatchers.IO) {
         suspendTransaction {
             val limit = count.coerceIn(1, MAX_COUNT)
-            val showable = ShowableQuotes(activeTvQuoteFilter(), config.maxFullQuoteWords)
-            val rows = showable.restrict(Quotes.leftJoin(Authors).leftJoin(Sources).selectAll())
-                .orderBy(Random() to SortOrder.ASC)
-                .limit(limit)
-                .toList()
+            val filter = activeTvQuoteFilter()
+            val (showable, rows) = activeRatingRunId()
+                ?.let { ShowableQuotes(filter, config.maxFullQuoteWords, skipAssessedIn = it) }
+                ?.let { unrated -> unrated to randomRows(unrated, limit) }
+                ?.takeIf { (_, unratedRows) -> unratedRows.isNotEmpty() }
+                ?: ShowableQuotes(filter, config.maxFullQuoteWords).let { it to randomRows(it, limit) }
             val quoteIds = rows.map { it[Quotes.id] }
             val excerptsByQuote = QuoteExcerpts.selectAll()
                 .where { (QuoteExcerpts.quoteId inList quoteIds) and showable.excerptShowable() }
@@ -69,6 +72,12 @@ class PublicQuoteService(
             }
         }
     }
+
+    private fun randomRows(showable: ShowableQuotes, limit: Int): List<ResultRow> =
+        showable.restrict(Quotes.leftJoin(Authors).leftJoin(Sources).selectAll())
+            .orderBy(Random() to SortOrder.ASC)
+            .limit(limit)
+            .toList()
 
     /** How many quotes [randomQuotes] can choose from under [filter]. Must run inside a transaction. */
     fun poolSize(filter: QuoteFilter?): TvPoolSize {
@@ -113,9 +122,16 @@ class PublicQuoteService(
  * to the text actually shown: an accepted excerpt is showable when its own assessment matches; a quote without
  * accepted excerpts is showable in full when it is short enough and its whole-quote assessment matches. A quote
  * with accepted excerpts is never shown in full, so one whose excerpts all fail the filter is not shown at all.
- * Without a filter this is the plain rule: an accepted excerpt, or short enough to show in full.
+ * Without a filter this is the plain rule: an accepted excerpt, or short enough to show in full. With [skipAssessedIn]
+ * (rating mode), a subject that run has already assessed is not showable.
  */
-private class ShowableQuotes(private val filter: QuoteFilter?, private val maxFullQuoteWords: Int) {
+private class ShowableQuotes(
+    private val filter: QuoteFilter?,
+    private val maxFullQuoteWords: Int,
+    private val skipAssessedIn: Int? = null,
+) {
+
+    private fun notAssessed(assessment: (Int) -> Query): Op<Boolean> = skipAssessedIn?.let { notExists(assessment(it)) } ?: Op.TRUE
 
     /** Whether the subject behind [assessment] matches the filter's quality conditions; true when there are none. */
     private fun quality(assessment: (Int) -> Query): Op<Boolean> {
@@ -124,7 +140,8 @@ private class ShowableQuotes(private val filter: QuoteFilter?, private val maxFu
     }
 
     /** For a query over [QuoteExcerpts]. */
-    fun excerptShowable(): Op<Boolean> = (QuoteExcerpts.meetsThresholds eq true) and quality(::excerptAssessment)
+    fun excerptShowable(): Op<Boolean> =
+        (QuoteExcerpts.meetsThresholds eq true) and quality(::excerptAssessment) and notAssessed(::excerptAssessment)
 
     /** For a query over [Quotes]. */
     fun hasShowableExcerpt(): Op<Boolean> =
@@ -138,7 +155,8 @@ private class ShowableQuotes(private val filter: QuoteFilter?, private val maxFu
         val hasAcceptedExcerpt = QuoteExcerpts.select(QuoteExcerpts.id)
             .where { (QuoteExcerpts.quoteId eq Quotes.id) and (QuoteExcerpts.meetsThresholds eq true) }
         val showableInFull =
-            notExists(hasAcceptedExcerpt) and (Quotes.wordCount lessEq maxFullQuoteWords) and quality(::wholeQuoteAssessment)
+            notExists(hasAcceptedExcerpt) and (Quotes.wordCount lessEq maxFullQuoteWords) and quality(::wholeQuoteAssessment) and
+                notAssessed(::wholeQuoteAssessment)
         return filtered.andWhere { hasShowableExcerpt() or showableInFull }
     }
 }

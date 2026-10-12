@@ -99,3 +99,20 @@ export interface QuoteQuality {
   /** Computed from the text, so given once for all runs. */
   precheckFlags: string[]
 }
+
+/** A problem flag the remote can pick: one of the model's problems, or one a human added. */
+export interface QualityFlag {
+  code: string
+  label: string
+  custom: boolean
+}
+
+/** Rating mode for a shown quote or excerpt (docs/features/quote-quality.md, "Human ratings on TV"). */
+export interface QuoteRating {
+  runLabel: string
+  /** Null while the shown text is not rated yet. */
+  verdict: string | null
+  problems: string[]
+  /** The model's problems in their fixed order, then those humans added. */
+  flags: QualityFlag[]
+}

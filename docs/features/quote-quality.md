@@ -107,7 +107,7 @@ them, so prechecks and model judgment can be measured separately:
 
 Every assessment belongs to a run (`quote_quality_runs`). A run records:
 
-- its runner (`llm` or `external`);
+- its runner (`llm`, `external` or `human`);
 - method version, prompt version and model id;
 - a snapshot of the model settings;
 - notes.
@@ -119,6 +119,8 @@ Runs are never replaced, so any two can be compared. Re-assessing a subject with
   prompt version or model refuses new work (409), so one run never mixes runners.
 - **`external` runs.** Another runner uploads these. The runner follows the same prompt and schema: a frontier model,
   or a human. Uploads go through the same validator and prechecks.
+- **`human` runs.** A person rates these with the TV remote (see "Human ratings on TV"): a verdict and optional problem
+  flags only, with no reading, insight or levels.
 
 ## Schema decisions
 
@@ -157,7 +159,7 @@ assessed successfully. The comparison gives:
 - quadratic-weighted kappa;
 - a keep/drop 2×2 with its kappa (keep is acceptable or better);
 - per-level means;
-- per-problem overlap;
+- per-problem overlap, with any custom flags a human used after the model's problems;
 - the disagreements, largest gap first.
 
 Agreement is not accuracy. The disagreements list is what a human reviews to decide which runner was right.
@@ -168,7 +170,7 @@ The quotes list accepts these filters, which match the whole-quote assessment:
 
 - `qualityRun`;
 - `qualityVerdict`, multi-valued, including `notAssessed` and `failed`;
-- `qualityFlag`, multi-valued, matching model problems or precheck flags.
+- `qualityFlag`, multi-valued, matching model problems, precheck flags, or a custom flag's code.
 
 With a run selected, each row shows the verdicts for the quote and its excerpts. The intended workflow is to filter a
 run to `reject` (then `weak`), skim, and bulk-unapprove.
@@ -212,6 +214,67 @@ shows "not assessed" in that run's row.
 - **The TV asks per quote.** `GET /api/quotes/{id}/quality[?excerptId=]` answers 204 while the overlay is off. The TV
   calls it as each quote comes on screen, so switching takes effect on the next quote, without relaunching the app.
 - It is diagnostic only and changes no data. `TvDisplayService.kt` on the server, `QualityOverlay.tsx` on the TV.
+
+### Human ratings on TV
+
+The same admin bar has a **Rate on TV into** switch, a picker of `human` runs, and a **New human run** button. Rating
+quotes there builds human-labelled data for improving the classifier.
+
+Ratings use the model's verdict scale, so a human run is just another run on the Quality page. The verdict matrix,
+kappa and disagreements against any model run need nothing new. A human rating has no levels, so the per-level
+comparison skips it.
+
+On the TV, while rating mode is on:
+
+- Auto-advance stops. Quotes change when you rate them or press ← →.
+- The quality overlay starts with a row for your rating of the shown text ("unrated" until you rate it) and a key hint.
+- The runs chosen for the overlay always show below your row, whether or not you have rated the text yet.
+- **OK** opens the rating panel on the edge away from the quote.
+  - The top row is the five verdicts. ◀ ▶ choose one and OK saves.
+  - ▼ moves to the flag chips below, and OK toggles a chip.
+  - The panel opens on your earlier rating, or on acceptable.
+  - **Back** closes it without saving. On webOS the remote's Back is `history.back()`, and it offers to quit once there
+    is no history left. So the open panel pushes a history entry of its own, Back pops it, and the panel closes on
+    `popstate`. Closing the panel any other way pops the entry too, so Back outside the panel behaves as before. The
+    same applies to a browser's Back button. Escape closes the panel directly.
+- **The pointer works too.** While the LG Magic Remote's pointer is showing, pressing the wheel is a click, not an OK
+  key, so clicks are handled as well. A mouse on a PC browser works the same way.
+  - A click on the stage opens the panel.
+  - A click on a verdict saves it, and a click on a chip toggles it.
+  - A click beside the panel closes it.
+  - The wheel steps through the verdicts: down moves to a better one, like ▶.
+- **1–5** (reject … excellent) save at once, on a remote that has number keys. They keep the flags already set.
+- **OK while rating mode is off** shows a hint to turn it on in the admin, but only while the quality overlay is on.
+  Plain viewing ignores OK.
+- Ticking **Rate on TV** before any human run exists creates one, named with the date.
+- **+ New** at the end of the chips opens a text field. On webOS you can use the on-screen keyboard or the remote's voice
+  button. The flag is created and selected.
+- After saving, a toast confirms and the next quote follows a second later. ◀ goes back, and rating again replaces
+  the rating.
+
+Decisions:
+
+- **Validation.** A rating has no reading, insight or levels, so it does not go through `QualityValidator`.
+  - `HumanRating` applies the same rules: an unknown verdict or flag is rejected, not dropped.
+  - The server computes the subject, its hash and its prechecks from `(quoteId, excerptId)`, as for an upload.
+- **Custom flags.** `quality_custom_flags` stores flags beyond the model's problems. Custom flags are never shown to the
+  model.
+  - A typed label is normalised to an upper-snake `code`, with accents dropped. `problems` stores that code.
+  - A label that normalises to a model problem ("cliche") is that problem.
+  - A label that normalises to a precheck flag is refused, since the server computes those itself.
+- **Unrated first.** While rating mode is on, `GET /api/quotes/random` returns only subjects the human run has not
+  rated yet.
+  - The TV preview filter still applies, so it can aim the session, for example at quotes a model run called `weak`.
+  - Only when nothing unrated is left does it fall back to the usual pool.
+  - The TV tops up its batch near the end.
+- **No auth.** Rating mode, switched from the admin, is the only guard on the public rating routes. While it is off:
+  - `GET /api/quotes/{id}/rating[?excerptId=]` answers 204.
+  - `PUT /api/quotes/{id}/rating` (`{"excerptId", "verdict", "problems"}`) answers 409.
+  - `POST /api/quality-flags` (`{"label"}`) answers 409.
+- **Storage.** The mode is `tv_display_settings.rating_run_id`.
+  - `PUT /admin/tv-rating` sets it, with `{"runId": ...}`, or null to turn it off. Only a `human` run can be chosen.
+  - `TvRatingService.kt` holds the server side.
+  - On the TV, `rating/rating-panel.ts` holds the panel's pure key handling and `RatingPanel.tsx` draws it.
 
 ## Related: the TV length cap
 

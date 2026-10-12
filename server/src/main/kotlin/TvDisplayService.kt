@@ -7,6 +7,7 @@ import no.esotericgames.quotes.server.db.QuoteQualityAssessments
 import no.esotericgames.quotes.server.db.QuoteQualityRuns
 import no.esotericgames.quotes.server.db.TvDisplayQualityRuns
 import no.esotericgames.quotes.server.db.TvDisplaySettings
+import no.esotericgames.quotes.server.quality.QualityRunner
 import no.esotericgames.quotes.server.quality.SubjectKind
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -29,8 +30,13 @@ data class TvDisplaySettingsRequest(val showQuality: Boolean, val qualityRunIds:
 @Serializable
 data class TvDisplayRun(val id: Int, val label: String)
 
+/** [ratingRun] is the human run the TV remote rates into, or null while rating mode is off. */
 @Serializable
-data class TvDisplaySettingsResponse(val showQuality: Boolean, val qualityRuns: List<TvDisplayRun>)
+data class TvDisplaySettingsResponse(val showQuality: Boolean, val qualityRuns: List<TvDisplayRun>, val ratingRun: TvDisplayRun?)
+
+/** Turns rating mode on with the human run [runId], or off with null. */
+@Serializable
+data class TvRatingSettingsRequest(val runId: Int?)
 
 /** One run's assessment of the shown quote or excerpt. */
 @Serializable
@@ -56,11 +62,35 @@ private const val NOT_ASSESSED = "notAssessed"
 /**
  * TV display settings set from the admin (docs/features/quote-quality.md, "TV quality overlay"). While the quality
  * overlay is on, the TV shows each shown quote's or excerpt's verdict and flags in the chosen runs. Diagnostic only.
+ * While rating mode is on ("Human ratings on TV"), the remote rates what is shown into a human run.
  */
 class TvDisplayService {
 
     suspend fun settings(): TvDisplaySettingsResponse = withContext(Dispatchers.IO) {
         suspendTransaction { currentSettings() }
+    }
+
+    /** Turns rating mode on with human run [runId], or off when it is null. */
+    suspend fun setRatingRun(runId: Int?): TvDisplaySettingsResponse = withContext(Dispatchers.IO) {
+        suspendTransaction {
+            if (runId != null) {
+                val runner = QuoteQualityRuns.select(QuoteQualityRuns.runner).where { QuoteQualityRuns.id eq runId }
+                    .singleOrNull()?.get(QuoteQualityRuns.runner)
+                    ?: throw IllegalArgumentException("quality run $runId does not exist")
+                require(runner == QualityRunner.HUMAN.dbValue) { "the TV rates into a human run; run $runId is $runner" }
+            }
+            TvDisplaySettings.upsert {
+                it[id] = TvDisplaySettings.SINGLE_ROW_ID
+                it[ratingRunId] = runId
+                it[updatedAt] = OffsetDateTime.now()
+            }
+            currentSettings()
+        }
+    }
+
+    /** The human run the TV rates into, or null while rating mode is off. */
+    suspend fun ratingRun(): TvDisplayRun? = withContext(Dispatchers.IO) {
+        suspendTransaction { currentRatingRun() }
     }
 
     suspend fun update(request: TvDisplaySettingsRequest): TvDisplaySettingsResponse = withContext(Dispatchers.IO) {
@@ -126,6 +156,14 @@ class TvDisplayService {
             .select(QuoteQualityRuns.id, QuoteQualityRuns.label)
             .orderBy(QuoteQualityRuns.id, SortOrder.ASC)
             .map { TvDisplayRun(it[QuoteQualityRuns.id], it[QuoteQualityRuns.label]) }
-        return TvDisplaySettingsResponse(showQuality, runs)
+        return TvDisplaySettingsResponse(showQuality, runs, currentRatingRun())
     }
+
+    private fun currentRatingRun(): TvDisplayRun? = (TvDisplaySettings innerJoin QuoteQualityRuns)
+        .select(QuoteQualityRuns.id, QuoteQualityRuns.label)
+        .singleOrNull()
+        ?.let { TvDisplayRun(it[QuoteQualityRuns.id], it[QuoteQualityRuns.label]) }
 }
+
+/** The human run the TV rates into, or null while rating mode is off. Must run inside a transaction. */
+fun activeRatingRunId(): Int? = TvDisplaySettings.select(TvDisplaySettings.ratingRunId).singleOrNull()?.get(TvDisplaySettings.ratingRunId)

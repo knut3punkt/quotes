@@ -282,12 +282,15 @@ object TvQuoteFilters : Table("tv_quote_filter") {
     override val primaryKey = PrimaryKey(id)
 }
 
-/** TV display settings: at most one row (id 1), for the quality overlay. */
+/** TV display settings: at most one row (id 1), for the quality overlay and rating mode. */
 object TvDisplaySettings : Table("tv_display_settings") {
     const val SINGLE_ROW_ID: Short = 1
 
     val id = short("id")
     val showQuality = bool("show_quality").default(false)
+
+    /** The human run the TV remote rates into; rating mode is on while this is set. */
+    val ratingRunId = integer("rating_run_id").references(QuoteQualityRuns.id, onDelete = ReferenceOption.SET_NULL).nullable()
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone)
 
     override val primaryKey = PrimaryKey(id)
@@ -297,4 +300,14 @@ object TvDisplayQualityRuns : Table("tv_display_quality_runs") {
     val runId = integer("run_id").references(QuoteQualityRuns.id, onDelete = ReferenceOption.CASCADE)
 
     override val primaryKey = PrimaryKey(runId)
+}
+
+/** Problem flags a human added on the TV, beyond the model's fixed `QualityProblem` set. */
+object QualityCustomFlags : Table("quality_custom_flags") {
+    /** The normalised form stored in `quote_quality_assessments.problems`. */
+    val code = text("code")
+    val label = text("label")
+    val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone)
+
+    override val primaryKey = PrimaryKey(code)
 }

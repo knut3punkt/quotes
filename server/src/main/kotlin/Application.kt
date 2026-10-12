@@ -90,10 +90,17 @@ fun Application.module() {
     // Background work outlives the admin request that starts it, but not the application.
     val backgroundScope = CoroutineScope(coroutineContext + SupervisorJob(coroutineContext[Job]))
     val publicQuoteService = PublicQuoteService(publicQuoteConfig)
+    val tvDisplayService = TvDisplayService()
+    val quoteQualityService = QuoteQualityService(
+        LlamaCppQuoteQualityClient(qualityLlmConfig),
+        qualityLlmConfig,
+        maxFullQuoteWords = publicQuoteConfig.maxFullQuoteWords,
+    )
     configureRouting(
         publicQuoteService = publicQuoteService,
         tvFilterService = TvFilterService(publicQuoteService),
-        tvDisplayService = TvDisplayService(),
+        tvDisplayService = tvDisplayService,
+        tvRatingService = TvRatingService(tvDisplayService, quoteQualityService),
         wikiquoteImportService = WikiquoteImportService(WikiquoteClient()),
         importedQuoteAdminService = ImportedQuoteAdminService(),
         quoteAdminService = QuoteAdminService(),
@@ -113,11 +120,7 @@ fun Application.module() {
             interpretationLlmConfig,
         ),
         quoteTaggingService = QuoteTaggingService(LlamaCppTaggingClient(taggingConfig.llm), taggingConfig),
-        quoteQualityService = QuoteQualityService(
-            LlamaCppQuoteQualityClient(qualityLlmConfig),
-            qualityLlmConfig,
-            maxFullQuoteWords = publicQuoteConfig.maxFullQuoteWords,
-        ),
+        quoteQualityService = quoteQualityService,
         tagAdminService = TagAdminService(),
         tagImageGenerationJob = TagImageGenerationJob(
             HttpComfyUiClient(imageGenerationConfig.comfyUi),

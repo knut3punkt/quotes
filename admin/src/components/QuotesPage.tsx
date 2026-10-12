@@ -507,7 +507,13 @@ export function QuotesPage() {
         </Alert>
       )}
 
-      <TvFilterPanel currentQuery={currentQuery} options={filterOptions} qualityRuns={qualityRuns} onLoad={setFilters} />
+      <TvFilterPanel
+        currentQuery={currentQuery}
+        options={filterOptions}
+        qualityRuns={qualityRuns}
+        onLoad={setFilters}
+        onQualityRunCreated={(run) => setQualityRuns((runs) => [run, ...runs])}
+      />
 
       <QuotesFilterBar
         filters={filters}

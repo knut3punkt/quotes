@@ -67,6 +67,7 @@ fun Application.configureRouting(
     publicQuoteService: PublicQuoteService,
     tvFilterService: TvFilterService,
     tvDisplayService: TvDisplayService,
+    tvRatingService: TvRatingService,
     wikiquoteImportService: WikiquoteImportService,
     importedQuoteAdminService: ImportedQuoteAdminService,
     quoteAdminService: QuoteAdminService,
@@ -105,6 +106,19 @@ fun Application.configureRouting(
             val excerptId = call.request.queryParameters["excerptId"]?.toInt()
             val quality = tvDisplayService.qualityFor(id, excerptId)
             if (quality == null) call.respond(HttpStatusCode.NoContent) else call.respond(quality)
+        }
+        get("/api/quotes/{id}/rating") {
+            val id = call.parameters.getOrFail("id").toInt()
+            val excerptId = call.request.queryParameters["excerptId"]?.toInt()
+            val rating = tvRatingService.ratingFor(id, excerptId)
+            if (rating == null) call.respond(HttpStatusCode.NoContent) else call.respond(rating)
+        }
+        put("/api/quotes/{id}/rating") {
+            val id = call.parameters.getOrFail("id").toInt()
+            call.respond(tvRatingService.rate(id, call.receive<TvRatingRequest>()))
+        }
+        post("/api/quality-flags") {
+            call.respond(HttpStatusCode.Created, tvRatingService.createFlag(call.receive<CreateQualityFlagRequest>().label))
         }
         get("/api/tag-images/{id}") {
             val id = call.parameters.getOrFail("id").toInt()
@@ -205,6 +219,9 @@ fun Application.configureRouting(
         }
         put("/admin/tv-display") {
             call.respond(tvDisplayService.update(call.receive<TvDisplaySettingsRequest>()))
+        }
+        put("/admin/tv-rating") {
+            call.respond(tvDisplayService.setRatingRun(call.receive<TvRatingSettingsRequest>().runId))
         }
         post("/admin/quotes/bulk/unapprove") {
             val request = call.receive<BulkUnapproveQuotesRequest>()

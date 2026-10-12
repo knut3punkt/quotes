@@ -245,11 +245,16 @@ export interface TvFilter {
   poolAsExcerpt: number
 }
 
-/** The TV's quality overlay: while on, the TV shows each shown quote's or excerpt's verdict and flags in the run. */
+/**
+ * The TV's quality overlay (while on, the TV shows each shown quote's or excerpt's verdict and flags in the runs) and
+ * rating mode (docs/features/quote-quality.md, "Human ratings on TV").
+ */
 export interface TvDisplaySettings {
   showQuality: boolean
   /** The runs the TV quality overlay shows, oldest first. */
   qualityRuns: { id: number; label: string }[]
+  /** The human run the TV remote rates into, or null while rating mode is off. */
+  ratingRun: { id: number; label: string } | null
 }
 
 export interface QuoteSelectionItem {
@@ -444,7 +449,7 @@ export const PRECHECK_FLAGS = [
 export interface QualityRun {
   id: number
   label: string
-  runner: 'llm' | 'external'
+  runner: 'llm' | 'external' | 'human'
   methodVersion: string
   promptVersion: string
   modelId: string | null

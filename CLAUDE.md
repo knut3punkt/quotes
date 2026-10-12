@@ -38,7 +38,8 @@ speculatively — only when a specific platform is explicitly requested.
   navigation with wrap-around. Each screen is composed by `src/composition/` from the server-chosen
   mood background and motifs (quote placed by the background's quote layout, motifs as round icons in the
   calmest corner dock, text contrast, fallback gradient), rendered by
-  `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. `src/platform/` provides `webos`/`browser` detection for future
+  `QuoteStage` with crossfades; ArrowUp re-rolls, `?debug` shows what was chosen. In admin-switched rating mode, OK
+  opens `RatingPanel` to rate the shown text with the remote (`src/rating/`). `src/platform/` provides `webos`/`browser` detection for future
   platform-specific branching.
 - **`server`** (`no.esotericgames.quotes.server`) — Ktor/Netty server. `Application.kt` is the
   entry point (`EngineMain`), `Routing.kt` defines routes, `Models.kt` holds the `@Serializable`
@@ -47,7 +48,8 @@ speculatively — only when a specific platform is explicitly requested.
   qualifying excerpts is shown as one of them, and a quote longer than `publicQuotes.maxFullQuoteWords`
   without one is skipped rather than shown in full; while an admin-set TV preview filter exists,
   `TvFilterService.kt`, only quotes and excerpts matching it are returned; `TvDisplayService.kt` backs the
-  admin-switched quality overlay the TV fetches per quote from `GET /api/quotes/{id}/quality`),
+  admin-switched quality overlay the TV fetches per quote from `GET /api/quotes/{id}/quality`, and rating mode,
+  in which `TvRatingService.kt` stores remote ratings in a `human` quality run and unrated quotes come first),
   each with `visuals` chosen by `composition/` (a mood background and one element per motif tag, which the
   TV shows as a row of round icons).
   `db/` holds the Exposed table definitions and Flyway-migrated PostgreSQL schema (`authors`,
@@ -170,6 +172,9 @@ Important principles:
   are compared on `(subject_kind, subject_hash)`.
 * Model output and external uploads go through the same `QualityValidator`; prechecks are computed by the server and
   never shown to the model.
+* Human ratings from the TV remote (rating mode, switched from the admin) are a `human` run with verdict and problems
+  only, checked by `HumanRating` instead. They may use custom flags (`quality_custom_flags`). Rating mode is the only
+  guard on the public rating routes, since there is no auth.
 
 ### Tag images
 

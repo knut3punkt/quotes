@@ -3,7 +3,8 @@ import type { PublicQuote } from '../types'
 
 const AUTO_ADVANCE_MS = 30_000
 
-export function useQuoteCarousel(quotes: PublicQuote[]) {
+/** Steps through [quotes], wrapping around; every 30 s on its own while [autoAdvance] is set. */
+export function useQuoteCarousel(quotes: PublicQuote[], autoAdvance: boolean = true) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const count = quotes.length
 
@@ -18,12 +19,12 @@ export function useQuoteCarousel(quotes: PublicQuote[]) {
   }, [count])
 
   useEffect(() => {
-    if (count === 0) return
+    if (count === 0 || !autoAdvance) return
     // Restarts on every currentIndex change (auto-advance or manual nav), so a manual
     // next/previous always gets a fresh 30s window instead of being cut short by a near-due tick.
     const timer = setInterval(next, AUTO_ADVANCE_MS)
     return () => clearInterval(timer)
-  }, [currentIndex, count, next])
+  }, [currentIndex, count, next, autoAdvance])
 
   return {
     currentIndex,

@@ -1,8 +1,7 @@
 package no.esotericgames.quotes.server.admin
 
 import io.ktor.http.Parameters
-import no.esotericgames.quotes.server.quality.PrecheckFlag
-import no.esotericgames.quotes.server.quality.QualityProblem
+import no.esotericgames.quotes.server.quality.QUALITY_FLAG_CODE_REGEX
 import no.esotericgames.quotes.server.quality.QualityVerdict
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -133,14 +132,14 @@ fun quoteFilterFrom(params: Parameters, defaultPageSize: Int): QuoteFilter = Quo
 }
 
 private val QUALITY_VERDICT_VALUES = QualityVerdict.entries.map { it.dbValue }.toSet() + setOf(QUALITY_NOT_ASSESSED, QUALITY_FAILED)
-private val QUALITY_FLAG_VALUES = QualityProblem.entries.map { it.name }.toSet() + PrecheckFlag.entries.map { it.name }.toSet()
 
 private fun qualityVerdicts(params: Parameters): Set<String> = params.getAll("qualityVerdict").orEmpty().map { value ->
     value.also { require(it in QUALITY_VERDICT_VALUES) { "unknown qualityVerdict: $it" } }
 }.toSet()
 
 private fun qualityFlags(params: Parameters): Set<String> = params.getAll("qualityFlag").orEmpty().map { value ->
-    value.also { require(it in QUALITY_FLAG_VALUES) { "unknown qualityFlag: $it" } }
+    // Any well-formed code: besides model problems and prechecks, humans add their own flags on the TV.
+    value.also { require(it.matches(QUALITY_FLAG_CODE_REGEX)) { "unknown qualityFlag: $it" } }
 }.toSet()
 
 private fun enrichmentFilters(params: Parameters, name: String): Set<EnrichmentFilter> =

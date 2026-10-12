@@ -120,9 +120,11 @@ object QualityRunComparison {
         )
     }
 
-    private fun flagComparisons(pairs: List<Pair<ComparableAssessment, ComparableAssessment>>): List<FlagComparison> =
-        QualityProblem.entries.map { problem ->
-            val flag = problem.name
+    /** The model's problems in their fixed order, then any custom flags a human used in either run. */
+    private fun flagComparisons(pairs: List<Pair<ComparableAssessment, ComparableAssessment>>): List<FlagComparison> {
+        val builtIn = QualityProblem.entries.map { it.name }
+        val custom = pairs.flatMap { (x, y) -> x.assessment.problems + y.assessment.problems }.distinct().filterNot { it in builtIn }.sorted()
+        return (builtIn + custom).map { flag ->
             val inA = pairs.map { flag in it.first.assessment.problems }
             val inB = pairs.map { flag in it.second.assessment.problems }
             FlagComparison(
@@ -132,4 +134,5 @@ object QualityRunComparison {
                 both = inA.indices.count { inA[it] && inB[it] },
             )
         }
+    }
 }

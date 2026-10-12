@@ -55,7 +55,7 @@ class AdminFilterParametersTest {
             quoteFilterFrom(parametersOf("qualityRun" to listOf("3"), "qualityVerdict" to listOf("superb")), 50)
         }
         assertFailsWith<IllegalArgumentException> {
-            quoteFilterFrom(parametersOf("qualityRun" to listOf("3"), "qualityFlag" to listOf("BORING")), 50)
+            quoteFilterFrom(parametersOf("qualityRun" to listOf("3"), "qualityFlag" to listOf("not a flag")), 50)
         }
         assertFailsWith<IllegalArgumentException> { quoteFilterFrom(parametersOf("qualityVerdict" to listOf("reject")), 50) }
         assertFailsWith<IllegalArgumentException> { quoteFilterFrom(parametersOf("qualityRun" to listOf("latest")), 50) }

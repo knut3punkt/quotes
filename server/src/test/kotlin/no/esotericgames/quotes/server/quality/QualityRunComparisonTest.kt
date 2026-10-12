@@ -38,6 +38,17 @@ class QualityRunComparisonTest {
     }
 
     @Test
+    fun `custom flags a human used are compared after the model's problems`() {
+        val a = listOf(assessed("a", "weak", problems = listOf("TOO_PREACHY", "FLAT")))
+        val b = listOf(assessed("a", "weak", problems = listOf("FLAT")))
+
+        val flags = QualityRunComparison.compare(1, 2, a, b, disagreementLimit = 10).flags
+
+        assertEquals(QualityProblem.entries.map { it.name } + "TOO_PREACHY", flags.map { it.flag })
+        assertEquals(1, flags.last().onlyA)
+    }
+
+    @Test
     fun `kappa matches a hand-computed two-by-two example`() {
         // 20 agree keep, 5 A keep / B drop, 10 A drop / B keep, 15 agree drop: po = 0.7, pe = 0.5, kappa = 0.4.
         val kappa = QualityRunComparison.quadraticWeightedKappa(listOf(listOf(20, 5), listOf(10, 15)))
